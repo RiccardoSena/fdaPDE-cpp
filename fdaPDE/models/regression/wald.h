@@ -116,21 +116,27 @@ class WALD {
 
 
     // methods per calcolare p_Value e CI
-    // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in impu alla funzione computeCI?
+    // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in imput alla funzione computeCI?
     DMatrix<double> computeCI(){
-      
-        //costruisco lowerBound e upperBound
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-         
-        DVector<double> lowerBound = C_*m_.beta();
-        DVector<double> upperBound = C_*m_.beta()
-        DMatrix<double> BoundMatrix(n_, 2);
-        BoundMatrix.col(0) = lowerBound;
-        BoundMatrix.col(1) = upperBound;
+        //quantile deve cambiare a seconda del confidence interval 
+        int p = ;
+        std::chi_squared_distribution<double> chi_squared(p);
+        //quantile livello alpha 
+        double quantile = std::quantile(chi_squared, alpha);
+        
+        
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente 
+        DVector<double> lowerBound = C_*m_.beta() + std::sqrt(quantile);
+        DVector<double> upperBound = C_*m_.beta();
+
+        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        
+        CIMatrix.col(0) = lowerBound ;
+        CIMatrix.col(1) = upperBound ;
 
       
 
-        return std::make_pair(lowerBound, upperBound);
+        return CIMatrix;
     }
 
    // da aggiungere tutti i getters e i setters
