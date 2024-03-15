@@ -1,3 +1,19 @@
+// This file is part of fdaPDE, a C++ library for physics-informed
+// spatial and functional data analysis.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #ifndef _WALD_H_
 #define _WALD_H_
 
@@ -16,9 +32,6 @@
 
 // add this??
 #include "exact_edf.h"
-
-// probably can delete this
-using fdapde::core::BinaryVector;
 
 
 namespace fdapde {
@@ -44,9 +57,10 @@ class WALD {
      // 
      DMatrix<double> Vw_ {};
 
-     // matrice C da fare
+     // matrice C per cui creare un setter
      DMatrix<double> C_ {};
      
+     DVector<double> betaw_ {};
      // Maybe to let the compiler decide which type of interval to compute
      // Or don't care and compute all intervals
      std::string intervalType
@@ -61,12 +75,14 @@ class WALD {
      WALD(Model *m): m_(m) {};
 
      // computes smoothing matrix S = Q*\Psi*T^{-1}*\Psi^T
-     const DMatrix<double> &S() {
+     const DMatrix<double>& S() {
 
         // from exact_edf.h
         // need to check this
 
         // factorize matrix T
+        // Why in the computation of T there's a +P (penalization)
+        Eigen::PartialPivLU<DMatrix<double>> invT_ {};
         invT_ = m_.T().partialPivLu();
         DMatrix<double> E_ = m_.PsiTD();    // need to cast to dense for PartialPivLU::solve()
         // penso che questo S_ sia calcolato come Q*\Psi*T^{-1}*\Psi^T quindi va sistemato
@@ -74,7 +90,7 @@ class WALD {
         return S_;
      }
 
-     const DMatrix<double> &invSigma() {
+     const DMatrix<double>& invSigma() {
 
         // since W is a diagonal matrix we need to square it 
         // what is the best function for transpose and inversion??
@@ -84,11 +100,11 @@ class WALD {
 
         // we could avoid using W.transpose since it is diagonal
 
-        invSigma_ =  (m_.W.transpose()*m_.W).inverse();
+        invSigma_ =  (m_.W().transpose()*m_.W()).inverse();
         return invSigma_;
      }
 
-     const DMatrix<double> &sigma_sq() {
+     const DMatrix<double>& sigma_sq() {
 
         // in gcv.h there is a way to use exact_edf.h which I don't really understand
 
@@ -104,14 +120,20 @@ class WALD {
         return sigma_sq_;
      }
 
-     const DMatrix<double> &Vw {
+     const DMatrix<double>& Vw() {
 
-        DMatrix<double> ss = S_ * S_.transpose();
-        DMatrix<double> left = invSigma_ * m_.W_.transpose();
-        DMatrix<double> right = m_.W_ * invSigma_;
-        Vw_ = sigma_sq_ * (invSigma_.transpose() + left * ss * right);
+        DMatrix<double> ss = S() * S().transpose();
+        DMatrix<double> left = invSigma() * m_.W().transpose();
+        DMatrix<double> right = m_.W() * invSigma();
+        Vw_ = sigma_sq() * (invSigma().transpose() + left * ss * right);
 
         return Vw_;
+     }
+
+     const DVector<double>& betaw() {
+      // Is betaw just the beta from the Model???
+      betaw_ = m_.beta()
+      return betaw_
      }
 
 
@@ -123,7 +145,7 @@ class WALD {
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
          
         DVector<double> lowerBound = C_*m_.beta();
-        DVector<double> upperBound = C_*m_.beta()
+        DVector<double> upperBound = C_*m_.beta();
         DMatrix<double> BoundMatrix(n_, 2);
         BoundMatrix.col(0) = lowerBound;
         BoundMatrix.col(1) = upperBound;
@@ -133,7 +155,12 @@ class WALD {
         return std::make_pair(lowerBound, upperBound);
     }
 
+    double p_value(){
+
+    }
+
    // da aggiungere tutti i getters e i setters
+   // aggiunger destructor?
 
 }  
 }  // closing models namespace
