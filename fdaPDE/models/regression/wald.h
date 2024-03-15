@@ -45,6 +45,7 @@ class WALD {
      DMatrix<double> Vw_ {};
 
      // matrice C da fare
+     DMatrix<double> C_ {};
      
      // Maybe to let the compiler decide which type of interval to compute
      // Or don't care and compute all intervals
@@ -68,7 +69,8 @@ class WALD {
         // factorize matrix T
         invT_ = m_.T().partialPivLu();
         DMatrix<double> E_ = m_.PsiTD();    // need to cast to dense for PartialPivLU::solve()
-        S_ = m_.lmbQ(m_.Psi() * invT_.solve(E_));   // \Psi*T^{-1}*\Psi^T*Q
+        // penso che questo S_ sia calcolato come Q*\Psi*T^{-1}*\Psi^T quindi va sistemato
+        S_ = m_.lmbQ(m_.Psi() * invT_.solve(E_));   // \Psi*T^{-1}*\Psi^T*Q 
         return S_;
      }
 
@@ -113,35 +115,25 @@ class WALD {
      }
 
 
-    // funzione che calcola M^-1
-    matriceM inverseM(){
-        //M^{-1}=A^{-1}-A^{-1}U(G)^{-1}VA^{-1}
-        //per ora facciamo finta di avere A^-1
-        // direttamente dal modello abbiamo m_.U_ e m_.V_
-        // G viene calcolata ma non salvata in decomposition of Woodbury (fdaPDE-core/fdaPDE/linear_algebra/smw.h) quindi va salvata in questa classe 
-        //( forse viene anche già calcolata la sua inversa) 
-        
-        return invM;
-    
-    }
-
     // methods per calcolare p_Value e CI
     // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in impu alla funzione computeCI?
-    std::pair<double, double> computeCI(){
-        // costruisco sigma grande con W e W^-1
-
-        // costruisco sigma con epsilon, n, q e traccia di S
-
-        //costruisco S con PSI, M^-1 e Q
-        
-        //costruisco V
-
-
+    DMatrix<double> computeCI(){
+      
         //costruisco lowerBound e upperBound
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
+         
+        DVector<double> lowerBound = C_*m_.beta();
+        DVector<double> upperBound = C_*m_.beta()
+        DMatrix<double> BoundMatrix(n_, 2);
+        BoundMatrix.col(0) = lowerBound;
+        BoundMatrix.col(1) = upperBound;
 
+      
 
         return std::make_pair(lowerBound, upperBound);
     }
+
+   // da aggiungere tutti i getters e i setters
 
 }  
 }  // closing models namespace
