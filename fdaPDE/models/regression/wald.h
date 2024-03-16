@@ -14,8 +14,9 @@
 #include "gcv.h"
 #include "stochastic_edf.h"
 
-// add this??
+// add these??
 #include "exact_edf.h"
+#include <cmath>
 
 // probably can delete this
 using fdapde::core::BinaryVector;
@@ -126,8 +127,8 @@ class WALD {
         
         
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente 
-        DVector<double> lowerBound = C_*m_.beta() + std::sqrt(quantile);
-        DVector<double> upperBound = C_*m_.beta();
+        DVector<double> lowerBound = C_*m_.beta() + sqrt(quantile*);
+        DVector<double> upperBound = C_*m_.beta() - sqrt(quantile*);
 
         DMatrix<double> CIMatrix(m_.n_obs(), 2);
         
