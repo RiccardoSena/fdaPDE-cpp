@@ -137,21 +137,10 @@ class WALD {
       return betaw_
      }
 
-
+     
     // methods per calcolare p_Value e CI
     // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in imput alla funzione computeCI?
     DMatrix<double> computeCI(){
-<<<<<<< HEAD
-      
-        //costruisco lowerBound e upperBound
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-         
-        DVector<double> lowerBound = C_*m_.beta();
-        DVector<double> upperBound = C_*m_.beta();
-        DMatrix<double> BoundMatrix(n_, 2);
-        BoundMatrix.col(0) = lowerBound;
-        BoundMatrix.col(1) = upperBound;
-=======
         //quantile deve cambiare a seconda del confidence interval 
         int p = ;
         std::chi_squared_distribution<double> chi_squared(p);
@@ -159,27 +148,29 @@ class WALD {
         double quantile = std::quantile(chi_squared, alpha);
         
         
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente 
-        DVector<double> lowerBound = C_*m_.beta() + sqrt(quantile*);
-        DVector<double> upperBound = C_*m_.beta() - sqrt(quantile*);
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
+        // e che sulle righe della matrice di siano c1, c2, c3...
+        DMatrix<double> CVC_= C*Vw*C.transpose();
+        // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
+        DVector<double> CVCdiag_=CVC_.diagonal();
 
-        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        DVector<double> lowerBound = C_*m_.beta() - sqrt(quantile*CVC_diag/m_.n_obs());
+        DVector<double> upperBound = C_*m_.beta() + sqrt(quantile*CVC_diag/m_.n_obs());
         
+        //costruisco la matrice che restituisce i confidence intervals
+        DMatrix<double> CIMatrix(m_.n_obs(), 2);
         CIMatrix.col(0) = lowerBound ;
         CIMatrix.col(1) = upperBound ;
->>>>>>> 0a50223d3a35fef4443dee0172feeba595476b50
 
       
 
         return CIMatrix;
     }
-
-    double p_value(){
+   
+   double p_value(){
 
     }
-
    // da aggiungere tutti i getters e i setters
-   // aggiunger destructor?
 
 }  
 }  // closing models namespace

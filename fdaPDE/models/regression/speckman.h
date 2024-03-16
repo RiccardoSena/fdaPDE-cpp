@@ -91,19 +91,30 @@ class SPECKMAN {
      }
 
     DMatrix<double> computeCI(){
-      
-        //costruisco lowerBound e upperBound
+        //quantile deve cambiare a seconda del confidence interval 
+        int p = ;
+        std::chi_squared_distribution<double> chi_squared(p);
+        //quantile livello alpha 
+        double quantile = std::quantile(chi_squared, alpha);
+        
+        
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-         
-        DVector<double> lowerBound = C_*m_.betas();
-        DVector<double> upperBound = C_*m_.betas();
-        DMatrix<double> BoundMatrix(n_, 2);
-        BoundMatrix.col(0) = lowerBound;
-        BoundMatrix.col(1) = upperBound;
+        // e che sulle righe della matrice di siano c1, c2, c3...
+        DMatrix<double> CVC_= C*Vs*C.transpose();
+        // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
+        DVector<double> CVCdiag_=CVC_.diagonal();
+
+        DVector<double> lowerBound = C_*betas - sqrt(quantile*CVC_diag);
+        DVector<double> upperBound = C_*betas + sqrt(quantile*CVC_diag);
+        
+        //costruisco la matrice che restituisce i confidence intervals
+        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        CIMatrix.col(0) = lowerBound ;
+        CIMatrix.col(1) = upperBound ;
 
       
 
-        return std::make_pair(lowerBound, upperBound);
+        return CIMatrix;
     }
 
     double p_value(){
