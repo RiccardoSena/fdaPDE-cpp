@@ -30,9 +30,8 @@
 #include "gcv.h"
 #include "stochastic_edf.h"
 
-// add these??
+// add this??
 #include "exact_edf.h"
-#include <cmath>
 
 
 namespace fdapde {
@@ -64,7 +63,7 @@ class WALD {
      DVector<double> betaw_ {};
      // Maybe to let the compiler decide which type of interval to compute
      // Or don't care and compute all intervals
-     std::string intervalType
+     std::string intervalType;
 
 
     // ci sarà anche una variabile che fa il check che il modello sia stato runnato prima di fare inferenza
@@ -137,40 +136,31 @@ class WALD {
       return betaw_
      }
 
-     
-    // methods per calcolare p_Value e CI
-    // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in imput alla funzione computeCI?
-    DMatrix<double> computeCI(){
-        //quantile deve cambiare a seconda del confidence interval 
-        int p = ;
-        std::chi_squared_distribution<double> chi_squared(p);
-        //quantile livello alpha 
-        double quantile = std::quantile(chi_squared, alpha);
-        
-        
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-        // e che sulle righe della matrice di siano c1, c2, c3...
-        DMatrix<double> CVC_= C*Vw*C.transpose();
-        // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
-        DVector<double> CVCdiag_=CVC_.diagonal();
 
-        DVector<double> lowerBound = C_*m_.beta() - sqrt(quantile*CVC_diag/m_.n_obs());
-        DVector<double> upperBound = C_*m_.beta() + sqrt(quantile*CVC_diag/m_.n_obs());
-        
-        //costruisco la matrice che restituisce i confidence intervals
-        DMatrix<double> CIMatrix(m_.n_obs(), 2);
-        CIMatrix.col(0) = lowerBound ;
-        CIMatrix.col(1) = upperBound ;
+     // methods per calcolare p_Value e CI
+     // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in impu alla funzione computeCI?
+     DMatrix<double> computeCI(){
+      
+        //costruisco lowerBound e upperBound
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
+         
+        DVector<double> lowerBound = C_ * m_.betaw();
+        DVector<double> upperBound = C_ * m_.betaw();
+        DMatrix<double> BoundMatrix(n_, 2);
+        BoundMatrix.col(0) = lowerBound;
+        BoundMatrix.col(1) = upperBound;
 
       
 
-        return CIMatrix;
-    }
-   
-   double p_value(){
+        return std::make_pair(lowerBound, upperBound);
+     }
 
-    }
+     double p_value(){
+
+     }
+
    // da aggiungere tutti i getters e i setters
+   // aggiunger destructor?
 
 }  
 }  // closing models namespace
