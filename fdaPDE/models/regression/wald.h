@@ -86,6 +86,8 @@ class WALD {
         invT_ = m_.T().partialPivLu();
         DMatrix<double> E_ = m_.PsiTD();    // need to cast to dense for PartialPivLU::solve()
         // penso che questo S_ sia calcolato come Q*\Psi*T^{-1}*\Psi^T quindi va sistemato
+        // secondo me va calcolato così
+        // S_ = m_Psi() * invT_.solve(E_) * m_.computeQ();
         S_ = m_.lmbQ(m_.Psi() * invT_.solve(E_));   // \Psi*T^{-1}*\Psi^T*Q 
         return S_;
      }

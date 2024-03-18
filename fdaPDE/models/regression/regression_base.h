@@ -119,6 +119,16 @@ class RegressionBase :
         // compute W*x - W*X*z = W*x - (W*X*(X^\top*W*X)^{-1}*X^\top*W)*x = W(I - H)*x = Q*x
         return W_ * x - W_ * X() * z;
     }
+    //PARTE AGGIUNTA 
+    // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
+    DMatrix<double> computeQ() const {
+        if (!has_covariates()) return W_;
+        DMatrix<double> v = X().transpose() * W_;   // X^\top*W*x
+        DMatrix<double> z = invXtWX_.solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
+        // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
+        return W_ - W_ * X() * z;
+    }
+
     // computes fitted values \hat y = \Psi*f_ + X*beta_
     DMatrix<double> fitted() const {
         fdapde_assert(!is_empty(f_));
