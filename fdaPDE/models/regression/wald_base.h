@@ -159,9 +159,20 @@ class WALD<Model, exact> : public WaldBase<Model> {
         
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
         // e che sulle righe della matrice di siano c1, c2, c3...
-        DMatrix<double> CVC_ = C * Vs() * C.transpose();
+        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
         // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
-        DVector<double> CVCdiag_ = CVC_.diagonal();
+        // oppure la parte con il for la fai così questo è da sistemare 
+	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+	     DVector<double> diagonal(size);
+	
+	     //qui C_, Vw_ sono matrici quindi devi capire come accedere a solo le righe o solo le colonne 
+	     for(int i=0; i< size;++i){
+		      double element = 0;
+		      for(int j=0; j< size; ++j){
+			      element+=C_(i)*Vw_(j)*C_(i);}
+            diagonal(i) = element;
+        }
+
 
         DVector<double> lowerBound = C_ * betas() - sqrt(quantile * CVCdiag_);
         DVector<double> upperBound = C_ * betas() + sqrt(quantile * CVCdiag_);

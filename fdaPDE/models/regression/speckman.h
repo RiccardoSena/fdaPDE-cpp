@@ -56,33 +56,14 @@ class SPECKMAN {
      SPECKMAN() = default;
      SPECKMAN(Model *m):m_(m) {};
 
-
      const DMatrix<double>& Lambda() {
-        // I - Psi*\(Psi^T*\Psi + lambda*\R)^{-1}*\Psi^T
-        // I - Psi*\E^{-1}*\Psi^T
-        // E = Psi^T*\Psi + lambda*\R
-        // E^{-1} is potentially large and dense, we only need the northwest block
-        // The northwest block should just be Psi^T*\Psi (+P (penalization)???)
-        DMatrix<double> E_ = m_.PsiTD() * m_.Psi();
-
-        // ????
-        DMatrix<double> Einv_ = E_.partialPivLu();
-
-        // Matrice Identità????????? Is it D????
-        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * Einv_ * m_.PsiTD();
-
-        return Lambda_;
-     }
-     
-     //questo è quello che farei io 
-     //const DMatrix<double>& Lambda() {
         // I - Psi*\(Psi^T*\Psi + lambda*\R)^{-1}*\Psi^T
         // I - Psi*\A^{-1}*\Psi^T
         // A = Psi^T*\Psi + lambda*\R
         // A^{-1} is potentially large and dense, we only need the northwest block
-        // invA() contiene la fattorizzazione LU di A quindi va comunque calcolata la sua inversa 
-        //Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * m_.invA().inverse()* m_.PsiTD();
-        //return Lambda_;
+        
+        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * m_.A().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis)) * m_.PsiTD();
+        return Lambda_;
      //}
       
      const DVector<double>& betas() {
