@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef _SPECKMAN_H_
-#define _SPECKMAN_H_
+#ifndef __SPECKMAN_H__
+#define __SPECKMAN_H__
 
 // questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
@@ -40,6 +40,7 @@ template <typename Model>
 class SPECKMAN {
 
     private:
+    
      Model* m_;
      
      // do we need to store Lambda???
@@ -61,10 +62,10 @@ class SPECKMAN {
         // I - Psi*\A^{-1}*\Psi^T
         // A = Psi^T*\Psi + lambda*\R
         // A^{-1} is potentially large and dense, we only need the northwest block
-        
+        // m_.invA().block(0, 0, m_.n_basis, m_.n_basis)
         Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * m_.A().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis)) * m_.PsiTD();
         return Lambda_;
-     //}
+      }
       
      const DVector<double>& betas() {
         // Wt = Lambda_*\W
@@ -72,11 +73,12 @@ class SPECKMAN {
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
 
         DMatrix<double> Wtilde_ = Lambda() * m_.W();
-        DMatrix<double> ytilde = Lambda() * m_.y();
+        DMatrix<double> ytilde_ = Lambda() * m_.y();
 
         // ????
-        DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU();
-
+        // Maybe for temp is ok to do .inverse()
+        //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
+        DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).inverse();
 
         betas_ = temp * Wtilde_.transpose() * ytilde_;
         return betas_;
@@ -93,11 +95,10 @@ class SPECKMAN {
         DMatrix<double> E = epsilon_ * epsilon_.transpose();
 
         // inversione U con pivLU???
+        // DMatrix<double> Uinv_ = U_.partialPivLU();
         Vs_ = U_.inverse() * Wtilde_.tanspose() * Lambda() * E * Lambda().transpose() * Wtilde_ * U_.inverse();
         return Vs_;
      }
-
-
 
      DMatrix<double> computeCI(){
 
@@ -135,6 +136,8 @@ class SPECKMAN {
 
 
 } // end class
-
-} // end models namespace
+} // end fdapde models
 } // end fdapde namespace
+
+#endif  //__SPECKMAN_H__
+

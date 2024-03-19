@@ -121,7 +121,7 @@ class RegressionBase :
     }
     //PARTE AGGIUNTA 
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
-    DMatrix<double> computeQ() const {
+    DMatrix<double> Q() const {
         if (!has_covariates()) return W_;
         DMatrix<double> v = X().transpose() * W_;   // X^\top*W*x
         DMatrix<double> z = invXtWX_.solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
