@@ -17,18 +17,16 @@
 #ifndef _WALD_H_
 #define _WALD_H_
 
-// TUTTI QUESTI INCLUDE SARANNO DA CONTROLLARE 
-#include <fdaPDE/utils.h>
+// questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
+#include <fdaPDE/utils.h>
+
 #include "../model_macros.h"
 #include "../model_traits.h"
-#include "../space_only_base.h"
-#include "../space_time_base.h"
-#include "../space_time_separable_base.h"
-#include "../space_time_parabolic_base.h"
-#include "../sampling_design.h"
-#include "gcv.h"
-#include "stochastic_edf.h"
+#include "srpde.h"
+#include "strpde.h"
+
+using fdapde::core::SMW;
 
 // add this??
 #include "exact_edf.h"
@@ -42,7 +40,7 @@ template <typename Model>
 class WALD {
 
     private: 
-     Model* m_; // in teoria da qui dovremmo avere accesso a tutte le variabili che ci servono per calcolare CI 
+     Model* m_; 
 
      
      DMatrix<double> S_ {};  // we rather need the smoothing matrix S instead of Q
@@ -140,17 +138,31 @@ class WALD {
 
 
      // methods per calcolare p_Value e CI
-     // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in impu alla funzione computeCI?
+     // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in imput alla funzione computeCI?
      DMatrix<double> computeCI(){
-      
-        //costruisco lowerBound e upperBound
+        // SIMULTANEOUS
+
+        //quantile deve cambiare a seconda del confidence interval 
+        // magari creare un setter per p e fare p una variabile privata??
+        int p = ;
+        std::chi_squared_distribution<double> chi_squared(p);
+        //quantile livello alpha 
+        double quantile = std::quantile(chi_squared, alpha);
+        
+        
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-         
-        DVector<double> lowerBound = C_ * m_.betaw();
-        DVector<double> upperBound = C_ * m_.betaw();
-        DMatrix<double> BoundMatrix(n_, 2);
-        BoundMatrix.col(0) = lowerBound;
-        BoundMatrix.col(1) = upperBound;
+        // e che sulle righe della matrice di siano c1, c2, c3...
+        DMatrix<double> CVC_ = C * Vs() * C.transpose();
+        // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
+        DVector<double> CVCdiag_ = CVC_.diagonal();
+
+        DVector<double> lowerBound = C_ * betas() - sqrt(quantile * CVCdiag_);
+        DVector<double> upperBound = C_ * betas() + sqrt(quantile * CVCdiag_);
+
+        //costruisco la matrice che restituisce i confidence intervals
+        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        CIMatrix.col(0) = lowerBound;
+        CIMatrix.col(1) = upperBound;
 
       
 
@@ -161,7 +173,7 @@ class WALD {
 
      }
 
-   // da aggiungere tutti i getters e i setters
+   // da aggiungere tutti i getters
    // aggiunger destructor?
 
 }  

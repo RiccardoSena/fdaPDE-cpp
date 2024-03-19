@@ -17,18 +17,16 @@
 #ifndef _SPECKMAN_H_
 #define _SPECKMAN_H_
 
-// TUTTI QUESTI INCLUDE SARANNO DA CONTROLLARE 
-#include <fdaPDE/utils.h>
+// questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
+#include <fdaPDE/utils.h>
+
 #include "../model_macros.h"
 #include "../model_traits.h"
-#include "../space_only_base.h"
-#include "../space_time_base.h"
-#include "../space_time_separable_base.h"
-#include "../space_time_parabolic_base.h"
-#include "../sampling_design.h"
-#include "gcv.h"
-#include "stochastic_edf.h"
+#include "srpde.h"
+#include "strpde.h"
+
+using fdapde::core::SMW;
 
 // add this??
 #include "exact_edf.h"
@@ -71,11 +69,22 @@ class SPECKMAN {
         DMatrix<double> Einv_ = E_.partialPivLu();
 
         // Matrice Identità????????? Is it D????
-        Lambda_ = I - m_.Psi() * Einv_ * m_.PsiTD();
+        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * Einv_ * m_.PsiTD();
 
         return Lambda_;
      }
-
+     
+     //questo è quello che farei io 
+     //const DMatrix<double>& Lambda() {
+        // I - Psi*\(Psi^T*\Psi + lambda*\R)^{-1}*\Psi^T
+        // I - Psi*\A^{-1}*\Psi^T
+        // A = Psi^T*\Psi + lambda*\R
+        // A^{-1} is potentially large and dense, we only need the northwest block
+        // invA() contiene la fattorizzazione LU di A quindi va comunque calcolata la sua inversa 
+        //Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * m_.invA().inverse()* m_.PsiTD();
+        //return Lambda_;
+     //}
+      
      const DVector<double>& betas() {
         // Wt = Lambda_*\W
         // zt = Lambda_*\z
@@ -102,7 +111,7 @@ class SPECKMAN {
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
         DMatrix<double> E = epsilon_ * epsilon_.transpose();
 
-        // iinversione U con pivLU???
+        // inversione U con pivLU???
         Vs_ = U_.inverse() * Wtilde_.tanspose() * Lambda() * E * Lambda().transpose() * Wtilde_ * U_.inverse();
         return Vs_;
      }
