@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef _WALD_H_
-#define _WALD_H_
+#ifndef _WAL_BASE_H_
+#define _WALD_BASE_H_
 
 // questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
@@ -35,9 +35,16 @@ using fdapde::core::SMW;
 namespace fdapde {
 namespace models {
 
+enum CIType {bonferroni,...}
+
+template <typename Model, typename Strategy> class Wald;
+
+struct exact {};
+using 
+
 // base class for any regression model
 template <typename Model>
-class WALD {
+class WALD<Model, exact> : public WaldBase<Model> {
 
     private: 
      Model* m_; 
@@ -52,7 +59,7 @@ class WALD {
      // matrix of errors sigma^2, should be a n x n matrix
      DMatrix<double> sigma_sq_ {};
      
-     // 
+     // is_empty(Vw_) ritorna true se Vw_ è zero x zero
      DMatrix<double> Vw_ {};
 
      // matrice C per cui creare un setter
@@ -116,6 +123,7 @@ class WALD {
  
 
         // don't know how to initialize the ExactEDF object since it only has the deafult constructor
+        ExactEDF;
         sigma_sq_  = (1/(m_.n_obs() - m_.q() - ExactEDF::compute())) * (epsilon.transpose()*epsilon);
         return sigma_sq_;
      }
@@ -132,14 +140,13 @@ class WALD {
 
      const DVector<double>& betaw() {
       // Is betaw just the beta from the Model???
-      betaw_ = m_.beta()
-      return betaw_
+      betaw_ = m_.beta();
+      return betaw_;
      }
-
 
      // methods per calcolare p_Value e CI
      // in base al tipo di CI che voglio restituisco una cosa diversa quindi il tipo di CI dove lo faccio passare? in imput alla funzione computeCI?
-     DMatrix<double> computeCI(){
+     DMatrix<double> computeCI(CIType type){
         // SIMULTANEOUS
 
         //quantile deve cambiare a seconda del confidence interval 
