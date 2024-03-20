@@ -53,15 +53,19 @@ template <typename Model> class SpeckmanBase {
 
      DMatrix<double> inverseA_ {};
 
+     DMatrix<double> C_ {};
+
+     int alpha_ = 0;
+
 
     public:
 
-     // condtructors
+     // constructors
      SpeckmanBase() = default;
      SpeckmanBase(Model *m):m_(m) {};
 
      // questo si specializza in speckman exact e non_exact  
-     virtual DMatrix<double>& inverseA() = 0;
+     virtual void inverseA() = 0;
 
 
      const DMatrix<double>& Lambda() {
@@ -70,6 +74,9 @@ template <typename Model> class SpeckmanBase {
         // A = Psi^T*\Psi + lambda*\R
         // A^{-1} is potentially large and dense, we only need the northwest block
         // m_.invA().block(0, 0, m_.n_basis, m_.n_basis)
+        if(is_empty(inverseA_)){
+           inverseA();
+        }
         Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * inverseA_ * m_.PsiTD();
         return Lambda_;
       }
@@ -112,7 +119,12 @@ template <typename Model> class SpeckmanBase {
          if(is_empty(C_)){
          // print an error (need to set C)
          }  
-        
+         else if(alpha_ == 0){
+          // print error: "alpha missing"
+         }
+         else{
+         
+         int p = C_.rows();
          // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
          // e che sulle righe della matrice di siano c1, c2, c3...
          // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
@@ -134,10 +146,9 @@ template <typename Model> class SpeckmanBase {
 
          if(type == simultaneous){ 
          // SIMULTANEOUS
-         int p = C_.rows();
          std::chi_squared_distribution<double> chi_squared(p);
          //quantile livello alpha 
-         double quantile = std::quantile(chi_squared, alpha);
+         double quantile = std::quantile(chi_squared, alpha_);
          
          lowerBound = C_ * betas() - std::sqrt(quantile * diagonal);
          upperBound = C_ * betas() + std::sqrt(quantile * diagonal);
@@ -146,9 +157,8 @@ template <typename Model> class SpeckmanBase {
 
          else if (type == bonferroni){
             // Bonferroni
-            int p = ;
          //quantile livello alpha 
-         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/(2*p));
+         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
          lowerBound = C_ * betas() - quantile *std::sqrt( diagonal);
          upperBound = C_ * betas() + quantile *std::sqrt( diagonal);
@@ -157,7 +167,7 @@ template <typename Model> class SpeckmanBase {
 
          else if (type == one_at_the_time){
          //quantile livello alpha 
-         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/2);
+         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
          lowerBound = C_ * betas() - quantile *std::sqrt( diagonal);
          upperBound = C_ * betas() + quantile *std::sqrt( diagonal);
@@ -173,13 +183,31 @@ template <typename Model> class SpeckmanBase {
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;
          
-
+        
          return std::make_pair(lowerBound, upperBound);
+         }
       }
 
+     // this function returns the statistics not the p-values
      double p_value(){
 
      }
+
+     // setter for matrix of combination of coefficients C
+     void setC(DMatrix<double> C){
+      C_ = C;
+     }
+
+     // setter for alpha
+     void setAlpha(int alpha){
+      if(alpha > 1 || alpha < 0){
+         // print error
+      }
+      else{
+         alpha_ = alpha;
+      }
+     }
+
 
 
 } // end class

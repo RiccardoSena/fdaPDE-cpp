@@ -39,7 +39,7 @@ struct exact {};
 
 template <typename Model>
 
-// WALD model signature, guarda in strpde.h
+// SPECKMAN model signature, guarda in strpde.h
 template <typename Model, typename Strategy> class SPECKMAN;
 
 
@@ -49,12 +49,13 @@ class SPECKMAN<Model, exact> : public SpeckmanBase<Model> {
      // is this necessary
      using Base = SpeckmanBase<Model>;
 
-     DMatrix<double>& inverseA() override{
-        if(!is_empy(inverseA_)){
-            return inverseA_;
+     void inverseA() override{
+        if(!is_empty(inverseA_)){
+            return;
         }
         else {
-            return m_.invA().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis));
+            inverseA_ =  m_.invA().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis));
+            return;
         }
      }
 
@@ -67,7 +68,7 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
 
      DMatrix<double>& inverseA() override{
         if(!is_empty(inverseA_)){
-            return;
+            return inverseA_;
         }
         else{
             // FSPAI approximation

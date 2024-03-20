@@ -56,6 +56,9 @@ template <typename Model> class WaldBase {
      DMatrix<double> C_ {};
      
      DVector<double> betaw_ {};
+     
+     // level of the confidence intervals
+     int alpha_ = 0;
 
     // ci sarà anche una variabile che fa il check che il modello sia stato runnato prima di fare inferenza
 
@@ -67,7 +70,7 @@ template <typename Model> class WaldBase {
 
 
      // check this!!!
-     virtual DMatrix<double>& S() = 0;
+     virtual void S() = 0;
 
 
      const DMatrix<double>& invSigma() {
@@ -105,8 +108,11 @@ template <typename Model> class WaldBase {
      }
 
      const DMatrix<double>& Vw() {
+        if(is_empty(S_)){
+            S();
+        }
 
-        DMatrix<double> ss = S() * S().transpose();
+        DMatrix<double> ss = S_ * S_.transpose();
         DMatrix<double> left = invSigma() * m_.W().transpose();
         DMatrix<double> right = m_.W() * invSigma();
         Vw_ = sigma_sq() * (invSigma().transpose() + left * ss * right);
@@ -126,7 +132,11 @@ template <typename Model> class WaldBase {
         if(is_empty(C_)){
          // print an error (need to set C)
         }  
-        
+        else if(alpha_ == 0) {
+         // print error if alpha is missing
+        }
+        else{
+         int p = C_.rows();
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
         // e che sulle righe della matrice di siano c1, c2, c3...
         // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
@@ -148,10 +158,9 @@ template <typename Model> class WaldBase {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        int p = C_.rows();
         std::chi_squared_distribution<double> chi_squared(p);
         //quantile livello alpha 
-        double quantile = std::quantile(chi_squared, alpha);
+        double quantile = std::quantile(chi_squared, alpha_);
         
         lowerBound = C_ * betas() - std::sqrt(quantile * diagonal/m_.n_obs());
         upperBound = C_ * betas() + std::sqrt(quantile * diagonal/m_.n_obs());
@@ -160,9 +169,8 @@ template <typename Model> class WaldBase {
 
         else if (type == bonferroni){
          // Bonferroni
-         int p = ;
         //quantile livello alpha 
-        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/(2*p));
+        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
         lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
         upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
@@ -171,7 +179,7 @@ template <typename Model> class WaldBase {
 
         else if (type == one_at_the_time){
         //quantile livello alpha 
-        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/2);
+        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
         lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
         upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
@@ -189,8 +197,10 @@ template <typename Model> class WaldBase {
         
 
         return std::make_pair(lowerBound, upperBound);
+        }
      }
 
+     // this function returns the statistics not the p-values
      double p_value(){
 
      }
@@ -198,6 +208,14 @@ template <typename Model> class WaldBase {
      // setter for matrix of combination of coefficients C
      void setC(DMatrix<double> C){
       C_ = C;
+     }
+
+     void setAlpha(int alpha){
+      // print error if alpha is not between 0 and 1
+      if(alpha > 1 || alpha < 0){
+
+      }
+      alpha_ = alpha;
      }
 
    // aggiungere destructor?

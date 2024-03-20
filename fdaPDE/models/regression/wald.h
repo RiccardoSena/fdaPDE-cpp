@@ -50,14 +50,14 @@ class WALD<Model, exact> : public WaldBase<Model> {
 
      
      // perchè la funzione return S e non inizializza direttamente S_ ???
-     DMatrix<double>& S() override{
+     void S() override{
         if(!is_empy(S_)){
-            return S_;
+            return;
         }
         else {
             DMatrix<double> invT_ = m_.T().partialPivLu().solve(DMatrix::Identity(T_.rows(), T_.cols()));
             S_ = m_.Psi() * invT_.block(0, 0, m_.n_basis, m_.n_basis) * m_.Psi().transpose() * m_.Q();
-            return S_;
+            return;
         }
      }
 
