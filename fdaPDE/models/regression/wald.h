@@ -39,7 +39,7 @@ struct exact {};
 template <typename Model>
 
 // WALD model signature, guarda in strpde.h
-template <typename Model, typename Startegy> class WALD;
+template <typename Model, typename Strategy> class WALD;
 
 // class WALD<Model, exact> : public WaldBase<Model> 
 class WALD<Model, exact> : public WaldBase<Model> {
@@ -48,6 +48,8 @@ class WALD<Model, exact> : public WaldBase<Model> {
      // is this necessary
      using Base = WaldBase<Model>;
 
+     
+     // perchè la funzione return S e non inizializza direttamente S_ ???
      DMatrix<double>& S() override{
         if(!is_empy(S_)){
             return S_;

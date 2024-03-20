@@ -61,22 +61,14 @@ template <typename Model> class WaldBase {
 
     public:
      // deafult constructor
-     WALD() = default;
+     WaldBase() = default;
      // starting the constructor
-     WALD(Model *m): m_(m) {};
+     WaldBase(Model *m): m_(m) {};
 
 
      // check this!!!
      virtual DMatrix<double>& S() = 0;
 
-     // computes smoothing matrix S = Psi*\M^{-1}*\Psi^T*\Q
-     // M = Psi^T*\Q*\Psi + lambda*\R
-     //const DMatrix<double>& S() {
-
-        // M può essere riscritta utilizzando E (di Speckman) ???
-   
-     //   return S_;
-     //}
 
      const DMatrix<double>& invSigma() {
 
@@ -134,46 +126,55 @@ template <typename Model> class WaldBase {
         if(is_empty(C_)){
          // print an error (need to set C)
         }  
+        
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
+        // e che sulle righe della matrice di siano c1, c2, c3...
+        // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
+        // metodo con libreria eigen 
+        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
+        //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
+	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+	     DVector<double> diagonal(size);
+        for (int i = 0; i < C.rows(); ++i) {
+            // ottengo la riga i-esima della matrice C
+            DVector ci = C.row(i);
+            // calcolo il prodotto c_i^T * V * c_i
+            diagonal[i] = ci.transpose() * Vw_* ci;
+        }
+        DVector<double> lowerBound;
+        DVector<double> upperBound;
+
+
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
         int p = C_.rows();
-        //quantile deve cambiare a seconda del confidence interval 
-        // magari creare un setter per p e fare p una variabile privata??
         std::chi_squared_distribution<double> chi_squared(p);
         //quantile livello alpha 
         double quantile = std::quantile(chi_squared, alpha);
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-        // e che sulle righe della matrice di siano c1, c2, c3...
-        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
-        // della matrice C*V*C^T devo prendere solo la diagonale per i Confidence intervals quindi magari è meglio far calcolare solo la diagonale      
-        // oppure la parte con il for la fai così questo è da sistemare 
-	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
-	     DVector<double> diagonal(size);
-	
-	     //qui C_, Vw_ sono matrici quindi devi capire come accedere a solo le righe o solo le colonne 
-	     for(int i=0; i< size;++i){
-		      double element = 0;
-		      for(int j=0; j< size; ++j){
-			      element += C_(i) * Vw_(j) * C_(i);}
-            diagonal(i) = element;
-        }
-        DVector<double> lowerBound = C_ * betas() - sqrt(quantile * CVCdiag_);
-        DVector<double> upperBound = C_ * betas() + sqrt(quantile * CVCdiag_);
+        
+        lowerBound = C_ * betas() - std::sqrt(quantile * diagonal/m_.n_obs());
+        upperBound = C_ * betas() + std::sqrt(quantile * diagonal/m_.n_obs());
 
-        //costruisco la matrice che restituisce i confidence intervals
-        DMatrix<double> CIMatrix(m_.n_obs(), 2);
-        CIMatrix.col(0) = lowerBound;
-        CIMatrix.col(1) = upperBound;
         }
 
         else if (type == bonferroni){
          // Bonferroni
+         int p = ;
+        //quantile livello alpha 
+        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/(2*p));
+        
+        lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
         else if (type == one_at_the_time){
-         // one at the time
+        //quantile livello alpha 
+        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha/2);
+        
+        lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
@@ -181,7 +182,11 @@ template <typename Model> class WaldBase {
          // inserire errore: nome intervallo non valido
         }
 
-      
+        //costruisco la matrice che restituisce i confidence intervals
+        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        CIMatrix.col(0) = lowerBound;
+        CIMatrix.col(1) = upperBound;
+        
 
         return std::make_pair(lowerBound, upperBound);
      }
