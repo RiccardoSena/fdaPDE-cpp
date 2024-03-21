@@ -49,14 +49,12 @@ class SPECKMAN<Model, exact> : public SpeckmanBase<Model> {
      // is this necessary
      using Base = SpeckmanBase<Model>;
 
+     // constructor
+     SPECKMAN() = default;
+     SPECKMAN(Model* m): Base(m) {};
+
      void inverseA() override{
-        if(!is_empty(inverseA_)){
-            return;
-        }
-        else {
             inverseA_ =  m_.invA().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis));
-            return;
-        }
      }
 
 }
@@ -66,13 +64,11 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
     public: 
      using Base = SpeckmanBase<Model>;
 
+     SPECKMAN() = default;
+     SPECKMAN(Model* m): Base(m) {};
+     
      DMatrix<double>& inverseA() override{
-        if(!is_empty(inverseA_)){
-            return inverseA_;
-        }
-        else{
-            // FSPAI approximation
-        }
+        // FSPAI approx
      }
 
 }

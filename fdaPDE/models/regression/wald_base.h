@@ -44,8 +44,6 @@ template <typename Model> class WaldBase {
 
      DMatrix<double> S_ {}; 
 
-     DMatrix<double> invSigma_ {};
-
      // matrix of errors sigma^2, should be a n x n matrix
      DMatrix<double> sigma_sq_ {};
      
@@ -72,22 +70,6 @@ template <typename Model> class WaldBase {
      // check this!!!
      virtual void S() = 0;
 
-
-     const DMatrix<double>& invSigma() {
-
-        // since W is a diagonal matrix we need to square it 
-        // what is the best function for transpose and inversion??
-        // is it partialPivLu??
-
-        // do we need to check if W has missing values?
-
-        // we could avoid using W.transpose since it is diagonal
-
-        invSigma_ =  (m_.W().transpose() * m_.W()).inverse();
-
-        return invSigma_;
-     }
-
      // bisogna fare override anche di questo metodo visto che si può utilizzare StochasticEDF per
      // calcolare la traccia
      const DMatrix<double>& sigma_sq() {
@@ -112,10 +94,11 @@ template <typename Model> class WaldBase {
             S();
         }
 
+        DMatrix<double> invSigma_ = inverse(m_.W().transpose() * m_.W());
         DMatrix<double> ss = S_ * S_.transpose();
-        DMatrix<double> left = invSigma() * m_.W().transpose();
-        DMatrix<double> right = m_.W() * invSigma();
-        Vw_ = sigma_sq() * (invSigma().transpose() + left * ss * right);
+        DMatrix<double> left = invSigma_ * m_.W().transpose();
+        DMatrix<double> right = m_.W() * invSigma_;
+        Vw_ = sigma_sq() * (invSigma_.transpose() + left * ss * right);
 
         return Vw_;
      }
@@ -123,7 +106,6 @@ template <typename Model> class WaldBase {
      const DVector<double>& betaw() {
       // Is betaw just the beta from the Model??? In that case could not store betaw_ but use directly m_.beta()
       betaw_ = m_.beta();
-
       return betaw_;
      }
 
@@ -131,6 +113,7 @@ template <typename Model> class WaldBase {
         // need to set C first
         if(is_empty(C_)){
          // print an error (need to set C)
+         // could by default set C_ with the identity matrix
         }  
         else if(alpha_ == 0) {
          // print error if alpha is missing
@@ -141,20 +124,18 @@ template <typename Model> class WaldBase {
         // e che sulle righe della matrice di siano c1, c2, c3...
         // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
         // metodo con libreria eigen 
-        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
+        DMatrix<double> CVCdiag_ = ((C_ * Vw()) * C_.transpose()).diagonal();
         //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
-	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+	     int size = std::min(C_.rows(), Vw().rows()) // questo lo sai a priori quindi sostituisci con la teoria  
 	     DVector<double> diagonal(size);
-        for (int i = 0; i < C.rows(); ++i) {
+        for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
-            DVector ci = C.row(i);
+            DVector ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
-            diagonal[i] = ci.transpose() * Vw_* ci;
+            diagonal[i] = ci.transpose() * Vw()* ci;
         }
         DVector<double> lowerBound;
         DVector<double> upperBound;
-
-
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
@@ -162,8 +143,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::quantile(chi_squared, alpha_);
         
-        lowerBound = C_ * betas() - std::sqrt(quantile * diagonal/m_.n_obs());
-        upperBound = C_ * betas() + std::sqrt(quantile * diagonal/m_.n_obs());
+        lowerBound = C_ * betaw() - std::sqrt(quantile * diagonal/m_.n_obs());
+        upperBound = C_ * betaw() + std::sqrt(quantile * diagonal/m_.n_obs());
 
         }
 
@@ -172,8 +153,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
-        lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw() - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betaw() + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
@@ -181,8 +162,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
-        lowerBound = C_ * betas() - quantile *std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betas() + quantile *std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw() - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betaw() + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
@@ -216,6 +197,16 @@ template <typename Model> class WaldBase {
 
       }
       alpha_ = alpha;
+     }
+
+     // funzione ausiliare per invertire una matrice densa in maniera efficiente
+     DMatrix<double> inverse(DMatrix<double> M){
+      // perchè in ExactEdf non fa il solve con l'identità?
+      // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+      Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
+      Mdec_ = M.partialPivLu();
+      DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
+      return invM_;
      }
 
    // aggiungere destructor?
