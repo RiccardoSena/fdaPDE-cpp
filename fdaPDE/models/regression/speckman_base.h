@@ -77,7 +77,7 @@ template <typename Model> class SpeckmanBase {
         if(is_empty(inverseA_)){
            inverseA();
         }
-        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * inverseA_ * m_.PsiTD();
+        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis, m_.n_basis) * m_.PsiTD();
         return Lambda_;
       }
       

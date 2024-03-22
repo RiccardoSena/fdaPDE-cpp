@@ -30,6 +30,7 @@ using fdapde::core::SMW;
 
 // add this??
 #include "exact_edf.h"
+#include ".../fspai.h"
 
 
 namespace fdapde {
@@ -68,10 +69,21 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
 
      DMatrix<double>& inverseA() override{
         if(!is_empty(inverseA_)){
-            return inverseA_;
+            return;
         }
         else{
             // FSPAI approximation
+            //creo oggetto FSPAI (vanno controllati i tipi degli oggetti in input e output)
+            //applica FSPAI su R0
+            FSPAI inverse_R0(m_.R0());
+            Eigen::SparseMatrix<double> inv_R0 = inverse_R0.getInverse();
+            // qui non so se è giusto questo lambda
+            // calcolo la matrice Atilde 
+            DMatrix<double> tildeA_=m_.Psi().transpose*m_.Psi()+m_.lambda_D()*m_.R1().transpose*inv_R0*m_.R1();
+            //applico FSPAI su A
+            FSPAI inverse_A(tildeA_);
+            inverseA_= inverse_A.getInverse();
+            return;
         }
      }
 
