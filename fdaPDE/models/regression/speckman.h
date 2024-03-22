@@ -70,6 +70,22 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
      
      DMatrix<double>& inverseA() override{
         // FSPAI approx
+        //creo oggetto FSPAI( vanno controllati tipi di input e output)
+        FSPAI inverse_R0(m_.R0());
+        //applico FSPAI su R0
+        Eigen::SparseMatrix<double> inv_R0 inverse_R0.getInverse();
+
+        //qui non so se è giusto questo lambda
+        //caclolo la matrice Atilde
+        DMatrix<double> tildeA_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D()*m_.R1().transpose()*inv_R0*m_.R1();
+
+        //applico FSPAI su Atilde
+        FPSAI inverse_A(tildeA_);
+        inverseA_ = inverse_A.getInverse();
+
+        return;
+     
+
      }
 
 }
