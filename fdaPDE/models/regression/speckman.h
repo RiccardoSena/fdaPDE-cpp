@@ -72,17 +72,25 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
         // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse???
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
-        FSPAI inverse_R0(m_.R0());
-        //applico FSPAI su R0
-        Eigen::SparseMatrix<double> inv_R0 inverse_R0.getInverse();
+        FSPAI fspai_R0(m_.R0());
+
+        // questi non so come vadano scelti ho messo nuemri a caso ???
+        unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
+        unsigned beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
+        // calcolo inversa di R0
+        fspai_R0.compute(alpha, beta, epsilon);
+        //getter per l'inversa di R0
+        Eigen::SparseMatrix<double> inv_R0 fspai_R0.getInverse();
 
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
         DMatrix<double> tildeA_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D()*m_.R1().transpose()*inv_R0*m_.R1();
 
         //applico FSPAI su Atilde
-        FPSAI inverse_A(tildeA_);
-        inverseA_ = inverse_A.getInverse();
+        FPSAI fspai_A(tildeA_);
+        fspai_A.compute(alpha, beta, epsilon);
+        inverseA_ = fspai_A.getInverse();
 
         return;
      
