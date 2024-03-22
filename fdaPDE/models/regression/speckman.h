@@ -69,6 +69,7 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
      SPECKMAN(Model* m): Base(m) {};
      
      DMatrix<double>& inverseA() override{
+        // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse???
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
         FSPAI inverse_R0(m_.R0());
