@@ -44,7 +44,7 @@ template <typename Model> class SpeckmanBase {
     
      Model* m_;
      
-     // do we need to store Lambda???
+     // do we need to store these matrixes???
      DMatrix<double> Lambda_ {};
 
      DVector<double> betas_ {};
@@ -62,7 +62,7 @@ template <typename Model> class SpeckmanBase {
 
      // constructors
      SpeckmanBase() = default;
-     SpeckmanBase(Model *m):m_(m) {};
+     SpeckmanBase(Model* m):m_(m) {};
 
      // questo si specializza in speckman exact e non_exact  
      virtual void inverseA() = 0;
@@ -92,8 +92,7 @@ template <typename Model> class SpeckmanBase {
         // ????
         // Maybe for temp is ok to do .inverse()
         //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
-        DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).inverse();
-
+        DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
         return betas_;
 
@@ -105,12 +104,11 @@ template <typename Model> class SpeckmanBase {
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
         DMatrix<double> Wtilde_ = Lambda() * m_.W();
         DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_;
+        DMatrix<double> invU_ = inverse(U_);
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
         DMatrix<double> E = epsilon_ * epsilon_.transpose();
 
-        // inversione U con pivLU???
-        // DMatrix<double> Uinv_ = U_.partialPivLU();
-        Vs_ = U_.inverse() * Wtilde_.tanspose() * Lambda() * E * Lambda().transpose() * Wtilde_ * U_.inverse();
+        Vs_ = invU_ * Wtilde_.tanspose() * Lambda() * E * Lambda().transpose() * Wtilde_ * invU_;
         return Vs_;
      }
 
@@ -129,19 +127,18 @@ template <typename Model> class SpeckmanBase {
          // e che sulle righe della matrice di siano c1, c2, c3...
          // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
          // metodo con libreria eigen 
-         DMatrix<double> CVCdiag_ = ((C_ * Vs_) * C_.transpose()).diagonal();
+         DMatrix<double> CVCdiag_ = ((C_ * Vs()) * C_.transpose()).diagonal();
          //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
-	      int size = std::min(C_.rows(), Vs_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+	      int size = std::min(C_.rows(), Vs().rows()) // questo lo sai a priori quindi sostituisci con la teoria  
 	      DVector<double> diagonal(size);
-         for (int i = 0; i < C.rows(); ++i) {
+         for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
-            DVector ci = C.row(i);
+            DVector ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
-            diagonal[i] = ci.transpose() * Vs_* ci;
+            diagonal[i] = ci.transpose() * Vs()* ci;
          }
          DVector<double> lowerBound;
          DVector<double> upperBound;
-
 
 
          if(type == simultaneous){ 
@@ -206,6 +203,16 @@ template <typename Model> class SpeckmanBase {
       else{
          alpha_ = alpha;
       }
+     }
+
+          // funzione ausiliare per invertire una matrice densa in maniera efficiente
+     DMatrix<double> inverse(DMatrix<double> M){
+      // perchè in ExactEdf non fa il solve con l'identità?
+      // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+      Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
+      Mdec_ = M.partialPivLu();
+      DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
+      return invM_;
      }
 
 

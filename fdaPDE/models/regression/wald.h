@@ -47,18 +47,16 @@ class WALD<Model, exact> : public WaldBase<Model> {
     public: 
      // is this necessary
      using Base = WaldBase<Model>;
+     
+     // constructor
+     WALD() = default;
+     WALD(Model* m): Base(m) {};
 
      
      // perchè la funzione return S e non inizializza direttamente S_ ???
      void S() override{
-        if(!is_empy(S_)){
-            return;
-        }
-        else {
-            DMatrix<double> invT_ = m_.T().partialPivLu().solve(DMatrix::Identity(T_.rows(), T_.cols()));
+            DMatrix<double> invT_ = inverse(m_.T());
             S_ = m_.Psi() * invT_.block(0, 0, m_.n_basis, m_.n_basis) * m_.Psi().transpose() * m_.Q();
-            return;
-        }
      }
 
 }
@@ -68,13 +66,12 @@ class WALD<Model, non_exact> : public WaldBase<Model> {
     public: 
      using Base = WaldBase<Model>;
 
+     // constructor 
+     WALD() = default;
+     WALD(Model* m): Base(m) {};
+
      DMatrix<double>& S() override{
-        if(!is_empty(S_)){
-            return;
-        }
-        else{
-            // FSPAI approximation
-        }
+        // FSPAI approx
      }
 
 }
