@@ -34,6 +34,7 @@ using fdapde::core::SMW;
 namespace fdapde {
 namespace models {
 
+// why do we need this
 struct exact {};
 
 template <typename Model>

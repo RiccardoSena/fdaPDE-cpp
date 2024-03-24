@@ -27,7 +27,7 @@
 #include "strpde.h"
 #include "exact_edf.h"
 
-
+// do we need this?
 using fdapde::core::SMW;
 
 namespace fdapde {
