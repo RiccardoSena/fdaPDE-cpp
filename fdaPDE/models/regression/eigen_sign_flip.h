@@ -63,6 +63,7 @@ template <typename Model> class EigenSignFlip {
         return Pi_;
      }
 
+     // beta0 da dove lo prendo???
      DVector<double> pvalues(){
         // T  = W^T * Pi(z − W * beta − Psi* f )
         //compute score components under H0
@@ -77,7 +78,7 @@ template <typename Model> class EigenSignFlip {
             DiagMatrix<double> Pi_=Pi();
             // compute test statistic Ti with Pi_ just generated 
             // ie costruisco un vettore di Ti che contiene tutti i valori della statistica per ogni Pi diverso 
-            T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * m_.beta())
+            T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * m_.beta0)
         }
         // pvalue= sum( Ti> Tobs)/M
         DVector<int> count = (T.array() > T_obs.replicate(1, cols).array()).rowwise().count();
