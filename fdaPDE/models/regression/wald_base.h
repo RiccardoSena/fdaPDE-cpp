@@ -93,7 +93,9 @@ template <typename Model> class WaldBase {
         if(is_empty(S_)){
             S();
         }
-
+        if(isEmpty(sigma_sq)){
+            sigma_sq();
+        }
         DMatrix<double> invSigma_ = inverse(m_.W().transpose() * m_.W());
         DMatrix<double> ss = S_ * S_.transpose();
         DMatrix<double> left = invSigma_ * m_.W().transpose();
@@ -119,6 +121,10 @@ template <typename Model> class WaldBase {
          // print error if alpha is missing
         }
         else{
+         if(is_empty(Vw_)){
+            Vw();
+         }
+         
          int p = C_.rows();
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
         // e che sulle righe della matrice di siano c1, c2, c3...
@@ -181,11 +187,52 @@ template <typename Model> class WaldBase {
         }
      }
 
-     // this function returns the statistics not the p-values
-     double p_value(){
 
+     // this function returns the statistics not the p-values
+     // come hanno fatto gli altri nel report 
+     DVector<double> p_value(CIType type){
+      // cambia da simultaneous a one at the time
+      if(is_empty(C_)){
+         // print an error (need to set C)
+         // could by default set C_ with the identity matrix
+      }  
+      if(is_empty(Vw_)){
+            Vw();
+      }
+      DVector<double> statistics(C_.rows());
+      // simultaneous 
+      if( type == simultaneous ){
+         DVector<double> diff = C*m_.beta() - beta0_;
+         DMatrix<double> Sigma = C_*Vw_*C_.transpose();
+         Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
+         Sigmadec_.compute(Sigma);
+
+         double stat = diff.adjoint() *Sigmadec_.solve(diff);
+
+         statistics.resize(C_.rows());
+         statistics(0) = stat;
+
+         for(int i=0; i< C_.rows(); i++){
+            statistics(i)==10e20;
+         }
+         return statistics; 
+      }
+      // one at the time
+      if ( type == one_at_the_time ){
+         int p = C_.rows();
+         statistics.resize(p);
+         for(int i=0; i<p; i++){
+            DVector<double> col = C_.row(i);
+            double diff = col.adjoint()* m_.beta() - beta0(i);
+            double sigma = col.adjoint() *Vw_ *col;
+            double stat= diff/std::sqrt(sigma);
+            statistics(i) = stat;
+         }
+         return statistics;
+      }
      }
      
+
      // setter for matrix of combination of coefficients C
      void setC(DMatrix<double> C){
       C_ = C;
@@ -204,7 +251,7 @@ template <typename Model> class WaldBase {
       // perchè in ExactEdf non fa il solve con l'identità?
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
-      Mdec_ = M.partialPivLu();
+      Mdec_ = M.partialPivLu(); // forse va messo Mdec_.compute(Mdec_) o è uguale?
       DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
       return invM_;
      }

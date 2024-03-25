@@ -121,6 +121,9 @@ template <typename Model> class SpeckmanBase {
           // print error: "alpha missing"
          }
          else{
+            if(is_empty(Vs_)){
+               Vs();
+            }
          
          int p = C_.rows();
          // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
@@ -186,8 +189,47 @@ template <typename Model> class SpeckmanBase {
       }
 
      // this function returns the statistics not the p-values
-     double p_value(){
+     // come hanno fatto gli altri nel report 
+     DVector<double> p_value(CIType type){
+      // cambia da simultaneous a one at the time
+      if(is_empty(C_)){
+         // print an error (need to set C)
+         // could by default set C_ with the identity matrix
+      }  
+      if(is_empty(Vs_)){
+            Vs();
+      }
+      DVector<double> statistics(C_.rows());
+      // simultaneous 
+      if( type == simultaneous ){
+         DVector<double> diff = C*m_.beta() - beta0_;
+         DMatrix<double> Sigma = C_*Vs_*C_.transpose();
+         Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
+         Sigmadec_.compute(Sigma);
 
+         double stat = diff.adjoint() *Sigmadec_.solve(diff);
+
+         statistics.resize(C_.rows());
+         statistics(0) = stat;
+
+         for(int i=0; i< C_.rows(); i++){
+            statistics(i)==10e20;
+         }
+         return statistics; 
+      }
+      // one at the time
+      if ( type == one_at_the_time ){
+         int p = C_.rows();
+         statistics.resize(p);
+         for(int i=0; i<p; i++){
+            DVector<double> col = C_.row(i);
+            double diff = col.adjoint()* m_.beta() - beta0(i);
+            double sigma = col.adjoint() *Vs_ *col;
+            double stat= diff/std::sqrt(sigma);
+            statistics(i) = stat;
+         }
+         return statistics;
+      }
      }
 
      // setter for matrix of combination of coefficients C
