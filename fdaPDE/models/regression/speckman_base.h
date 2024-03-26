@@ -51,7 +51,9 @@ template <typename Model> class SpeckmanBase {
 
      DMatrix<double> Vs_ {};
 
-     DMatrix<double> inverseA_ {};
+     // dobbiamo salvarla come Sparsa???
+     // DMatrix<double> inverseA_ {};
+     Eigen::SparseMatrix<double> inverseA_ {};
 
      DMatrix<double> C_ {};
 
@@ -156,7 +158,7 @@ template <typename Model> class SpeckmanBase {
          }
 
          else if (type == bonferroni){
-            // Bonferroni
+         // BONFERRONI
          //quantile livello alpha 
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
@@ -166,6 +168,7 @@ template <typename Model> class SpeckmanBase {
          }
 
          else if (type == one_at_the_time){
+         // ONE AT THE TIME
          //quantile livello alpha 
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
@@ -202,12 +205,15 @@ template <typename Model> class SpeckmanBase {
       DVector<double> statistics(C_.rows());
       // simultaneous 
       if( type == simultaneous ){
-         DVector<double> diff = C*m_.beta() - beta0_;
-         DMatrix<double> Sigma = C_*Vs_*C_.transpose();
-         Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
-         Sigmadec_.compute(Sigma);
+         DVector<double> diff = C_ * m_.beta() - beta0_;
+         DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
 
-         double stat = diff.adjoint() *Sigmadec_.solve(diff);
+         //Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
+         //Sigmadec_.compute(Sigma);
+
+         DMatrix<double> Sigmadec_ = inverse(Sigma);
+
+         double stat = diff.adjoint() * Sigmadec_ * diff;
 
          statistics.resize(C_.rows());
          statistics(0) = stat;
@@ -224,7 +230,7 @@ template <typename Model> class SpeckmanBase {
          for(int i=0; i<p; i++){
             DVector<double> col = C_.row(i);
             double diff = col.adjoint()* m_.beta() - beta0(i);
-            double sigma = col.adjoint() *Vs_ *col;
+            double sigma = col.adjoint() * Vs_ *col;
             double stat= diff/std::sqrt(sigma);
             statistics(i) = stat;
          }
@@ -247,9 +253,8 @@ template <typename Model> class SpeckmanBase {
       }
      }
 
-          // funzione ausiliare per invertire una matrice densa in maniera efficiente
+     // funzione ausiliare per invertire una matrice densa in maniera efficiente
      DMatrix<double> inverse(DMatrix<double> M){
-      // perchè in ExactEdf non fa il solve con l'identità?
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu();

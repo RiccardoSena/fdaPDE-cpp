@@ -32,19 +32,22 @@ using fdapde::core::SMW;
 #include "exact_edf.h"
 #include ".../fspai.h"
 
+// do we need this to use FSPAI??
+using fdapde::core::FSPAI
+
 
 namespace fdapde {
 namespace models {
 
-struct exact {};
+enum class Strategy{ exact, non_exact };
 
 template <typename Model>
 
 // SPECKMAN model signature, guarda in strpde.h
-template <typename Model, typename Strategy> class SPECKMAN;
+template <typename Model, Strategy S> class SPECKMAN;
 
 
-class SPECKMAN<Model, exact> : public SpeckmanBase<Model> {
+class SPECKMAN<Model, Strategy::exact> : public SpeckmanBase<Model> {
 
     public: 
      // is this necessary
@@ -60,7 +63,7 @@ class SPECKMAN<Model, exact> : public SpeckmanBase<Model> {
 
 }
 
-class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
+class SPECKMAN<Model, Strategy::non_exact> : public SpeckmanBase<Model> {
 
     public: 
      using Base = SpeckmanBase<Model>;
@@ -68,7 +71,7 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
      SPECKMAN() = default;
      SPECKMAN(Model* m): Base(m) {};
      
-     DMatrix<double>& inverseA() override{
+     void inverseA() override{
         // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse???
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
@@ -85,16 +88,16 @@ class SPECKMAN<Model, non_exact> : public SpeckmanBase<Model> {
 
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
-        DMatrix<double> tildeA_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D()*m_.R1().transpose()*inv_R0*m_.R1();
+        // Bisogna usare PsiTD()??
+        DMatrix<double> tildeA_ = m_.Psi().transpose()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde
         FPSAI fspai_A(tildeA_);
         fspai_A.compute(alpha, beta, epsilon);
+
+        // inverseA_
         inverseA_ = fspai_A.getInverse();
-
-        return;
      
-
      }
 
 }

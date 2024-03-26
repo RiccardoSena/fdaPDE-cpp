@@ -119,7 +119,9 @@ class RegressionBase :
         // compute W*x - W*X*z = W*x - (W*X*(X^\top*W*X)^{-1}*X^\top*W)*x = W(I - H)*x = Q*x
         return W_ * x - W_ * X() * z;
     }
+
     //PARTE AGGIUNTA 
+    //
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     DMatrix<double> Q() const {
         if (!has_covariates()) return W_;
@@ -128,6 +130,8 @@ class RegressionBase :
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         return W_ - W_ * X() * z;
     }
+    //
+    // FINE PARTE AGGIUNTA
 
     // computes fitted values \hat y = \Psi*f_ + X*beta_
     DMatrix<double> fitted() const {

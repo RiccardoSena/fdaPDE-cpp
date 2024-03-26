@@ -42,6 +42,7 @@ template <typename Model> class WaldBase {
 
      Model* m_; 
 
+     // E è sparsa, ma M?
      DMatrix<double> S_ {}; 
 
      // matrix of errors sigma^2, should be a n x n matrix
@@ -202,12 +203,15 @@ template <typename Model> class WaldBase {
       DVector<double> statistics(C_.rows());
       // simultaneous 
       if( type == simultaneous ){
-         DVector<double> diff = C*m_.beta() - beta0_;
-         DMatrix<double> Sigma = C_*Vw_*C_.transpose();
-         Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
-         Sigmadec_.compute(Sigma);
+         DVector<double> diff = C_ * m_.beta() - beta0_;
+         DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
 
-         double stat = diff.adjoint() *Sigmadec_.solve(diff);
+         // Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
+         // Sigmadec_.compute(Sigma);
+
+         DMatrix<double> Sigmadec_ = inverse(Sigma);
+
+         double stat = diff.adjoint() * Sigmadec_ * diff;
 
          statistics.resize(C_.rows());
          statistics(0) = stat;
@@ -224,8 +228,8 @@ template <typename Model> class WaldBase {
          for(int i=0; i<p; i++){
             DVector<double> col = C_.row(i);
             double diff = col.adjoint()* m_.beta() - beta0(i);
-            double sigma = col.adjoint() *Vw_ *col;
-            double stat= diff/std::sqrt(sigma);
+            double sigma = col.adjoint() * Vw_ *col;
+            double stat = diff/std::sqrt(sigma);
             statistics(i) = stat;
          }
          return statistics;
@@ -248,7 +252,6 @@ template <typename Model> class WaldBase {
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
      DMatrix<double> inverse(DMatrix<double> M){
-      // perchè in ExactEdf non fa il solve con l'identità?
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu(); // forse va messo Mdec_.compute(Mdec_) o è uguale?
