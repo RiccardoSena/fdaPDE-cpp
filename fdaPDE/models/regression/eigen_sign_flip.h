@@ -53,12 +53,12 @@ template <typename Model> class EigenSignFlip {
      // diagonal matrix
      const DiagMatrix<double> Pi_ {};
 
-     const DiagMatrix<double>& Pi() {
-        // setting random seed
-        std::mt19937 rng(123);
+     const DiagMatrix<double>& Pi() {  
+        std::random_device rd;
+        std::mt19937 gen(rd());
         std::uniform_real_distribution<double> dist(-1, 1);
         for(int i = 0; i < n; ++i){
-            Pi_.diagonal()[i] = dist(rng);
+            Pi_.diagonal()[i] = dist(gen);
         }
         return Pi_;
      }
@@ -75,7 +75,7 @@ template <typename Model> class EigenSignFlip {
         // for da 1 a M
         for (int i = 0; i < M; ++i) {
             // generate matrix Pi_
-            DiagMatrix<double> Pi_=Pi();
+            DiagMatrix<double> Pi_ = Pi();
             // compute test statistic Ti with Pi_ just generated 
             // ie costruisco un vettore di Ti che contiene tutti i valori della statistica per ogni Pi diverso 
             T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * m_.beta0)

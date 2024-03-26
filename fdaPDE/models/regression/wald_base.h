@@ -55,6 +55,8 @@ template <typename Model> class WaldBase {
      DMatrix<double> C_ {};
      
      DVector<double> betaw_ {};
+
+     DVector<double> beta0_ {};
      
      // level of the confidence intervals
      int alpha_ = 0;
@@ -197,6 +199,11 @@ template <typename Model> class WaldBase {
          // print an error (need to set C)
          // could by default set C_ with the identity matrix
       }  
+      // is_empty va bene anche per i Vectors?
+      if(is_empty(beta0_)){
+         // print errore (need to set beta0)
+         // inizializzare i beta_0 a 0???
+      }
       if(is_empty(Vw_)){
             Vw();
       }
@@ -216,8 +223,8 @@ template <typename Model> class WaldBase {
          statistics.resize(C_.rows());
          statistics(0) = stat;
 
-         for(int i=0; i< C_.rows(); i++){
-            statistics(i)==10e20;
+         for(int i = 0; i < C_.rows(); i++){
+            statistics(i) == 10e20;
          }
          return statistics; 
       }
@@ -225,9 +232,9 @@ template <typename Model> class WaldBase {
       if ( type == one_at_the_time ){
          int p = C_.rows();
          statistics.resize(p);
-         for(int i=0; i<p; i++){
+         for(int i = 0; i < p; i++){
             DVector<double> col = C_.row(i);
-            double diff = col.adjoint()* m_.beta() - beta0(i);
+            double diff = col.adjoint()* m_.beta() - beta0_[i];
             double sigma = col.adjoint() * Vw_ *col;
             double stat = diff/std::sqrt(sigma);
             statistics(i) = stat;
@@ -248,6 +255,12 @@ template <typename Model> class WaldBase {
 
       }
       alpha_ = alpha;
+     }
+
+     // setter per i beta0_
+     void setBeta0(DVector<double> beta0){
+      // funziona così per i Eigen::Vector??
+      beta0_ = beta0;
      }
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente

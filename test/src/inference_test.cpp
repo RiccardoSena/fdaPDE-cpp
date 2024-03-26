@@ -129,13 +129,113 @@ TEST(inferenceTest, WaldExactSRPDE){
     model.solve();
 
     // test correctness
-    Wald<SRPDE> inference(model);
-    inference.computeCI(CItype::Simultaneous);
+    WALD<SRPDE, Strategy::exact> inference(model);
+    inference.computeCI(CItype::simultaneous);
     int cols = model.beta().size();
     DMatrix<double> C(1, cols);
     C.setOnes(); // matrice C ha una sola riga di tutti 1
     inference.setC(C);
-    EXPECT_TRUE(almost_equal(inference.computeCI(CItype::Simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
+    EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
+    
+    EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
+}
+
+TEST(inferenceTest, WaldNonExactSRPDE){
+        // define domain 
+    MeshLoader<Mesh2D> domain("unit_square");
+    // import data from files
+    DMatrix<double> y = read_csv<double>("../data/models/srpde/2D_test1/y.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda = 5.623413 * std::pow(0.1, 5);
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness
+    WALD<SRPDE, Strategy::non_exact> inference(model);
+    inference.computeCI(CItype::simultaneous);
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    inference.setC(C);
+    EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
+    
+    EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
+}
+
+TEST(inferenceTest, SpeckmanNonExactSRPDE){
+        // define domain 
+    MeshLoader<Mesh2D> domain("unit_square");
+    // import data from files
+    DMatrix<double> y = read_csv<double>("../data/models/srpde/2D_test1/y.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda = 5.623413 * std::pow(0.1, 5);
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness
+    SPECKMAN<SRPDE, Strategy::non_exact> inference(model);
+    inference.computeCI(CItype::simultaneous);
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    inference.setC(C);
+    EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
+    
+    EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
+}
+
+
+TEST(inferenceTest, SpeckmanNonExactSRPDE){
+        // define domain 
+    MeshLoader<Mesh2D> domain("unit_square");
+    // import data from files
+    DMatrix<double> y = read_csv<double>("../data/models/srpde/2D_test1/y.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda = 5.623413 * std::pow(0.1, 5);
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness
+    SPECKMAN<SRPDE, Strategy::non_exact> inference(model);
+    inference.computeCI(CItype::simultaneous);
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    inference.setC(C);
+    EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
     
     EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
 }
