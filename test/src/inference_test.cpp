@@ -127,9 +127,15 @@ TEST(inferenceTest, WaldExactSRPDE){
     // solve smoothing problem
     model.init();
     model.solve();
+
     // test correctness
     Wald<SRPDE> inference(model);
     inference.computeCI(CItype::Simultaneous);
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    inference.setC(C);
     EXPECT_TRUE(almost_equal(inference.computeCI(CItype::Simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
+    
     EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
 }
