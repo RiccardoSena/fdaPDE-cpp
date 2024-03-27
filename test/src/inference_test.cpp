@@ -235,6 +235,7 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
     DMatrix<double> C(1, cols);
     C.setOnes(); // matrice C ha una sola riga di tutti 1
     inference.setC(C);
+    // il file va messo in cartella inference 
     EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
     
     EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
