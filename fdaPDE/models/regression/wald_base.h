@@ -119,9 +119,12 @@ template <typename Model> class WaldBase {
         if(is_empty(C_)){
          // print an error (need to set C)
          // could by default set C_ with the identity matrix
+         setC(DMatrix::Identity(betaw().size(), betaw().size()));
         }  
         else if(alpha_ == 0) {
          // print error if alpha is missing
+         // default value 5%
+         setAlpha(0.05);
         }
         else{
          if(is_empty(Vw_)){
@@ -198,11 +201,14 @@ template <typename Model> class WaldBase {
       if(is_empty(C_)){
          // print an error (need to set C)
          // could by default set C_ with the identity matrix
+         setC(DMatrix::Identity(betaw().size(), betaw().size()));
       }  
       // is_empty va bene anche per i Vectors?
       if(is_empty(beta0_)){
          // print errore (need to set beta0)
          // inizializzare i beta_0 a 0???
+         // default value 0 for all betas
+         setBeta0(DVector<double>::Zero(betaw().size()));
       }
       if(is_empty(Vw_)){
             Vw();

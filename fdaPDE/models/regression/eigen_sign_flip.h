@@ -53,6 +53,9 @@ template <typename Model> class EigenSignFlip {
      // diagonal matrix
      const DiagMatrix<double> Pi_ {};
 
+     // vector of beta 0
+     const DVector<double> beta0_ {};
+
      const DiagMatrix<double>& Pi() {  
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -68,24 +71,31 @@ template <typename Model> class EigenSignFlip {
         // T  = W^T * Pi(z − W * beta − Psi* f )
         //compute score components under H0
         
+        if(is_empty(beta0_)){
+            // print error
+            // default value is vector of full zeros
+            setBeta0(DVector<double>::Zero(m_.beta().size()));            
+        }
         
         //Compute the observed test statistic Tobs
         DVector<double> Tobs_= m_.W().transpose * Eigen::Identity(m_.n_obs(), m_.n_obs()) * (m_.y()- m_.W() * m_.beta())
-        DMatrix<double> T;
+        DMatrix<double> T {};
         // for da 1 a M
         for (int i = 0; i < M; ++i) {
             // generate matrix Pi_
             DiagMatrix<double> Pi_ = Pi();
             // compute test statistic Ti with Pi_ just generated 
             // ie costruisco un vettore di Ti che contiene tutti i valori della statistica per ogni Pi diverso 
-            T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * m_.beta0)
+            T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * beta0());
         }
         // pvalue= sum( Ti> Tobs)/M
         DVector<int> count = (T.array() > T_obs.replicate(1, cols).array()).rowwise().count();
         return count/M;
-
      }
-
+     void setBeta0(DVector<double> beta0){
+      // funziona così per i Eigen::Vector??
+      beta0_ = beta0;
+     }
 
 
 } // closing EigenSignFlip class

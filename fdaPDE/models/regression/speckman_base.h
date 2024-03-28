@@ -120,9 +120,13 @@ template <typename Model> class SpeckmanBase {
          // need to set C first
          if(is_empty(C_)){
          // print an error (need to set C)
+         // set C to be the identity matrix
+         setC(DMatrix::Identity(betas().size(), betas().size()));
          }  
          else if(alpha_ == 0){
           // print error: "alpha missing"
+          // deafult value for alpha = 5%
+          setAlpha(0.05);
          }
          else{
             if(is_empty(Vs_)){
@@ -200,10 +204,12 @@ template <typename Model> class SpeckmanBase {
       if(is_empty(C_)){
          // print an error (need to set C)
          // could by default set C_ with the identity matrix
+         setC(DMatrix::Identity(betas().size(), betas().size()));
       }  
       if(is_empty(beta0_)){
          // print errore (need to set beta0)
          // inizializzare i beta_0 a 0???
+         setBeta0(DVector<double>::Zero(betas().size()));
       }
       if(is_empty(Vs_)){
             Vs();
