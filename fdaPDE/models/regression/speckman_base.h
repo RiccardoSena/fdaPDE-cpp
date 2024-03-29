@@ -46,11 +46,8 @@ template <typename Model> class SpeckmanBase {
      
      // do we need to store these matrixes???
      DMatrix<double> Lambda_ {};
-
      DVector<double> betas_ {};
-
      DVector<double> beta0_ {};
-
      DMatrix<double> Vs_ {};
 
      // dobbiamo salvarla come Sparsa???

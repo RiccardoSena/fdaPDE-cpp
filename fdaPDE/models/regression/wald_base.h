@@ -43,38 +43,31 @@ template <typename Model> class WaldBase {
      Model* m_; 
 
      // E è sparsa, ma M?
-     DMatrix<double> S_ {}; 
+     // ex_ is_empty(Vw_) ritorna true se Vw_ è zero x zero
 
-     // matrix of errors sigma^2, should be a n x n matrix
-     DMatrix<double> sigma_sq_ {};
+     DMatrix<double> S_ {};            // smoothing matrix S (n x n) matrix
+     DMatrix<double> sigma_sq_ {};     // matrix of errors sigma^2 (n x n) matrix
+     DMatrix<double> Vw_ {};           // variance matrix of betaw_ (q x q) matrix
+     DMatrix<double> C_ {};            // inference matrix C (p x q) matrix
      
-     // is_empty(Vw_) ritorna true se Vw_ è zero x zero
-     DMatrix<double> Vw_ {};
+     DVector<double> betaw_ {};        // sol of srpde ( q x 1 ) matrix
+     DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
+     int alpha_ = 0;                   // level of the confidence intervals
 
-     // matrice C per cui creare un setter
-     DMatrix<double> C_ {};
-     
-     DVector<double> betaw_ {};
+     // variabili da aggungere: 
+     // una variabile che fa il check che il modello sia stato runnato prima di fare inferenza
 
-     DVector<double> beta0_ {};
-     
-     // level of the confidence intervals
-     int alpha_ = 0;
-
-    // ci sarà anche una variabile che fa il check che il modello sia stato runnato prima di fare inferenza
 
     public:
-     // deafult constructor
-     WaldBase() = default;
-     // starting the constructor
-     WaldBase(Model *m): m_(m) {};
-
+     
+     WaldBase() = default;             // deafult constructor
+     WaldBase(Model *m): m_(m) {};     // starting the constructor
 
      // check this!!!
      virtual void S() = 0;
 
-     // bisogna fare override anche di questo metodo visto che si può utilizzare StochasticEDF per
-     // calcolare la traccia
+     // bisogna fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia???
+     // perchè sigma_sq_ è una matrice e non un double???
      const DMatrix<double>& sigma_sq() {
 
         // in gcv.h there is a way to use exact_edf.h which I don't really understand
@@ -96,14 +89,14 @@ template <typename Model> class WaldBase {
         if(is_empty(S_)){
             S();
         }
-        if(isEmpty(sigma_sq)){
+        if(isEmpty(sigma_sq_)){
             sigma_sq();
         }
         DMatrix<double> invSigma_ = inverse(m_.W().transpose() * m_.W());
         DMatrix<double> ss = S_ * S_.transpose();
         DMatrix<double> left = invSigma_ * m_.W().transpose();
         DMatrix<double> right = m_.W() * invSigma_;
-        Vw_ = sigma_sq() * (invSigma_.transpose() + left * ss * right);
+        Vw_ = sigma_sq_ * (invSigma_.transpose() + left * ss * right); // perchè c'è invSigma_. transpose???
 
         return Vw_;
      }
@@ -119,7 +112,7 @@ template <typename Model> class WaldBase {
         if(is_empty(C_)){
          // print an error (need to set C)
          // could by default set C_ with the identity matrix
-         setC(DMatrix::Identity(betaw().size(), betaw().size()));
+         setC(DMatrix::Identity(betaw_.size(), betaw_.size()));
         }  
         else if(alpha_ == 0) {
          // print error if alpha is missing
@@ -132,20 +125,21 @@ template <typename Model> class WaldBase {
          }
          
          int p = C_.rows();
-        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
-        // e che sulle righe della matrice di siano c1, c2, c3...
+        // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente e che sulle righe della matrice di siano c1, c2, c3...
+        
         // devi capire quale è il meodo più veloce facendoti restituire il tempo di esecuzione
-        // metodo con libreria eigen 
-        DMatrix<double> CVCdiag_ = ((C_ * Vw()) * C_.transpose()).diagonal();
-        //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
-	     int size = std::min(C_.rows(), Vw().rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+        // 1) metodo con libreria eigen 
+        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
+        // 2) metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
+	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
 	     DVector<double> diagonal(size);
         for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
-            DVector ci = C_.row(i);
+            DVector<double> ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
-            diagonal[i] = ci.transpose() * Vw()* ci;
+            diagonal[i] = ci.transpose() * Vw_* ci;
         }
+
         DVector<double> lowerBound;
         DVector<double> upperBound;
 
@@ -155,8 +149,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::quantile(chi_squared, alpha_);
         
-        lowerBound = C_ * betaw() - std::sqrt(quantile * diagonal/m_.n_obs());
-        upperBound = C_ * betaw() + std::sqrt(quantile * diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - std::sqrt(quantile * diagonal/m_.n_obs());
+        upperBound = C_ * betaw_ + std::sqrt(quantile * diagonal/m_.n_obs());
 
         }
 
@@ -165,8 +159,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
-        lowerBound = C_ * betaw() - quantile *std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betaw() + quantile *std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betaw_ + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
@@ -174,8 +168,8 @@ template <typename Model> class WaldBase {
         //quantile livello alpha 
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
-        lowerBound = C_ * betaw() - quantile *std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betaw() + quantile *std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - quantile *std::sqrt( diagonal/m_.n_obs());
+        upperBound = C_ * betaw_ + quantile *std::sqrt( diagonal/m_.n_obs());
 
         }
 
@@ -183,8 +177,7 @@ template <typename Model> class WaldBase {
          // inserire errore: nome intervallo non valido
         }
 
-        //costruisco la matrice che restituisce i confidence intervals
-        DMatrix<double> CIMatrix(m_.n_obs(), 2);
+        DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
         CIMatrix.col(0) = lowerBound;
         CIMatrix.col(1) = upperBound;
         
@@ -213,15 +206,12 @@ template <typename Model> class WaldBase {
       if(is_empty(Vw_)){
             Vw();
       }
+
       DVector<double> statistics(C_.rows());
       // simultaneous 
       if( type == simultaneous ){
          DVector<double> diff = C_ * m_.beta() - beta0_;
          DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
-
-         // Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
-         // Sigmadec_.compute(Sigma);
-
          DMatrix<double> Sigmadec_ = inverse(Sigma);
 
          double stat = diff.adjoint() * Sigmadec_ * diff;
@@ -229,8 +219,8 @@ template <typename Model> class WaldBase {
          statistics.resize(C_.rows());
          statistics(0) = stat;
 
-         for(int i = 0; i < C_.rows(); i++){
-            statistics(i) == 10e20;
+         for(int i = 1; i < C_.rows(); i++){
+            statistics(i) = 10e20;
          }
          return statistics; 
       }
