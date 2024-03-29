@@ -25,14 +25,10 @@
 #include "../model_traits.h"
 #include "srpde.h"
 #include "strpde.h"
-
-using fdapde::core::SMW;
-
-// add this??
 #include "exact_edf.h"
 #include ".../fspai.h"
 
-// do we need this to use FSPAI??
+// we need this to use FSPAI
 using fdapde::core::FSPAI
 
 
@@ -43,14 +39,11 @@ enum class Strategy{ exact, non_exact };
 
 template <typename Model>
 
-// SPECKMAN model signature, guarda in strpde.h
 template <typename Model, Strategy S> class SPECKMAN;
-
 
 class SPECKMAN<Model, Strategy::exact> : public SpeckmanBase<Model> {
 
     public: 
-     // is this necessary
      using Base = SpeckmanBase<Model>;
 
      // constructor
@@ -72,7 +65,7 @@ class SPECKMAN<Model, Strategy::non_exact> : public SpeckmanBase<Model> {
      SPECKMAN(Model* m): Base(m) {};
      
      void inverseA() override{
-        // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse???
+        // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
         FSPAI fspai_R0(m_.R0());

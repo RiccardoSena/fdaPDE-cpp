@@ -30,24 +30,15 @@
 
 #include ".../fspai.h"
 
-using fdapde::core::SMW;
-
 // do we need this to use FSPAI??
 using fdapde::core::FSPAI
 
 namespace fdapde {
 namespace models {
 
-// why do we need this
-// struct exact {};
-
-// Forse meglio così
 enum class Strategy{ exact, non_exact };
 
 template <typename Model>
-
-// WALD model signature, guarda in strpde.h
-// template <typename Model, typename Strategy> class WALD;
 
 template <typename Model, Strategy S> class WALD;
 
@@ -62,13 +53,12 @@ class WALD<Model, Strategy::exact> : public WaldBase<Model> {
      WALD() = default;
      WALD(Model* m): Base(m) {};
 
-     
      // perchè la funzione return S e non inizializza direttamente S_ ???
      void S() override{
             DMatrix<double> invT_ = inverse(m_.T());
-            // is .block() here necessary???
+            // is .block() here necessary??? .block(0, 0, m_.n_basis, m_.n_basis)
             // m_.Psi().transpose() or m_.PsiTD()
-            S_ = m_.Psi() * invT_.block(0, 0, m_.n_basis, m_.n_basis) * m_.Psi().transpose() * m_.Q();
+            S_ = m_.Psi() * invT_ * m_.Psi().transpose() * m_.Q();
      }
 
 }
@@ -119,7 +109,7 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
 
         // DMatrix<double> Ut_ = m_.PsiTD() * m_.W();
         DMatrix<double> Ut_ = m_.Psi().transpose() + m_.W();
-        DMatrix<double> Ct_ = -inverse(m_.W().transpose() * m_.W());
+        DMatrix<double> Ct_ = - inverse(m_.W().transpose() * m_.W());
         DMatrix<double> Vt_ = m_.transpose() * m_.Psi();
 
         Eigen::SparseMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;

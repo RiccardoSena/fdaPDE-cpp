@@ -25,11 +25,10 @@
 #include "../model_traits.h"
 #include "srpde.h"
 #include "strpde.h"
-
-using fdapde::core::SMW;
-
-// add this??
 #include "exact_edf.h"
+
+// using fdapde::core::SMW;
+
 
 
 namespace fdapde {
@@ -44,7 +43,6 @@ template <typename Model> class SpeckmanBase {
     
      Model* m_;
      
-     // do we need to store these matrixes???
      DMatrix<double> Lambda_ {};
      DVector<double> betas_ {};
      DVector<double> beta0_ {};
@@ -64,10 +62,8 @@ template <typename Model> class SpeckmanBase {
      // constructors
      SpeckmanBase() = default;
      SpeckmanBase(Model* m):m_(m) {};
-
-     // questo si specializza in speckman exact e non_exact  
+ 
      virtual void inverseA() = 0;
-
 
      const DMatrix<double>& Lambda() {
         // I - Psi*\(Psi^T*\Psi + lambda*\R)^{-1}*\Psi^T
@@ -78,6 +74,7 @@ template <typename Model> class SpeckmanBase {
         if(is_empty(inverseA_)){
            inverseA();
         }
+        // serve il .block???
         Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis, m_.n_basis) * m_.PsiTD();
         return Lambda_;
       }
@@ -90,8 +87,6 @@ template <typename Model> class SpeckmanBase {
         DMatrix<double> Wtilde_ = Lambda() * m_.W();
         DMatrix<double> ytilde_ = Lambda() * m_.y();
 
-        // ????
-        // Maybe for temp is ok to do .inverse()
         //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
         DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
@@ -104,12 +99,13 @@ template <typename Model> class SpeckmanBase {
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
         DMatrix<double> Wtilde_ = Lambda() * m_.W();
-        DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_;
-        DMatrix<double> invU_ = inverse(U_);
+        // DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
+        // DMatrix<double> invU_ = inverse(U_); 
+        DMatrix<double> left_ = inverse(Wtilde_.transpose() * Wtilde_) * Wtilde_.transpose();
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
         DMatrix<double> E = epsilon_ * epsilon_.transpose();
 
-        Vs_ = invU_ * Wtilde_.tanspose() * Lambda() * E * Lambda().transpose() * Wtilde_ * invU_;
+        Vs_ = left_ * Lambda() * E * Lambda().transpose() * left_.transpose();
         return Vs_;
      }
 
@@ -127,7 +123,7 @@ template <typename Model> class SpeckmanBase {
          }
          else{
             if(is_empty(Vs_)){
-               Vs();
+               Vs_ = Vs();
             }
          
          int p = C_.rows();
@@ -152,7 +148,6 @@ template <typename Model> class SpeckmanBase {
          if(type == simultaneous){ 
          // SIMULTANEOUS
          std::chi_squared_distribution<double> chi_squared(p);
-         //quantile livello alpha 
          double quantile = std::quantile(chi_squared, alpha_);
          
          lowerBound = C_ * betas() - std::sqrt(quantile * diagonal);
@@ -162,21 +157,19 @@ template <typename Model> class SpeckmanBase {
 
          else if (type == bonferroni){
          // BONFERRONI
-         //quantile livello alpha 
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
-         lowerBound = C_ * betas() - quantile *std::sqrt( diagonal);
-         upperBound = C_ * betas() + quantile *std::sqrt( diagonal);
+         lowerBound = C_ * betas() - quantile * std::sqrt( diagonal);
+         upperBound = C_ * betas() + quantile * std::sqrt( diagonal);
 
          }
 
          else if (type == one_at_the_time){
          // ONE AT THE TIME
-         //quantile livello alpha 
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
-         lowerBound = C_ * betas() - quantile *std::sqrt( diagonal);
-         upperBound = C_ * betas() + quantile *std::sqrt( diagonal);
+         lowerBound = C_ * betas() - quantile * std::sqrt( diagonal);
+         upperBound = C_ * betas() + quantile * std::sqrt( diagonal);
 
          }
 
@@ -187,15 +180,13 @@ template <typename Model> class SpeckmanBase {
          //costruisco la matrice che restituisce i confidence intervals
          DMatrix<double> CIMatrix(m_.n_obs(), 2);
          CIMatrix.col(0) = lowerBound;
-         CIMatrix.col(1) = upperBound;
-         
+         CIMatrix.col(1) = upperBound;        
         
          return std::make_pair(lowerBound, upperBound);
          }
       }
 
      // this function returns the statistics not the p-values
-     // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
       // cambia da simultaneous a one at the time
       if(is_empty(C_)){
@@ -209,7 +200,7 @@ template <typename Model> class SpeckmanBase {
          setBeta0(DVector<double>::Zero(betas().size()));
       }
       if(is_empty(Vs_)){
-            Vs();
+            Vs_ = Vs();
       }
       DVector<double> statistics(C_.rows());
       // simultaneous 
@@ -277,7 +268,6 @@ template <typename Model> class SpeckmanBase {
       DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
       return invM_;
      }
-
 
 
 } // end class
