@@ -72,7 +72,7 @@ using fdapde::testing::read_csv;
 #include <cstddef>
 #include <gtest/gtest.h>   // testing framework
 
-#include <fdaPDE/core.h>
+#include <../../../fdaPDE-core/fdaPDE/core.h>
 using fdapde::core::advection;
 using fdapde::core::diffusion;
 using fdapde::core::FEM;
@@ -106,6 +106,7 @@ using fdapde::testing::read_csv;
 // esempio: TEST(Inference, WaldExactInference)
 // Poi Inference penso vada usato anche per i test successivi
 
+/*
 // bisognerà poi controllare tutti i parametri dei modelli da confrontare (pde utlizzata,...)
 TEST(inferenceTest, WaldExactSRPDE){
         // define domain 
@@ -239,4 +240,55 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
     EXPECT_TRUE(almost_equal(inference.computeCI(CItype::simultaneous), file della vecchia libreria che contiene risultati di CI simultaneous))
     
     EXPECT_TRUE(almost_equal(model.f()  , "../data/models/srpde/2D_test1/sol.mtx"));
+}
+*/
+
+
+// test 2
+//    domain:       c-shaped
+//    sampling:     locations != nodes
+//    penalization: simple laplacian
+//    covariates:   yes
+//    BC:           no
+//    order FE:     1
+TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+    // test correctness
+    EXPECT_TRUE(almost_equal(model.f()   , "../data/models/srpde/2D_test2/sol.mtx" ));
+    EXPECT_TRUE(almost_equal(model.beta(), "../data/models/srpde/2D_test2/beta.mtx"));
+
+
+
+     // test correctness
+    WALD<SRPDE, Strategy::exact inference(model);
+    inference.computeCI(CItype::simultaneous);
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    inference.setC(C);
+    EXPECT_TRUE(almost_equal(inference.pvalues(CItype::simultaneous), "../data/models/srpde/2D_test2/pvalues.csv"))
+    
+
 }

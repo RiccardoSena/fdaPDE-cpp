@@ -16,6 +16,7 @@ help()
     exit 2
 }
 
+
 clean_build_dir()
 {
     if [ -d "$BUILD_DIR" ];
