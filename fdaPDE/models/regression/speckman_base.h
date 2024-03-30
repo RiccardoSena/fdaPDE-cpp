@@ -106,20 +106,16 @@ template <typename Model> class SpeckmanBase {
      }
 
       DMatrix<double> computeCI(CIType type){ 
-         // need to set C first
-         if(is_empty(C_)){
-         // print an error (need to set C)
-         // set C to be the identity matrix
-         setC(DMatrix::Identity(betas().size(), betas().size()));
-         }  
-         else if(alpha_ == 0){
-          // print error: "alpha missing"
-          // deafult value for alpha = 5%
-          setAlpha(0.05);
+         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+        
+         if(alpha_ == 0) {
+          setAlpha(0.05);         // default value 5%
          }
+        
          else{
+
             if(is_empty(Vs_)){
-               Vs_ = Vs();
+               Vs();
             }
          
          int p = C_.rows();
@@ -184,54 +180,48 @@ template <typename Model> class SpeckmanBase {
 
      // this function returns the statistics not the p-values
      DVector<double> p_value(CIType type){
-      // cambia da simultaneous a one at the time
-      if(is_empty(C_)){
-         // print an error (need to set C)
-         // could by default set C_ with the identity matrix
-         setC(DMatrix::Identity(betas().size(), betas().size()));
-      }  
-      if(is_empty(beta0_)){
-         // print errore (need to set beta0)
-         // inizializzare i beta_0 a 0???
-         setBeta0(DVector<double>::Zero(betas().size()));
-      }
-      if(is_empty(Vs_)){
-            Vs_ = Vs();
-      }
-      DVector<double> statistics(C_.rows());
-      // simultaneous 
-      if( type == simultaneous ){
-         DVector<double> diff = C_ * m_.beta() - beta0_;
-         DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
+         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
 
-         //Eigen::PartialPivLU<DMatrix<double>> Sigmadec_ {};
-         //Sigmadec_.compute(Sigma);
-
-         DMatrix<double> Sigmadec_ = inverse(Sigma);
-
-         double stat = diff.adjoint() * Sigmadec_ * diff;
-
-         statistics.resize(C_.rows());
-         statistics(0) = stat;
-
-         for(int i = 0; i < C_.rows(); i++){
-            statistics(i) == 10e20;
+         if(is_empty(beta0_)){
+            // print errore (need to set beta0)
+            // inizializzare i beta_0 a 0???
+            setBeta0(DVector<double>::Zero(betas().size()));
          }
-         return statistics; 
-      }
-      // one at the time
-      if ( type == one_at_the_time ){
-         int p = C_.rows();
-         statistics.resize(p);
-         for(int i = 0; i < p; i++){
-            DVector<double> col = C_.row(i);
-            double diff = col.adjoint()* m_.beta() - beta0_[i];
-            double sigma = col.adjoint() * Vs_ *col;
-            double stat= diff/std::sqrt(sigma);
-            statistics(i) = stat;
+
+         if(is_empty(Vs_)){
+               Vs();
          }
-         return statistics;
-      }
+
+         DVector<double> statistics(C_.rows());
+         // simultaneous 
+         if( type == simultaneous ){
+            DVector<double> diff = C_ * m_.beta() - beta0_;
+            DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
+            DMatrix<double> Sigmadec_ = inverse(Sigma);
+
+            double stat = diff.adjoint() * Sigmadec_ * diff;
+
+            statistics.resize(C_.rows());
+            statistics(0) = stat;
+
+            for(int i = 0; i < C_.rows(); i++){
+               statistics(i) == 10e20;
+            }
+            return statistics; 
+         }
+         // one at the time
+         if ( type == one_at_the_time ){
+            int p = C_.rows();
+            statistics.resize(p);
+            for(int i = 0; i < p; i++){
+               DVector<double> col = C_.row(i);
+               double diff = col.adjoint()* m_.beta() - beta0_[i];
+               double sigma = col.adjoint() * Vs_ *col;
+               double stat= diff/std::sqrt(sigma);
+               statistics(i) = stat;
+            }
+            return statistics;
+         }
      }
 
      // setter for matrix of combination of coefficients C
@@ -241,10 +231,8 @@ template <typename Model> class SpeckmanBase {
 
      // setter for alpha
      void setAlpha(int alpha){
-      if(alpha > 1 || alpha < 0){
-         // print error
-      }
-      else{
+      fdapde_assert(0 <= alpha && alpha <= 1)      // throw an exception if condition is not met  
+      if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
       }
      }

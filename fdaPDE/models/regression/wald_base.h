@@ -100,19 +100,16 @@ template <typename Model> class WaldBase {
      }
 
      DMatrix<double> computeCI(CIType type){ 
-        if(is_empty(C_)){
-         // print an error (need to set C)
-         // could by default set C_ with the identity matrix
-         setC(DMatrix::Identity(betaw_.size(), betaw_.size()));
-        }  
-        else if(alpha_ == 0) {
-         // print error if alpha is missing
-         // default value 5%
-         setAlpha(0.05);
+        fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+        
+        if(alpha_ == 0) {
+         setAlpha(0.05);         // default value 5%
         }
+
         else{
+
          if(is_empty(Vw_)){
-            Vw_ = Vw();
+            Vw();
          }
          
          int p = C_.rows();
@@ -180,53 +177,49 @@ template <typename Model> class WaldBase {
      // this function returns the statistics not the p-values
      // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
-      // cambia da simultaneous a one at the time
-      if(is_empty(C_)){
-         // print an error (need to set C)
-         // could by default set C_ with the identity matrix
-         setC(DMatrix::Identity(betaw().size(), betaw().size()));
-      }  
-      // is_empty va bene anche per i Vectors?
-      if(is_empty(beta0_)){
-         // print errore (need to set beta0)
-         // inizializzare i beta_0 a 0???
-         // default value 0 for all betas
-         setBeta0(DVector<double>::Zero(betaw().size()));
-      }
-      if(is_empty(Vw_)){
-           Vw_ = Vw();
-      }
+         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
 
-      DVector<double> statistics(C_.rows());
-      // simultaneous 
-      if( type == simultaneous ){
-         DVector<double> diff = C_ * m_.beta() - beta0_;
-         DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
-         DMatrix<double> Sigmadec_ = inverse(Sigma);
-
-         double stat = diff.adjoint() * Sigmadec_ * diff;
-
-         statistics.resize(C_.rows());
-         statistics(0) = stat;
-
-         for(int i = 1; i < C_.rows(); i++){
-            statistics(i) = 10e20;
+         // is_empty va bene anche per i Vectors?
+         if(is_empty(beta0_)){
+            // print errore (need to set beta0)
+            // inizializzare i beta_0 a 0???
+            // default value 0 for all betas
+            setBeta0(DVector<double>::Zero(betaw().size()));
          }
-         return statistics; 
-      }
-      // one at the time
-      if ( type == one_at_the_time ){
-         int p = C_.rows();
-         statistics.resize(p);
-         for(int i = 0; i < p; i++){
-            DVector<double> col = C_.row(i);
-            double diff = col.adjoint()* m_.beta() - beta0_[i];
-            double sigma = col.adjoint() * Vw_ *col;
-            double stat = diff/std::sqrt(sigma);
-            statistics(i) = stat;
+         if(is_empty(Vw_)){
+            Vw_ = Vw();
          }
-         return statistics;
-      }
+
+         DVector<double> statistics(C_.rows());
+         // simultaneous 
+         if( type == simultaneous ){
+            DVector<double> diff = C_ * m_.beta() - beta0_;
+            DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
+            DMatrix<double> Sigmadec_ = inverse(Sigma);
+
+            double stat = diff.adjoint() * Sigmadec_ * diff;
+
+            statistics.resize(C_.rows());
+            statistics(0) = stat;
+
+            for(int i = 1; i < C_.rows(); i++){
+               statistics(i) = 10e20;
+            }
+            return statistics; 
+         }
+         // one at the time
+         if ( type == one_at_the_time ){
+            int p = C_.rows();
+            statistics.resize(p);
+            for(int i = 0; i < p; i++){
+               DVector<double> col = C_.row(i);
+               double diff = col.adjoint()* m_.beta() - beta0_[i];
+               double sigma = col.adjoint() * Vw_ *col;
+               double stat = diff/std::sqrt(sigma);
+               statistics(i) = stat;
+            }
+            return statistics;
+         }
      }
      
 
@@ -235,12 +228,12 @@ template <typename Model> class WaldBase {
       C_ = C;
      }
 
+     // setter for alpha
      void setAlpha(int alpha){
-      // print error if alpha is not between 0 and 1
-      if(alpha > 1 || alpha < 0){
-
+      fdapde_assert(0 <= alpha && alpha <= 1)      // throw an exception if condition is not met  
+      if( 0 <= alpha && alpha <= 1) {
+         alpha_ = alpha;
       }
-      alpha_ = alpha;
      }
 
      // setter per i beta0_
