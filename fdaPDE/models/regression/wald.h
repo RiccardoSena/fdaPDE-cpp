@@ -56,9 +56,7 @@ class WALD<Model, Strategy::exact> : public WaldBase<Model> {
      
      void S() override{
             DMatrix<double> invT_ = inverse(m_.T());
-            // is .block() here necessary??? .block(0, 0, m_.n_basis, m_.n_basis)
-            // m_.Psi().transpose() or m_.PsiTD()
-            S_ = m_.Psi() * invT_ * m_.Psi().transpose() * m_.Q();
+            S_ = m_.Psi() * invT_ * m_.PsiTD() * m_.Q();
      }
 
 }
@@ -91,7 +89,7 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
         // Bisogna usare PsiTD()??
-        DMatrix<double> Et_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
+        DMatrix<double> Et_ = m_.PsiTD()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde
         FPSAI fspai_E(Et_);
@@ -114,7 +112,7 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
         Eigen::SparseMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
         // m_.Psi().transpose() or m_.PsiTD()
-        S_ = m_.Psi() * invMt_ * m_.Psi().transpose() * m_.Q();
+        S_ = m_.Psi() * invMt_ * m_.PsiTD() * m_.Q();
 
      }
 

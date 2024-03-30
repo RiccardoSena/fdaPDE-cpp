@@ -43,39 +43,33 @@ template <typename Model> class SpeckmanBase {
     
      Model* m_;
      
-     DMatrix<double> Lambda_ {};
-     DVector<double> betas_ {};
-     DVector<double> beta0_ {};
-     DMatrix<double> Vs_ {};
+     DMatrix<double> Lambda_ {};          // Speckman correction matrix (n x n) matrix
+     DMatrix<double> Vs_ {};              // variance matrix of betas_ (q x q) matrix
+     DMatrix<double> C_ {};               // inference matrix C (p x q) matrix               
+
+     DVector<double> betas_ {};            // sol of srpde ( q x 1 ) matrix
+     DVector<double> beta0_ {};           // inference hypothesis H0 (p x 1) matrix
+     int alpha_ = 0;                      // level of the confidence intervals
+     
 
      // dobbiamo salvarla come Sparsa???
      // DMatrix<double> inverseA_ {};
      Eigen::SparseMatrix<double> inverseA_ {};
 
-     DMatrix<double> C_ {};
-
-     int alpha_ = 0;
-
 
     public:
 
-     // constructors
-     SpeckmanBase() = default;
+     SpeckmanBase() = default;             // constructors
      SpeckmanBase(Model* m):m_(m) {};
  
      virtual void inverseA() = 0;
 
      const DMatrix<double>& Lambda() {
-        // I - Psi*\(Psi^T*\Psi + lambda*\R)^{-1}*\Psi^T
-        // I - Psi*\A^{-1}*\Psi^T
-        // A = Psi^T*\Psi + lambda*\R
-        // A^{-1} is potentially large and dense, we only need the northwest block
-        // m_.invA().block(0, 0, m_.n_basis, m_.n_basis)
         if(is_empty(inverseA_)){
            inverseA();
         }
         // serve il .block???
-        Lambda_ = DMatrix<double>::Identity(m_.n_basis, m_.n_basis) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis, m_.n_basis) * m_.PsiTD();
+        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis, m_.n_basis) * m_.PsiTD();
         return Lambda_;
       }
       
@@ -95,17 +89,19 @@ template <typename Model> class SpeckmanBase {
      }
 
      DMatrix<double>& Vs() {
+         if(is_empty(Lambda_)){
+            Lambda();
+         }
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
-        DMatrix<double> Wtilde_ = Lambda() * m_.W();
+        DMatrix<double> Wt_ = Lambda_ * m_.W();
         // DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         // DMatrix<double> invU_ = inverse(U_); 
-        DMatrix<double> left_ = inverse(Wtilde_.transpose() * Wtilde_) * Wtilde_.transpose();
+        DMatrix<double> left_ = inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
-        DMatrix<double> E = epsilon_ * epsilon_.transpose();
 
-        Vs_ = left_ * Lambda() * E * Lambda().transpose() * left_.transpose();
+        Vs_ = left_ * Lambda_ * epsilon_ * epsilon_.transpose() * Lambda_.transpose() * left_.transpose();
         return Vs_;
      }
 
@@ -150,8 +146,8 @@ template <typename Model> class SpeckmanBase {
          std::chi_squared_distribution<double> chi_squared(p);
          double quantile = std::quantile(chi_squared, alpha_);
          
-         lowerBound = C_ * betas() - std::sqrt(quantile * diagonal);
-         upperBound = C_ * betas() + std::sqrt(quantile * diagonal);
+         lowerBound = C_ * betas_ - std::sqrt(quantile * diagonal);
+         upperBound = C_ * betas_ + std::sqrt(quantile * diagonal);
 
          }
 
@@ -159,8 +155,8 @@ template <typename Model> class SpeckmanBase {
          // BONFERRONI
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
-         lowerBound = C_ * betas() - quantile * std::sqrt( diagonal);
-         upperBound = C_ * betas() + quantile * std::sqrt( diagonal);
+         lowerBound = C_ * betas_ - quantile * std::sqrt( diagonal);
+         upperBound = C_ * betas_ + quantile * std::sqrt( diagonal);
 
          }
 
@@ -168,8 +164,8 @@ template <typename Model> class SpeckmanBase {
          // ONE AT THE TIME
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
-         lowerBound = C_ * betas() - quantile * std::sqrt( diagonal);
-         upperBound = C_ * betas() + quantile * std::sqrt( diagonal);
+         lowerBound = C_ * betas_ - quantile * std::sqrt( diagonal);
+         upperBound = C_ * betas_ + quantile * std::sqrt( diagonal);
 
          }
 
@@ -182,7 +178,7 @@ template <typename Model> class SpeckmanBase {
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;        
         
-         return std::make_pair(lowerBound, upperBound);
+         return CIMatrix;
          }
       }
 
@@ -255,7 +251,6 @@ template <typename Model> class SpeckmanBase {
 
      // setter per i beta0_
      void setBeta0(DVector<double> beta0){
-      // funziona così per i Eigen::Vector??
       beta0_ = beta0;
      }
 

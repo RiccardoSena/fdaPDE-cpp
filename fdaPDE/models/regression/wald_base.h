@@ -42,7 +42,7 @@ template <typename Model> class WaldBase {
      // E è sparsa, ma M?
 
      DMatrix<double> S_ {};            // smoothing matrix S (n x n) matrix
-     double sigma_sq_ = 0;     // matrix of errors sigma^2 (n x n) matrix
+     double sigma_sq_ = 0;             // sigma^2 
      DMatrix<double> Vw_ {};           // variance matrix of betaw_ (q x q) matrix
      DMatrix<double> C_ {};            // inference matrix C (p x q) matrix
      
@@ -172,7 +172,7 @@ template <typename Model> class WaldBase {
         CIMatrix.col(1) = upperBound;
         
 
-        return std::make_pair(lowerBound, upperBound);
+        return CIMatrix;
         }
      }
 
