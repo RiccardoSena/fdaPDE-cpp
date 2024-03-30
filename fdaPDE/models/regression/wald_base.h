@@ -253,7 +253,7 @@ template <typename Model> class WaldBase {
      DMatrix<double> inverse(DMatrix<double> M){
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
-      Mdec_ = M.partialPivLu(); // forse va messo Mdec_.compute(Mdec_) o è uguale?
+      Mdec_ = M.partialPivLu(); 
       DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
       return invM_;
      }

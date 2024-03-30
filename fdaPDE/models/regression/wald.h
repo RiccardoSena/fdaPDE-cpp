@@ -49,11 +49,11 @@ class WALD<Model, Strategy::exact> : public WaldBase<Model> {
      // is this necessary
      using Base = WaldBase<Model>;
      
-     // constructor
-     WALD() = default;
+     
+     WALD() = default;                  // constructor
      WALD(Model* m): Base(m) {};
 
-     // perchè la funzione return S e non inizializza direttamente S_ ???
+     
      void S() override{
             DMatrix<double> invT_ = inverse(m_.T());
             // is .block() here necessary??? .block(0, 0, m_.n_basis, m_.n_basis)
@@ -68,8 +68,7 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
     public: 
      using Base = WaldBase<Model>;
 
-     // constructor 
-     WALD() = default;
+     WALD() = default;              // constructor 
      WALD(Model* m): Base(m) {};
 
      void S() override{
@@ -81,21 +80,21 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
         // R0 should be stored as a sparse matrix
         FSPAI fspai_R0(m_.R0());
 
-        unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
-        unsigned beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
+        int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
         double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
         // calcolo inversa di R0
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
-        Eigen::SparseMatrix<double> inv_R0 fspai_R0.getInverse();
+        Eigen::SparseMatrix<double> invR0_= fspai_R0.getInverse();
 
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
         // Bisogna usare PsiTD()??
-        DMatrix<double> tildeE_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
+        DMatrix<double> Et_ = m_.Psi().transpose()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde
-        FPSAI fspai_E(tildeE_);
+        FPSAI fspai_E(Et_);
         fspai_E.compute(alpha, beta, epsilon);
         Eigen::SParseMatrix<double> invE_ = fspai_E.getInverse();
 
@@ -110,7 +109,7 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
         // DMatrix<double> Ut_ = m_.PsiTD() * m_.W();
         DMatrix<double> Ut_ = m_.Psi().transpose() + m_.W();
         DMatrix<double> Ct_ = - inverse(m_.W().transpose() * m_.W());
-        DMatrix<double> Vt_ = m_.transpose() * m_.Psi();
+        DMatrix<double> Vt_ = m_.W().transpose() * m_.Psi();
 
         Eigen::SparseMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
