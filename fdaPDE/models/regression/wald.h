@@ -78,17 +78,15 @@ class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
         // R0 should be stored as a sparse matrix
         FSPAI fspai_R0(m_.R0());
 
-        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
+        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
         int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
+        double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
         // calcolo inversa di R0
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
         Eigen::SparseMatrix<double> invR0_= fspai_R0.getInverse();
 
-        //qui non so se è giusto questo lambda
-        //caclolo la matrice Atilde
-        // Bisogna usare PsiTD()??
+        //calcolo la matrice Atilde
         DMatrix<double> Et_ = m_.PsiTD()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde

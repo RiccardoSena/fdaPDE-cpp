@@ -170,7 +170,7 @@ template <typename Model> class SpeckmanBase {
          }
 
          //costruisco la matrice che restituisce i confidence intervals
-         DMatrix<double> CIMatrix(m_.n_obs(), 2);
+         DMatrix<double> CIMatrix(p, 2);
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;        
         
@@ -183,8 +183,8 @@ template <typename Model> class SpeckmanBase {
          fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
 
          if(is_empty(beta0_)){
-            // print errore (need to set beta0)
-            // inizializzare i beta_0 a 0???
+            // print errore (need to set beta0)???
+            // set beta_0 to 0
             setBeta0(DVector<double>::Zero(betas().size()));
          }
 

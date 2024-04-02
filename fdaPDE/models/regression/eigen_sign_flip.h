@@ -43,18 +43,12 @@ template <typename Model> class EigenSignFlip {
 
 
     public:
-
-     // constructors
-     EigenSignFlip() = default;
+     EigenSignFlip() = default;                 // constructors
      EigenSignFlip(Model* m): m_(m) {};
-    
-     // dimension of matrix Pi_
-     int n;
-     // diagonal matrix
-     const DiagMatrix<double> Pi_ {};
 
-     // vector of beta 0
-     const DVector<double> beta0_ {};
+     int n;                                     // dimension of matrix Pi_
+     const DiagMatrix<double> Pi_ {};           // diagonal matrix for sign flip (n x n) matrix
+     const DVector<double> beta0_ {};           // vector of beta 0
 
      const DiagMatrix<double>& Pi() {  
         std::random_device rd;
@@ -66,7 +60,6 @@ template <typename Model> class EigenSignFlip {
         return Pi_;
      }
 
-     // beta0 da dove lo prendo???
      DVector<double> pvalues(){
         // T  = W^T * Pi(z − W * beta − Psi* f )
         //compute score components under H0
@@ -78,20 +71,21 @@ template <typename Model> class EigenSignFlip {
         }
         
         //Compute the observed test statistic Tobs
-        DVector<double> Tobs_= m_.W().transpose * Eigen::Identity(m_.n_obs(), m_.n_obs()) * (m_.y()- m_.W() * m_.beta())
-        DMatrix<double> T {};
-        // for da 1 a M
+        DVector<double> Tobs_= m_.W().transpose() * Eigen::Identity(m_.n_obs(), m_.n_obs()) * (m_.y()- m_.W() * m_.beta())
+        DMatrix<double> T_ {};
+        // M lo voliam oimpostare noi???
         for (int i = 0; i < M; ++i) {
             // generate matrix Pi_
             DiagMatrix<double> Pi_ = Pi();
             // compute test statistic Ti with Pi_ just generated 
             // ie costruisco un vettore di Ti che contiene tutti i valori della statistica per ogni Pi diverso 
-            T.col(i)= m_.W().transpose * Pi_ * (m_.y() - m_.W() * beta0());
+            T_.col(i)= m_.W().transpose() * Pi_ * (m_.y() - m_.W() * beta0_);
         }
         // pvalue= sum( Ti> Tobs)/M
-        DVector<int> count = (T.array() > T_obs.replicate(1, cols).array()).rowwise().count();
+        DVector<int> count = (T_.array() > T_obs.replicate(1, M).array()).rowwise().count();
         return count/M;
      }
+
      void setBeta0(DVector<double> beta0){
       // funziona così per i Eigen::Vector??
       beta0_ = beta0;

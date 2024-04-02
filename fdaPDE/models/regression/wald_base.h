@@ -181,9 +181,8 @@ template <typename Model> class WaldBase {
 
          // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
-            // print errore (need to set beta0)
-            // inizializzare i beta_0 a 0???
-            // default value 0 for all betas
+            // print errore (need to set beta0)???
+            // set beta0 to 0
             setBeta0(DVector<double>::Zero(betaw().size()));
          }
          if(is_empty(Vw_)){
