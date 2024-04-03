@@ -119,8 +119,8 @@ template <typename Model> class WaldBase {
         // devi capire quale è il metodo più veloce facendoti restituire il tempo di esecuzione
         // 1) metodo con libreria eigen 
         DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
-        // 2) metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
-	     int size = std::min(C_.rows(), Vw_.rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+        // 2) metodo con ciclo for per calcolare solo la diagonale e non tutta la matrice 
+	     int size = std::min(C_.rows(), Vw_.rows())   
 	     DVector<double> diagonal(size);
         for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
