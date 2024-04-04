@@ -30,20 +30,17 @@
 
 //#include "../fspai.h" questo l'ho aggiunto in linear_algebra.h
 
-// do we need this to use FSPAI??
-using fdapde::core::FSPAI
+using fdapde::core::FSPAI;
 
 namespace fdapde {
 namespace models {
 
 enum class Strategy{exact, non_exact};
 
-template <typename Model>
-
 template <typename Model, Strategy S> class Wald;
 
-// class WALD<Model, exact> : public WaldBase<Model> 
-class Wald<Model, Strategy::exact> : public WaldBase<Model> {
+template<typename Model>
+class Wald< Model, Strategy::exact> : public WaldBase<Model> {
 
     public: 
      // is this necessary
@@ -59,8 +56,9 @@ class Wald<Model, Strategy::exact> : public WaldBase<Model> {
             S_ = m_.Psi() * invT_ * m_.PsiTD() * m_.Q();
      }
 
-}
+};
 
+template<typename Model>
 class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
 
     public: 
@@ -115,7 +113,7 @@ class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
      }
 
 
-}
+};
 
 }  // closing models namespace
 }  // closing fdapde namespace

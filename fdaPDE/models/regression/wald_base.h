@@ -177,7 +177,7 @@ template <typename Model> class WaldBase {
      // this function returns the statistics not the p-values
      // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
-         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
          // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
@@ -229,7 +229,7 @@ template <typename Model> class WaldBase {
 
      // setter for alpha
      void setAlpha(int alpha){
-      fdapde_assert(0 <= alpha && alpha <= 1)      // throw an exception if condition is not met  
+      fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
       }
@@ -246,7 +246,7 @@ template <typename Model> class WaldBase {
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu(); 
-      DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
+      DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
       return invM_;
      }
 
