@@ -285,7 +285,7 @@ TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
 
 
      // test correctness
-    Wald<SRPDE, Strategy::exact inference(model);
+    Wald<SRPDE, Strategy::exact> inference(model);
     inference.computeCI(CItype::simultaneous);
     int cols = model.beta().size();
     DMatrix<double> C(1, cols);
