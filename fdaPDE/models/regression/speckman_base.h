@@ -29,6 +29,7 @@
 
 // using fdapde::core::SMW;
 
+#include <boost/math/distributions/chi_squared.hpp>
 
 
 namespace fdapde {
@@ -139,8 +140,8 @@ template <typename Model> class SpeckmanBase {
 
          if(type == simultaneous){ 
          // SIMULTANEOUS
-         std::chi_squared_distribution<double> chi_squared(p);
-         double quantile = std::quantile(chi_squared, alpha_);
+         boost::math::chi_squared_distribution<double> chi_squared(p);
+         double quantile = boost::math::quantile(chi_squared, alpha_);
          
          lowerBound = (C_ * betas_).array() - (quantile * diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + (quantile * diagon.array()).sqrt();
@@ -149,7 +150,7 @@ template <typename Model> class SpeckmanBase {
 
          else if (type == bonferroni){
          // BONFERRONI
-         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
+         double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
@@ -158,7 +159,7 @@ template <typename Model> class SpeckmanBase {
 
          else if (type == one_at_the_time){
          // ONE AT THE TIME
-         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
+         double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();

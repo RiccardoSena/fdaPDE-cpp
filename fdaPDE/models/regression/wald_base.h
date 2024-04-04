@@ -135,8 +135,8 @@ template <typename Model> class WaldBase {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        std::chi_squared_distribution<double> chi_squared(p);
-        double quantile = std::quantile(chi_squared, alpha_);
+        boost::math::chi_squared_distribution<double> chi_squared(p);
+        double quantile = boost::math::quantile(chi_squared, alpha_);
         
         lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_->n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_->n_obs()).sqrt();
@@ -145,7 +145,7 @@ template <typename Model> class WaldBase {
 
         else if (type == bonferroni){
         // Bonferroni
-        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
+        double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
@@ -154,7 +154,7 @@ template <typename Model> class WaldBase {
 
         else if (type == one_at_the_time){
         // One at the time
-        double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
+        double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
@@ -173,7 +173,7 @@ template <typename Model> class WaldBase {
 
         return CIMatrix;
         }
-        
+
         return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
 
