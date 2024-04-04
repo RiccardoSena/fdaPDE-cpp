@@ -126,12 +126,12 @@ template <typename Model> class SpeckmanBase {
          DMatrix<double> CVCdiag_ = ((C_ * Vs()) * C_.transpose()).diagonal();
          //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
 	      int size = std::min(C_.rows(), Vs().rows()) // questo lo sai a priori quindi sostituisci con la teoria  
-	      DVector<double> diagonal(size);
+	      DVector<double> diagon(size);
          for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
             DVector ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
-            diagonal[i] = ci.transpose() * Vs()* ci;
+            diagon[i] = ci.transpose() * Vs()* ci;
          }
          DVector<double> lowerBound;
          DVector<double> upperBound;
@@ -142,8 +142,8 @@ template <typename Model> class SpeckmanBase {
          std::chi_squared_distribution<double> chi_squared(p);
          double quantile = std::quantile(chi_squared, alpha_);
          
-         lowerBound = C_ * betas_ - std::sqrt(quantile * diagonal);
-         upperBound = C_ * betas_ + std::sqrt(quantile * diagonal);
+         lowerBound = C_ * betas_ - std::sqrt(quantile * diagon);
+         upperBound = C_ * betas_ + std::sqrt(quantile * diagon);
 
          }
 
@@ -151,8 +151,8 @@ template <typename Model> class SpeckmanBase {
          // BONFERRONI
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
-         lowerBound = C_ * betas_ - quantile * std::sqrt( diagonal);
-         upperBound = C_ * betas_ + quantile * std::sqrt( diagonal);
+         lowerBound = C_ * betas_ - quantile * std::sqrt( diagon);
+         upperBound = C_ * betas_ + quantile * std::sqrt( diagon);
 
          }
 
@@ -160,8 +160,8 @@ template <typename Model> class SpeckmanBase {
          // ONE AT THE TIME
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
-         lowerBound = C_ * betas_ - quantile * std::sqrt( diagonal);
-         upperBound = C_ * betas_ + quantile * std::sqrt( diagonal);
+         lowerBound = C_ * betas_ - quantile * std::sqrt( diagon);
+         upperBound = C_ * betas_ + quantile * std::sqrt( diagon);
 
          }
 

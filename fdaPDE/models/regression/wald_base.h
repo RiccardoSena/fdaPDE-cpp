@@ -63,7 +63,7 @@ template <typename Model> class WaldBase {
      virtual void S() = 0;
 
      // si potrebbe fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia
-     const double sigma_sq() {
+     double sigma_sq() {
 
         // double q = m_.q();            // number of covariates
         // std::size_t n = m_.n_obs();   // number of observations
@@ -71,7 +71,7 @@ template <typename Model> class WaldBase {
 
         DMatrix<double> epsilon = m_.y() - m_.fitted();
 
-        ExactEDF::ExactEDF strat;
+        ExactEDF strat;
         strat.set_model(m_);
         sigma_sq_  = (1/(m_.n_obs() - m_.q() - strat.compute())) * (epsilon.transpose() * epsilon);
         return sigma_sq_;
@@ -100,7 +100,7 @@ template <typename Model> class WaldBase {
      }
 
      DMatrix<double> computeCI(CIType type){ 
-        fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+        fdapde_assert(!is_empty(C_));     // throw an exception if condition is not met  
         
         if(alpha_ == 0) {
          setAlpha(0.05);         // default value 5%
@@ -120,13 +120,13 @@ template <typename Model> class WaldBase {
         // 1) metodo con libreria eigen 
         DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
         // 2) metodo con ciclo for per calcolare solo la diagonale e non tutta la matrice 
-	     int size = std::min(C_.rows(), Vw_.rows())   
-	     DVector<double> diagonal(size);
+	     int size = std::min(C_.rows(), Vw_.rows());
+	     DVector<double> diagon(size);
         for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
             DVector<double> ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
-            diagonal[i] = ci.transpose() * Vw_* ci;
+            diagon[i] = ci.transpose() * Vw_* ci;
         }
 
         DVector<double> lowerBound;
@@ -137,8 +137,8 @@ template <typename Model> class WaldBase {
         std::chi_squared_distribution<double> chi_squared(p);
         double quantile = std::quantile(chi_squared, alpha_);
         
-        lowerBound = C_ * betaw_ - std::sqrt(quantile * diagonal/m_.n_obs());
-        upperBound = C_ * betaw_ + std::sqrt(quantile * diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - std::sqrt(quantile * diagon/m_.n_obs());
+        upperBound = C_ * betaw_ + std::sqrt(quantile * diagon/m_.n_obs());
 
         }
 
@@ -146,8 +146,8 @@ template <typename Model> class WaldBase {
         // Bonferroni
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
-        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betaw_ + quantile * std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagon/m_.n_obs());
+        upperBound = C_ * betaw_ + quantile * std::sqrt( diagon/m_.n_obs());
 
         }
 
@@ -155,8 +155,8 @@ template <typename Model> class WaldBase {
         // One at the time
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
-        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagonal/m_.n_obs());
-        upperBound = C_ * betaw_ + quantile * std::sqrt( diagonal/m_.n_obs());
+        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagon/m_.n_obs());
+        upperBound = C_ * betaw_ + quantile * std::sqrt( diagon/m_.n_obs());
 
         }
 
@@ -252,7 +252,7 @@ template <typename Model> class WaldBase {
 
    // aggiungere destructor?
 
-}  
+} ;
 }  // closing models namespace
 }  // closing fdapde namespace
 

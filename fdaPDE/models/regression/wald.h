@@ -28,7 +28,7 @@
 #include "exact_edf.h"
 #include "wald_base.h"
 
-#include ".../fspai.h"
+//#include "../fspai.h" questo l'ho aggiunto in linear_algebra.h
 
 // do we need this to use FSPAI??
 using fdapde::core::FSPAI
@@ -36,22 +36,22 @@ using fdapde::core::FSPAI
 namespace fdapde {
 namespace models {
 
-enum class Strategy{ exact, non_exact };
+enum class Strategy{exact, non_exact};
 
 template <typename Model>
 
-template <typename Model, Strategy S> class WALD;
+template <typename Model, Strategy S> class Wald;
 
 // class WALD<Model, exact> : public WaldBase<Model> 
-class WALD<Model, Strategy::exact> : public WaldBase<Model> {
+class Wald<Model, Strategy::exact> : public WaldBase<Model> {
 
     public: 
      // is this necessary
      using Base = WaldBase<Model>;
      
      
-     WALD() = default;                  // constructor
-     WALD(Model* m): Base(m) {};
+     Wald() = default;                  // constructor
+     Wald(Model* m): Base(m) {};
 
      
      void S() override{
@@ -61,13 +61,13 @@ class WALD<Model, Strategy::exact> : public WaldBase<Model> {
 
 }
 
-class WALD<Model, Strategy::non_exact> : public WaldBase<Model> {
+class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
 
     public: 
      using Base = WaldBase<Model>;
 
-     WALD() = default;              // constructor 
-     WALD(Model* m): Base(m) {};
+     Wald() = default;              // constructor 
+     Wald(Model* m): Base(m) {};
 
      void S() override{
         // FSPAI approx

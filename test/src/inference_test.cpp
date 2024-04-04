@@ -52,6 +52,9 @@ using fdapde::testing::MeshLoader;
 using fdapde::testing::read_mtx;
 using fdapde::testing::read_csv;
 
+#include "../../fdaPDE/models/regression/wald_base.h"
+#include "../../fdaPDE/models/regression/wald.h"
+
 
 // This file is part of fdaPDE, a C++ library for physics-informed
 // spatial and functional data analysis.
@@ -282,13 +285,13 @@ TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
 
 
      // test correctness
-    WALD<SRPDE, Strategy::exact inference(model);
+    Wald<SRPDE, Strategy::exact inference(model);
     inference.computeCI(CItype::simultaneous);
     int cols = model.beta().size();
     DMatrix<double> C(1, cols);
     C.setOnes(); // matrice C ha una sola riga di tutti 1
     inference.setC(C);
-    EXPECT_TRUE(almost_equal(inference.pvalues(CItype::simultaneous), "../data/models/srpde/2D_test2/pvalues.csv"))
+    EXPECT_TRUE(almost_equal(inference.pvalues(CItype::simultaneous), "../data/models/srpde/2D_test2/pvalues.csv"));
     
 
 }
