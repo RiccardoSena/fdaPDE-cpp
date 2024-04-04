@@ -60,7 +60,7 @@ template <typename Model> class SpeckmanBase {
     public:
 
      SpeckmanBase() = default;             // constructors
-     SpeckmanBase(Model* m):m_(m) {};
+     SpeckmanBase(Model *m): m_(m) {};
  
      virtual void inverseA() = 0;
 
@@ -78,11 +78,11 @@ template <typename Model> class SpeckmanBase {
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
 
-        DMatrix<double> Wtilde_ = Lambda() * m_.W();
-        DMatrix<double> ytilde_ = Lambda() * m_.y();
+        DMatrix<double> Wtilde_ = Lambda() * m_->X();
+        DMatrix<double> ytilde_ = Lambda() * m_->y();
 
         //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
-        DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
+        DMatrix<double> temp = WaldBase<Model>::inverse(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
         return betas_;
 
@@ -95,18 +95,18 @@ template <typename Model> class SpeckmanBase {
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
-        DMatrix<double> Wt_ = Lambda_ * m_.W();
+        DMatrix<double> Wt_ = Lambda_ * m_->X();
         // DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         // DMatrix<double> invU_ = inverse(U_); 
-        DMatrix<double> left_ = inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
-        DMatrix<double> epsilon_ = m_.y() - m_.fitted();
+        DMatrix<double> left_ = WaldBase<Model>::inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
+        DMatrix<double> epsilon_ = m_->y() - m_->fitted();
 
         Vs_ = left_ * Lambda_ * epsilon_ * epsilon_.transpose() * Lambda_.transpose() * left_.transpose();
         return Vs_;
      }
 
       DMatrix<double> computeCI(CIType type){ 
-         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+         fdapde_assert(!is_empty(C_)) ;     // throw an exception if condition is not met  
         
          if(alpha_ == 0) {
           setAlpha(0.05);         // default value 5%
@@ -142,8 +142,8 @@ template <typename Model> class SpeckmanBase {
          std::chi_squared_distribution<double> chi_squared(p);
          double quantile = std::quantile(chi_squared, alpha_);
          
-         lowerBound = C_ * betas_ - std::sqrt(quantile * diagon);
-         upperBound = C_ * betas_ + std::sqrt(quantile * diagon);
+         lowerBound = (C_ * betas_).array() - (quantile * diagon.array()).sqrt();
+         upperBound = (C_ * betas_).array() + (quantile * diagon.array()).sqrt();
 
          }
 
@@ -151,8 +151,8 @@ template <typename Model> class SpeckmanBase {
          // BONFERRONI
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
          
-         lowerBound = C_ * betas_ - quantile * std::sqrt( diagon);
-         upperBound = C_ * betas_ + quantile * std::sqrt( diagon);
+         lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
+         upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
 
          }
 
@@ -160,8 +160,8 @@ template <typename Model> class SpeckmanBase {
          // ONE AT THE TIME
          double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
          
-         lowerBound = C_ * betas_ - quantile * std::sqrt( diagon);
-         upperBound = C_ * betas_ + quantile * std::sqrt( diagon);
+         lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
+         upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
 
          }
 
@@ -176,11 +176,14 @@ template <typename Model> class SpeckmanBase {
         
          return CIMatrix;
          }
+         
+         return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
+
       }
 
      // this function returns the statistics not the p-values
      DVector<double> p_value(CIType type){
-         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+         fdapde_assert(!is_empty(C_));     // throw an exception if condition is not met  
 
          if(is_empty(beta0_)){
             // print errore (need to set beta0)???
@@ -197,7 +200,7 @@ template <typename Model> class SpeckmanBase {
          if( type == simultaneous ){
             DVector<double> diff = C_ * m_.beta() - beta0_;
             DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
-            DMatrix<double> Sigmadec_ = inverse(Sigma);
+            DMatrix<double> Sigmadec_ = WaldBase<Model>::inverse(Sigma);
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
 
@@ -222,6 +225,10 @@ template <typename Model> class SpeckmanBase {
             }
             return statistics;
          }
+         else{
+            //inserire messaggio di errore
+            return DVector<double>::Zero(1);
+         }
      }
 
      // setter for matrix of combination of coefficients C
@@ -231,7 +238,7 @@ template <typename Model> class SpeckmanBase {
 
      // setter for alpha
      void setAlpha(int alpha){
-      fdapde_assert(0 <= alpha && alpha <= 1)      // throw an exception if condition is not met  
+      fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
       }

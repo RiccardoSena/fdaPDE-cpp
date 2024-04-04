@@ -29,7 +29,7 @@
 #include ".../fspai.h"
 
 // we need this to use FSPAI
-using fdapde::core::FSPAI
+//using fdapde::core::FSPAI
 
 
 namespace fdapde {
@@ -38,20 +38,20 @@ namespace models {
 enum class Strategy{ exact, non_exact };
 
 template <typename Model>
-class SPECKMAN;
+class Speckman;
 
 
-template <typename Model, Strategy S> class SPECKMAN;
+template <typename Model, Strategy S> class Speckman;
 
 template <typename Model>
-class SPECKMAN<Model, Strategy::exact> : public SpeckmanBase<Model> {
+class Speckman<Model, Strategy::exact> : public SpeckmanBase<Model> {
 
     public: 
      using Base = SpeckmanBase<Model>;
 
      // constructor
-     SPECKMAN() = default;
-     SPECKMAN(Model* m): Base(m) {};
+     Speckman() = default;
+     Speckman(Model* m): Base(m) {};
 
      void inverseA() override{
             inverseA_ =  m_.invA().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis));
@@ -65,14 +65,14 @@ class SPECKMAN<Model, Strategy::non_exact> : public SpeckmanBase<Model> {
     public: 
      using Base = SpeckmanBase<Model>;
 
-     SPECKMAN() = default;
-     SPECKMAN(Model* m): Base(m) {};
+     Speckman() = default;
+     Speckman(Model* m): Base(m) {};
      
      void inverseA() override{
         // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
-        FSPAI fspai_R0(m_.R0());
+        fdapde::core::FSPAI fspai_R0(m_.R0());
 
         // questi non so come vadano scelti ho messo nuemri a caso ???
         unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
@@ -89,7 +89,7 @@ class SPECKMAN<Model, Strategy::non_exact> : public SpeckmanBase<Model> {
         DMatrix<double> tildeA_ = m_.Psi().transpose()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde
-        FPSAI fspai_A(tildeA_);
+        fdapde::core::FSPAI fspai_A(tildeA_);
         fspai_A.compute(alpha, beta, epsilon);
 
         // inverseA_

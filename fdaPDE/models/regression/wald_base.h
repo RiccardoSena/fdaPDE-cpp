@@ -147,8 +147,8 @@ template <typename Model> class WaldBase {
         // Bonferroni
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
-        lowerBound = (C_ * betaw_).array() - quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
 
         }
 
@@ -156,8 +156,8 @@ template <typename Model> class WaldBase {
         // One at the time
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
-        lowerBound = (C_ * betaw_).array() - quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
 
         }
 
@@ -173,6 +173,7 @@ template <typename Model> class WaldBase {
 
         return CIMatrix;
         }
+        
         return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
 
