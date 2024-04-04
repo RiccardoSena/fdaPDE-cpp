@@ -121,7 +121,6 @@ class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
 
 };
 
-
 }  // closing models namespace
 } // closing fdapde namespace
 

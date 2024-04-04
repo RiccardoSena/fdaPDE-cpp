@@ -236,7 +236,7 @@ template <typename Model> class WaldBase {
 
      // setter for alpha
      void setAlpha(int alpha){
-      fdapde_assert(0 <= alpha && alpha <= 1) ;     // throw an exception if condition is not met  
+      fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
       }
