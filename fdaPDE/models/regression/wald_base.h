@@ -27,11 +27,12 @@
 #include "strpde.h"
 #include "exact_edf.h"
 
+#include <boost/math/distributions/chi_squared.hpp>
 
 namespace fdapde {
 namespace models {
 
-enum CIType {bonferroni, simultaneous, one_at_the_time};
+enum CIType {bonferroni,simultaneous,one_at_the_time};
 
 template <typename Model> class WaldBase {
 
@@ -69,11 +70,11 @@ template <typename Model> class WaldBase {
         // std::size_t n = m_.n_obs();   // number of observations
         // double dor = n - (q + trS);       // residual degrees of freedom
 
-        DMatrix<double> epsilon = m_.y() - m_.fitted();
+        DMatrix<double> epsilon = m_->y() - m_->fitted();
 
         ExactEDF strat;
         strat.set_model(m_);
-        sigma_sq_  = (1/(m_.n_obs() - m_.q() - strat.compute())) * (epsilon.transpose() * epsilon);
+        sigma_sq_  = (1/(m_->n_obs() - m_->q() - strat.compute())) * epsilon.squaredNorm();
         return sigma_sq_;
      }
 
@@ -81,12 +82,12 @@ template <typename Model> class WaldBase {
         if(is_empty(S_)){
             S();
         }
-        if(sigma_sq_ = 0){
+        if(sigma_sq_ == 0){
             sigma_sq();
         }
-        DMatrix<double> invSigma_ = inverse(m_.W().transpose() * m_.W());
+        DMatrix<double> invSigma_ = WaldBase<Model>::inverse(m_->X().transpose() * m_->X());
         DMatrix<double> ss = S_ * S_.transpose();
-        DMatrix<double> left = invSigma_ * m_.W().transpose();
+        DMatrix<double> left = invSigma_ * m_->X().transpose();
         Vw_ = sigma_sq_ * (invSigma_ + left * ss * left.transpose()); 
 
         return Vw_;
@@ -95,7 +96,7 @@ template <typename Model> class WaldBase {
      const DVector<double>& betaw() {
       // Is betaw just the beta from the Model??? 
       //In that case could not store betaw_ but use directly m_.beta()
-      betaw_ = m_.beta();
+      betaw_ = m_->beta();
       return betaw_;
      }
 
@@ -137,8 +138,8 @@ template <typename Model> class WaldBase {
         std::chi_squared_distribution<double> chi_squared(p);
         double quantile = std::quantile(chi_squared, alpha_);
         
-        lowerBound = C_ * betaw_ - std::sqrt(quantile * diagon/m_.n_obs());
-        upperBound = C_ * betaw_ + std::sqrt(quantile * diagon/m_.n_obs());
+        lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_->n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_->n_obs()).sqrt();
 
         }
 
@@ -146,8 +147,8 @@ template <typename Model> class WaldBase {
         // Bonferroni
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/(2*p));
         
-        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagon/m_.n_obs());
-        upperBound = C_ * betaw_ + quantile * std::sqrt( diagon/m_.n_obs());
+        lowerBound = (C_ * betaw_).array() - quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
 
         }
 
@@ -155,13 +156,14 @@ template <typename Model> class WaldBase {
         // One at the time
         double quantile = std::sqrt(2.0) * std::erfinv(1-alpha_/2);
         
-        lowerBound = C_ * betaw_ - quantile * std::sqrt( diagon/m_.n_obs());
-        upperBound = C_ * betaw_ + quantile * std::sqrt( diagon/m_.n_obs());
+        lowerBound = (C_ * betaw_).array() - quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (quantile * diagon.array() / m_->n_obs()).sqrt();
 
         }
 
         else{
          // inserire errore: nome intervallo non valido
+         
         }
 
         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
@@ -171,13 +173,14 @@ template <typename Model> class WaldBase {
 
         return CIMatrix;
         }
+        return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
 
 
      // this function returns the statistics not the p-values
      // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
-         fdapde_assert(!is_empty(C_))      // throw an exception if condition is not met  
+         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
          // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
@@ -192,9 +195,9 @@ template <typename Model> class WaldBase {
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
-            DVector<double> diff = C_ * m_.beta() - beta0_;
+            DVector<double> diff = C_ * m_->beta() - beta0_;
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
-            DMatrix<double> Sigmadec_ = inverse(Sigma);
+            DMatrix<double> Sigmadec_ = WaldBase<Model>::inverse(Sigma);
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
 
@@ -212,12 +215,16 @@ template <typename Model> class WaldBase {
             statistics.resize(p);
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
-               double diff = col.adjoint()* m_.beta() - beta0_[i];
+               double diff = col.adjoint()* m_->beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
                statistics(i) = stat;
             }
             return statistics;
+         }
+         else{
+            //inserire messaggio di errore
+            return DVector<double>::Zero(1);
          }
      }
      
@@ -229,7 +236,7 @@ template <typename Model> class WaldBase {
 
      // setter for alpha
      void setAlpha(int alpha){
-      fdapde_assert(0 <= alpha && alpha <= 1)      // throw an exception if condition is not met  
+      fdapde_assert(0 <= alpha && alpha <= 1) ;     // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
       }
@@ -246,7 +253,7 @@ template <typename Model> class WaldBase {
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu(); 
-      DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
+      DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
       return invM_;
      }
 

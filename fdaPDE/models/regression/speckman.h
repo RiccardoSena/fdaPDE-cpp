@@ -38,9 +38,12 @@ namespace models {
 enum class Strategy{ exact, non_exact };
 
 template <typename Model>
+class SPECKMAN;
+
 
 template <typename Model, Strategy S> class SPECKMAN;
 
+template <typename Model>
 class SPECKMAN<Model, Strategy::exact> : public SpeckmanBase<Model> {
 
     public: 
@@ -56,6 +59,7 @@ class SPECKMAN<Model, Strategy::exact> : public SpeckmanBase<Model> {
 
 }
 
+template <typename Model>
 class SPECKMAN<Model, Strategy::non_exact> : public SpeckmanBase<Model> {
 
     public: 

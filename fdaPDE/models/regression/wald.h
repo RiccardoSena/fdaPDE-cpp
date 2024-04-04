@@ -19,6 +19,7 @@
 
 // questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
+#include <fdaPDE/linear_algebra/fspai.h>
 #include <fdaPDE/utils.h>
 
 #include "../model_macros.h"
@@ -31,18 +32,20 @@
 //#include "../fspai.h" questo l'ho aggiunto in linear_algebra.h
 
 // do we need this to use FSPAI??
-using fdapde::core::FSPAI
+//using fdapde::core::FSPAI
 
 namespace fdapde {
 namespace models {
 
 enum class Strategy{exact, non_exact};
 
+// Dichiarazione anticipata del template di classe Model
 template <typename Model>
+class WaldBase;
 
 template <typename Model, Strategy S> class Wald;
-
 // class WALD<Model, exact> : public WaldBase<Model> 
+template <typename Model>
 class Wald<Model, Strategy::exact> : public WaldBase<Model> {
 
     public: 
@@ -51,23 +54,24 @@ class Wald<Model, Strategy::exact> : public WaldBase<Model> {
      
      
      Wald() = default;                  // constructor
-     Wald(Model* m): Base(m) {};
+     Wald(Model* m): Base(m) {}
 
      
      void S() override{
-            DMatrix<double> invT_ = inverse(m_.T());
-            S_ = m_.Psi() * invT_ * m_.PsiTD() * m_.Q();
-     }
+            DMatrix<double> invT_ = Base::inverse(Base::m_->T());
+            Base::S_ = Base::m_->Psi() * invT_ * Base::m_->PsiTD() * Base::m_->Q();
+     };
 
-}
+};
 
+template <typename Model>
 class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
 
     public: 
      using Base = WaldBase<Model>;
 
      Wald() = default;              // constructor 
-     Wald(Model* m): Base(m) {};
+     Wald(Model* m): Base(m) {}
 
      void S() override{
         // FSPAI approx
@@ -76,7 +80,7 @@ class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
         // Dalla Sub Woodbury decomposition
         // bisogna fare prima un'approssimazione dell'inversa di R0, usando FSPAI
         // R0 should be stored as a sparse matrix
-        FSPAI fspai_R0(m_.R0());
+        fdapde::core::FSPAI fspai_R0(Base::m_->R0());
 
         int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
         int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
@@ -87,12 +91,12 @@ class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
         Eigen::SparseMatrix<double> invR0_= fspai_R0.getInverse();
 
         //calcolo la matrice Atilde
-        DMatrix<double> Et_ = m_.PsiTD()* m_Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
+        DMatrix<double> Et_ = Base::m_->PsiTD()* Base::m_->Psi()+ Base::m_->lambda_D() * Base::m_->R1().transpose() * invR0_ * Base::m_->R1();
 
         //applico FSPAI su Atilde
-        FPSAI fspai_E(Et_);
+        fdapde::core::FSPAI fspai_E(Et_);
         fspai_E.compute(alpha, beta, epsilon);
-        Eigen::SParseMatrix<double> invE_ = fspai_E.getInverse();
+        Eigen::SparseMatrix<double> invE_ = fspai_E.getInverse();
 
         // Mt^{-1} = Et^{-1} + Et{-1}*\Ut*\(Ct+Vt*\Et^{-1}*\Ut)^{-1}*\Vt*\Et^{-1}
 
@@ -103,22 +107,23 @@ class Wald<Model, Strategy::non_exact> : public WaldBase<Model> {
         // Vt = W^T*\Psi   q x Nt
 
         // DMatrix<double> Ut_ = m_.PsiTD() * m_.W();
-        DMatrix<double> Ut_ = m_.Psi().transpose() + m_.W();
-        DMatrix<double> Ct_ = - inverse(m_.W().transpose() * m_.W());
-        DMatrix<double> Vt_ = m_.W().transpose() * m_.Psi();
+        DMatrix<double> Ut_ = Base::m_->Psi().transpose() + Base::m_->X();
+        DMatrix<double> Ct_ = - Base::inverse(Base::m_->X().transpose() * Base::m_->X());
+        DMatrix<double> Vt_ = Base::m_->X().transpose() * Base::m_->Psi();
 
-        Eigen::SparseMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+        Eigen::SparseMatrix<double> invMt_ = invE_ + invE_ * Ut_ * Base::inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
         // m_.Psi().transpose() or m_.PsiTD()
-        S_ = m_.Psi() * invMt_ * m_.PsiTD() * m_.Q();
+        Base::S_ = Base::m_->Psi() * invMt_ * Base::m_->PsiTD() * Base::m_->Q();
 
-     }
+     };
 
 
-}
+};
+
 
 }  // closing models namespace
-}  // closing fdapde namespace
+} // closing fdapde namespace
 
 # endif   //__WALD_H__
 
