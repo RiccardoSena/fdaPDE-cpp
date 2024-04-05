@@ -52,7 +52,6 @@ using fdapde::testing::MeshLoader;
 using fdapde::testing::read_mtx;
 using fdapde::testing::read_csv;
 
-#include "../../fdaPDE/models/regression/wald_base.h"
 #include "../../fdaPDE/models/regression/wald.h"
 
 
@@ -285,7 +284,7 @@ TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
 
 
      // test correctness
-    fdapde::models::Wald<SRPDE, fdapde::models::Strategy::exact> inference(model);
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
     inference.computeCI(fdapde::models::simultaneous);
     int cols = model.beta().size();
     DMatrix<double> C(1, cols);
