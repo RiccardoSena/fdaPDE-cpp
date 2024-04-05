@@ -43,7 +43,7 @@ template <typename Model> class WaldBase {
      // E è sparsa, ma M?
 
      DMatrix<double> S_ {};            // smoothing matrix S (n x n) matrix
-     double sigma_sq_ = 0;             // sigma^2 
+     //double sigma_sq_ = 0;             // sigma^2 
      DMatrix<double> Vw_ {};           // variance matrix of betaw_ (q x q) matrix
      DMatrix<double> C_ {};            // inference matrix C (p x q) matrix
      
@@ -69,7 +69,8 @@ template <typename Model> class WaldBase {
         // double q = m_.q();            // number of covariates
         // std::size_t n = m_.n_obs();   // number of observations
         // double dor = n - (q + trS);       // residual degrees of freedom
-
+        
+        double sigma_sq_ = 0;             // sigma^2 
         DMatrix<double> epsilon = m_->y() - m_->fitted();
 
         ExactEDF strat;
@@ -82,9 +83,8 @@ template <typename Model> class WaldBase {
         if(is_empty(S_)){
             S();
         }
-        if(sigma_sq_ == 0){
-            sigma_sq();
-        }
+
+        sigma_sq();
         DMatrix<double> invSigma_ = WaldBase<Model>::inverse(m_->X().transpose() * m_->X());
         DMatrix<double> ss = S_ * S_.transpose();
         DMatrix<double> left = invSigma_ * m_->X().transpose();
