@@ -3,4 +3,4 @@
 	url = https://github.com/RiccardoSena/fdaPDE-core.git
 	branch = stable
 [submodule "/home/jellyfish/fdaPDE-cpp/fdaPDE/core"]
-	url = git@github.com:RiccardoSena/fdaPDE-core.git
+	url = https://github.com/RiccardoSena/fdaPDE-core.git
