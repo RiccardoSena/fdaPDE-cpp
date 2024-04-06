@@ -2,3 +2,5 @@
 	path = fdaPDE/core
 	url = https://github.com/fdaPDE/fdaPDE-core
 	branch = stable
+[submodule "/home/jellyfish/fdaPDE-cpp/fdaPDE/core"]
+	url = git@github.com:RiccardoSena/fdaPDE-core.git

@@ -44,25 +44,25 @@ template <typename Model, typename Strategy> class Wald {
 
       struct ExactInverse {
       // forse static
-      DMatrix<double> compute(Model* m){
+      DMatrix<double> compute(Model m){
         Eigen::PartialPivLU<DMatrix<double>> Tdec_ {};
-        Tdec_ = m->T().partialPivLu(); 
-        DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m->T().rows(), m->T().cols()));
-        DMatrix<double> S = m->Psi() * invT_ * m->PsiTD() * m->Q(); 
+        Tdec_ = m.T().partialPivLu(); 
+        DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
+        DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
         return S;
         }
       };
 
      struct NonExactInverse{
      // forse static
-      DMatrix<double> compute(Model* m){
+      DMatrix<double> compute(const Model& m){
         // FSPAI approx
         // E_tilde = Psi^T*\Psi+lambda*\R
         // making E_tilde sparse
         // Dalla Sub Woodbury decomposition
         // bisogna fare prima un'approssimazione dell'inversa di R0, usando FSPAI
         // R0 should be stored as a sparse matrix
-        FSPAI fspai_R0(m->R0());
+        FSPAI fspai_R0(m.R0());
 
         int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
         int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
@@ -73,7 +73,7 @@ template <typename Model, typename Strategy> class Wald {
         SpMatrix<double> invR0_= fspai_R0.getInverse();
 
         //calcolo la matrice Atilde
-        DMatrix<double> Et_ = m->PsiTD()* m->Psi()+ m->lambda_D() * m->R1().transpose() * invR0_ * m->R1();
+        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
         FSPAI fspai_E(Et_);
@@ -85,13 +85,13 @@ template <typename Model, typename Strategy> class Wald {
         // Ct = -(W^T*\W)^{-1}   q x q
         // Vt = W^T*\Psi   q x Nt
         // DMatrix<double> Ut_ = m_.PsiTD() * m_.W();
-        DMatrix<double> Ut_ = m->Psi().transpose() + m->X();
-        DMatrix<double> Ct_ = - inverse(m->X().transpose() * m->X());
-        DMatrix<double> Vt_ = m->X().transpose() * m->Psi();
+        DMatrix<double> Ut_ = m.Psi().transpose() + m.X();
+        DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
+        DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
 
         SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
         // m_.Psi().transpose() or m_.PsiTD()
-        DMatrix<double> S = m->Psi() * invMt_ * m->PsiTD() * m->Q();
+        DMatrix<double> S = m.Psi() * invMt_ * m.PsiTD() * m.Q();
         return S;
         }
       };
@@ -99,7 +99,7 @@ template <typename Model, typename Strategy> class Wald {
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;   
 
-     Model* m_; 
+     Model m_; 
 
      // DMatrix<double> S_ {};            // smoothing matrix S (n x n) matrix
      DMatrix<double> Vw_ {};           // variance matrix of betaw_ (q x q) matrix
@@ -115,7 +115,7 @@ template <typename Model, typename Strategy> class Wald {
     public:
      
      Wald() = default;             // deafult constructor
-     Wald(Model* m): m_(m) {};     // starting the constructor
+     Wald(const Model& m): m_(m) {};     // starting the constructor
 
 
      // si potrebbe fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia
@@ -126,19 +126,19 @@ template <typename Model, typename Strategy> class Wald {
         // double dor = n - (q + trS);       // residual degrees of freedom
         
         double sigma_sq_ = 0;             // sigma^2 
-        DMatrix<double> epsilon = m_->y() - m_->fitted();
+        DMatrix<double> epsilon = m_.y() - m_.fitted();
 
         ExactEDF strat;
         strat.set_model(m_);
-        sigma_sq_  = (1/(m_->n_obs() - m_->q() - strat.compute())) * epsilon.squaredNorm();
+        sigma_sq_  = (1/(m_.n_obs() - m_.q() - strat.compute())) * epsilon.squaredNorm();
         return sigma_sq_;
      }
 
      const DMatrix<double>& Vw() {
 
-        DMatrix<double> invSigma_ = inverse(m_->X().transpose() * m_->X());
+        DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
         DMatrix<double> ss = s_.compute(m_) * s_.compute(m_).transpose();
-        DMatrix<double> left = invSigma_ * m_->X().transpose();
+        DMatrix<double> left = invSigma_ * m_.X().transpose();
         Vw_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
 
         return Vw_;
@@ -147,7 +147,7 @@ template <typename Model, typename Strategy> class Wald {
      const DVector<double>& betaw() {
       // Is betaw just the beta from the Model??? 
       //In that case could not store betaw_ but use directly m_.beta()
-      betaw_ = m_->beta();
+      betaw_ = m_.beta();
       return betaw_;
      }
 
@@ -190,8 +190,8 @@ template <typename Model, typename Strategy> class Wald {
         // double quantile = boost::math::quantile(chi_squared, alpha_);
         double quantile = 1;
         
-        lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_->n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_->n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_.n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_.n_obs()).sqrt();
 
         }
 
@@ -200,8 +200,8 @@ template <typename Model, typename Strategy> class Wald {
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
         double quantile = 1;
         
-        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
 
         }
 
@@ -210,8 +210,8 @@ template <typename Model, typename Strategy> class Wald {
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
         double quantile = 1;
         
-        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_->n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_->n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
 
         }
 
@@ -250,7 +250,7 @@ template <typename Model, typename Strategy> class Wald {
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
-            DVector<double> diff = C_ * m_->beta() - beta0_;
+            DVector<double> diff = C_ * m_.beta() - beta0_;
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
             DMatrix<double> Sigmadec_ = inverse(Sigma);
 
@@ -270,7 +270,7 @@ template <typename Model, typename Strategy> class Wald {
             statistics.resize(p);
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
-               double diff = col.adjoint()* m_->beta() - beta0_[i];
+               double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
                statistics(i) = stat;

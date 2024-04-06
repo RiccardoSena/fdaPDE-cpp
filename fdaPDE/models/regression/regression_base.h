@@ -129,7 +129,7 @@ class RegressionBase :
         DMatrix<double> z = invXtWX_.solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare 
         // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
-        return W_ - W_ * X() * z;
+        return W_ * DMatrix<double>::Identity(X().rows(), X().rows())- W_ * X() * z;
     }
     //
     // FINE PARTE AGGIUNTA
