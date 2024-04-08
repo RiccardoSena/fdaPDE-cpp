@@ -253,7 +253,7 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
 //    covariates:   yes
 //    BC:           no
 //    order FE:     1
-TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
+TEST(inference_test, WaldExact) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
