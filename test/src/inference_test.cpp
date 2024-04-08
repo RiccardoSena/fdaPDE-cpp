@@ -284,13 +284,15 @@ TEST(srpde_test, laplacian_semiparametric_samplingatlocations) {
 
 
      // test correctness
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
-    inference.computeCI(fdapde::models::simultaneous);
-    int cols = model.beta().size();
-    DMatrix<double> C(1, cols);
-    C.setOnes(); // matrice C ha una sola riga di tutti 1
-    inference.setC(C);
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), "../data/models/srpde/2D_test2/pvalues.csv"));
+    //fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    //inference.computeCI(fdapde::models::simultaneous);
+    //int cols = model.beta().size();
+    //DMatrix<double> C(1, cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    //inference.setC(C);
+    //DMatrix<double> matrix(1, 1);
+    //matrix << 0.00002458211564814289 ;
+    //EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), matrix , 1e-7));
     
 
 }

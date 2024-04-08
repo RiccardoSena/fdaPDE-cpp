@@ -30,6 +30,8 @@ using fdapde::core::FSPAI;
 #include "exact_edf.h"
 
 // #include <boost/math/distributions/chi_squared.hpp>
+#include <cmath>
+#include <random>
 
 namespace fdapde {
 namespace models {
@@ -188,7 +190,9 @@ template <typename Model, typename Strategy> class Wald {
         // SIMULTANEOUS
         //boost::math::chi_squared_distribution<double> chi_squared(p);
         // double quantile = boost::math::quantile(chi_squared, alpha_);
-        double quantile = 1;
+        double quantile = chi_squared_quantile(p, 1-alpha_);
+
+        //double quantile = 1;
         
         lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_.n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_.n_obs()).sqrt();
@@ -198,7 +202,9 @@ template <typename Model, typename Strategy> class Wald {
         else if (type == bonferroni){
         // Bonferroni
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
-        double quantile = 1;
+         double quantile = normal_standard_quantile(1-alpha_/(2*p));
+
+        //double quantile = 1;
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
@@ -208,7 +214,9 @@ template <typename Model, typename Strategy> class Wald {
         else if (type == one_at_the_time){
         // One at the time
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
-        double quantile = 1;
+        double quantile = normal_standard_quantile(1-alpha_/2);
+
+        //double quantile = 1;
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
@@ -230,6 +238,7 @@ template <typename Model, typename Strategy> class Wald {
 
         return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
+     
 
 
      // this function returns the statistics not the p-values
@@ -311,8 +320,51 @@ template <typename Model, typename Strategy> class Wald {
       DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
       return invM_;
      }
+     
+     //questa è da controllare 
+     double chi_squared_quantile(double percentile, int degrees_of_freedom) {
+      // Percentuale complementare
+      double p = 1.0 - percentile;
 
-   // aggiungere destructor?
+      // Calcolare il valore z corrispondente al percentile complementare
+      double z = std::sqrt(2.0 * degrees_of_freedom);
+
+      // Calcolare il valore del quantile utilizzando la funzione inversa della distribuzione normale standard
+      double quantile = z - ((1.0 / 3.0) * (1.0 / z) - 1.0 / (36.0 * z * z * z)) * (1.0 / std::sqrt(2.0)) * std::log(p / std::sqrt(2.0 * M_PI));
+      
+      // Applicare correzioni successive per gradi di libertà maggiori di 1
+      if (degrees_of_freedom > 1) {
+         quantile -= (1.0 / (6.0 * z)) * ((1.0 - (2.0 / (9.0 * degrees_of_freedom))) / std::sqrt(2.0 / (9.0 * degrees_of_freedom)) - 1.0) * std::log(p / std::sqrt(2.0 * M_PI));
+      }
+
+      // Applicare correzioni successive per gradi di libertà maggiori di 2
+      if (degrees_of_freedom > 2) {
+         quantile -= (1.0 / (6.0 * z)) * ((1.0 - (2.0 / (9.0 * degrees_of_freedom))) / std::sqrt(2.0 / (9.0 * degrees_of_freedom)) - 1.0) * std::log(p / std::sqrt(2.0 * M_PI));
+      }
+
+      return quantile * quantile;
+     }
+
+      // questa è da controllare 
+     // Funzione per calcolare i quantili di una distribuzione normale standard
+     double normal_standard_quantile(double percentile) {
+    // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
+      return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
+   }
+
+      //questa è da controllare 
+     // Funzione di approssimazione per il calcolo dell'inverso dell'errore
+     double inverse_erf(double x) {
+      const double epsilon = 1e-10; // Tolleranza per l'approssimazione
+      double y = 0.0;
+      double delta;
+      do {
+         delta = (std::erf(y) - x) / (2.0 / std::sqrt(M_PI) * std::exp(-y * y));
+         y -= delta;
+      } while (std::fabs(delta) > epsilon);
+      return y;
+   }
+      // aggiungere destructor?
 
 } ;
 }  // closing models namespace
