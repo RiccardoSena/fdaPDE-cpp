@@ -294,5 +294,4 @@ TEST(inference_test, WaldExact) {
     //matrix << 0.00002458211564814289 ;
     //EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), matrix , 1e-7));
     
-
 }
