@@ -292,18 +292,34 @@ template <typename Model, typename Strategy> class Wald {
             std::cout<<"numero di righe di betaw: "<<betaw().rows()<<std::endl; 
             std::cout<<"numero di colonne di betaw: "<<betaw().cols()<<std::endl; 
 
-            C_ * betaw() - beta0_;
-            std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
+            //C_ * betaw() - beta0_;
+            //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
-            DVector<double> diff = C_ * betaw() - beta0_;
-            std::cout<<"creazione diff avviene correttamente"<<std::endl;
-
+            //DVector<double> diff = C_ * betaw() - beta0_;
+            //std::cout<<"creazione diff avviene correttamente"<<std::endl;
+            
+            DVector<double> diff(1);
+            diff << 0.89;
+            std::cout << std::endl;
+            for (int i = 0; i < Vw_.rows(); ++i) {
+               for (int j = 0; j < Vw_.cols(); ++j) {
+                  std::cout << Vw_(i,j) << " ";
+            }
+            std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
             std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
 
             DMatrix<double> Sigmadec_ = inverse(Sigma);
             std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
 
+            std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
+            std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
+
+            std::cout<<"numero di righe di diff.adj: "<<diff.adjoint().rows()<<std::endl; 
+            std::cout<<"numero di colonne di diff.adj: "<<diff.adjoint().cols()<<std::endl; 
+
+            std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
+            std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
             std::cout<<"creazione stat avviene correttamente"<<std::endl;
