@@ -295,15 +295,17 @@ template <typename Model, typename Strategy> class Wald {
             //C_ * betaw() - beta0_;
             //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
-            //DVector<double> diff = C_ * betaw() - beta0_;
-            //std::cout<<"creazione diff avviene correttamente"<<std::endl;
+            DVector<double> diff = C_ * betaw() - beta0_;
+            std::cout<<"creazione diff avviene correttamente"<<std::endl;
             
-            DVector<double> diff(1);
-            diff << 0.89;
-            std::cout << std::endl;
+            //DVector<double> diff(1);
+            //diff << 0.89;
+            
+            std::cout<<"matrice Vw: "<<std::endl;     
             for (int i = 0; i < Vw_.rows(); ++i) {
                for (int j = 0; j < Vw_.cols(); ++j) {
                   std::cout << Vw_(i,j) << " ";
+               }
             }
             std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();

@@ -288,12 +288,16 @@ TEST(inference_test, WaldExact) {
     std::cout << "creato elemento inference" << std::endl;
 
     int cols = model.beta().size();
-    //DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
-    DMatrix<double> C(1,cols);
-    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
     for (int i = 0; i < model.beta().size(); ++i) {
-        std::cout << C(0,i) << " ";
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
     }
+
     std::cout << std::endl;
     inference.setC(C);
     std::cout << "set C" << std::endl;
@@ -305,12 +309,13 @@ TEST(inference_test, WaldExact) {
     inference.computeCI(fdapde::models::simultaneous);
     std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
 
-    std::cout << "il valore dei pvalue è" << inference.p_value(fdapde::models::simultaneous)(0) << std::endl;
+    std::cout << "il valore dei pvalue è" << std::endl;
+    std::cout<< inference.p_value(fdapde::models::simultaneous)(0) << std::endl;
     
     std::cout << "ora inizia il test" << std::endl;
     DMatrix<double> matrix(1, 1);
-    matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), matrix , 1e-7));
+    //matrix << 0.00002458211564814289 ;
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.3355454 , 1e-7));
     
     
 }
