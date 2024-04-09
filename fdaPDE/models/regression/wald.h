@@ -37,9 +37,6 @@ using fdapde::core::lump;
 namespace fdapde {
 namespace models {
 
-struct exact {};
-struct nonexact {};
-
 enum CIType {bonferroni,simultaneous,one_at_the_time};
 
 template <typename Model, typename Strategy> class Wald {
@@ -67,7 +64,7 @@ template <typename Model, typename Strategy> class Wald {
 
      struct NonExactInverse{
      // forse static
-      DMatrix<double> compute(const Model& m){
+      DMatrix<double> compute(Model m){
         // FSPAI approx
         // E_tilde = Psi^T*\Psi+lambda*\R
         // making E_tilde sparse

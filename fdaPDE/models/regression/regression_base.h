@@ -33,6 +33,9 @@ using fdapde::core::BinaryVector;
 namespace fdapde {
 namespace models {
 
+struct exact {};
+struct nonexact {};
+
 // base class for any *regression* model
 template <typename Model, typename RegularizationType>
 class RegressionBase :
