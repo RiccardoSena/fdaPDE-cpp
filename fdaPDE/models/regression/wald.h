@@ -87,7 +87,7 @@ template <typename Model, typename Strategy> class Wald {
         // Ct = -(W^T*\W)^{-1}   q x q
         // Vt = W^T*\Psi   q x Nt
         // DMatrix<double> Ut_ = m_.PsiTD() * m_.W();
-        DMatrix<double> Ut_ = m.Psi().transpose() + m.X();
+        DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
         DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
         DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
 
@@ -245,6 +245,7 @@ template <typename Model, typename Strategy> class Wald {
      // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
          fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+         std::cout<<"controllo su C avviene correttamente"<<std::endl;
 
          // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
@@ -252,18 +253,61 @@ template <typename Model, typename Strategy> class Wald {
             // set beta0 to 0
             setBeta0(DVector<double>::Zero(betaw().size()));
          }
+
+         std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
+
+         std::cout<<"la lunghezza di beta0_ è : "<<betaw().size()<<std::endl;
+         std::cout<<"questa è beta0_ : " <<std::endl;
+         for (int i = 0; i < betaw().size(); ++i) {
+            std::cout << beta0_[i] << " ";
+         }
+
+         std::cout<<"questa è betaw : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < betaw().size(); ++i) {
+            std::cout << betaw()[i] << " ";
+         }
+         std::cout << std::endl;
+
          if(is_empty(Vw_)){
             Vw_ = Vw();
          }
+         std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
 
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
-            DVector<double> diff = C_ * m_.beta() - beta0_;
+            std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
+
+            std::cout << std::endl;
+            for (int i = 0; i < betaw().size(); ++i) {
+               std::cout << C_(0,i) << " ";
+            }
+            std::cout << std::endl;
+            // Ottenere le dimensioni di C_
+            std::cout<<"numero di righe di C_: "<<C_.rows()<<std::endl;
+            std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
+
+            // Ottenere le dimensioni di m_.beta()
+            std::cout<<"numero di righe di betaw: "<<betaw().rows()<<std::endl; 
+            std::cout<<"numero di colonne di betaw: "<<betaw().cols()<<std::endl; 
+
+            C_ * betaw() - beta0_;
+            std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
+
+            DVector<double> diff = C_ * betaw() - beta0_;
+            std::cout<<"creazione diff avviene correttamente"<<std::endl;
+
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
+            std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
+
             DMatrix<double> Sigmadec_ = inverse(Sigma);
+            std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
+
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
+            std::cout<<"creazione stat avviene correttamente"<<std::endl;
+
 
             statistics.resize(C_.rows());
             statistics(0) = stat;

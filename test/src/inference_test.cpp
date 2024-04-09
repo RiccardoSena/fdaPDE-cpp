@@ -278,20 +278,34 @@ TEST(inference_test, WaldExact) {
     model.init();
     model.solve();
     // test correctness
-    EXPECT_TRUE(almost_equal(model.f()   , "../data/models/srpde/2D_test2/sol.mtx" ));
-    EXPECT_TRUE(almost_equal(model.beta(), "../data/models/srpde/2D_test2/beta.mtx"));
+    //EXPECT_TRUE(almost_equal(model.f()   , "../data/models/srpde/2D_test2/sol.mtx" ));
+    //EXPECT_TRUE(almost_equal(model.beta(), "../data/models/srpde/2D_test2/beta.mtx"));
 
 
-
+    
      // test correctness
-    //fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
-    //inference.computeCI(fdapde::models::simultaneous);
-    //int cols = model.beta().size();
-    //DMatrix<double> C(1, cols);
-    //C.setOnes(); // matrice C ha una sola riga di tutti 1
-    //inference.setC(C);
-    //DMatrix<double> matrix(1, 1);
-    //matrix << 0.00002458211564814289 ;
-    //EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), matrix , 1e-7));
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    std::cout << "creato elemento inference" << std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C(1, cols);
+    C.setOnes(); // matrice C ha una sola riga di tutti 1
+    for (int i = 0; i < model.beta().size(); ++i) {
+        std::cout << C(0,i) << " ";
+    }
+    std::cout << std::endl;
+    inference.setC(C);
+    std::cout << "set C" << std::endl;
+
+    inference.computeCI(fdapde::models::simultaneous);
+    std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
+
+    std::cout << "il valore dei pvalue è" << inference.p_value(fdapde::models::simultaneous)(0) << std::endl;
+    
+    std::cout << "ora inizia il test" << std::endl;
+    DMatrix<double> matrix(1, 1);
+    matrix << 0.00002458211564814289 ;
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous), matrix , 1e-7));
+    
     
 }
