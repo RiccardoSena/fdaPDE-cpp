@@ -21,6 +21,7 @@
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
+using fdapde::core::lump;
 
 #include "../model_macros.h"
 #include "../model_traits.h"
@@ -37,6 +38,7 @@ namespace fdapde {
 namespace models {
 
 struct exact {};
+struct nonexact {};
 
 enum CIType {bonferroni,simultaneous,one_at_the_time};
 
@@ -51,6 +53,14 @@ template <typename Model, typename Strategy> class Wald {
         Tdec_ = m.T().partialPivLu(); 
         DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
         DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
+        std::cout<<"questa è S : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < 4; ++i) {
+            for(int j=0; j<4;++j){
+            std::cout << S(i,j)<< " ";
+         }
+         }
+         std::cout << std::endl;
         return S;
         }
       };
@@ -73,12 +83,18 @@ template <typename Model, typename Strategy> class Wald {
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
         SpMatrix<double> invR0_= fspai_R0.getInverse();
-
+      /*
+        //altirmenti calcolo in modo esatto R0^-1 e poi uso il lumping per renderla sparsa:
+        DMatrix<double> R0inv=inverse(m.R0());
+        DMatrix<double> invR0_=lump(R0inv);
+*/
         //calcolo la matrice Atilde
         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
-        FSPAI fspai_E(Et_);
+        //Et_ should be stored as a sparse matrix 
+        Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+        FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
 
@@ -94,6 +110,14 @@ template <typename Model, typename Strategy> class Wald {
         SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
         // m_.Psi().transpose() or m_.PsiTD()
         DMatrix<double> S = m.Psi() * invMt_ * m.PsiTD() * m.Q();
+        std::cout<<"questa è S : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < 4; ++i) {
+            for(int j=0; j<4;++j){
+            std::cout << S(i,j)<< " ";
+         }
+         }
+         std::cout << std::endl;
         return S;
         }
       };
@@ -375,7 +399,8 @@ template <typename Model, typename Strategy> class Wald {
      }
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
-     DMatrix<double> inverse(DMatrix<double> M){
+     //inverse() è progettata per operare solo sulla matrice passata come argomento e non dipende da alcun altro stato interno della classe Wald, puoi renderla statica
+     static DMatrix<double> inverse(DMatrix<double> M){
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu(); 
