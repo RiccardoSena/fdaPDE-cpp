@@ -317,7 +317,7 @@ TEST(inference_test, WaldExact) {
     std::cout << "ora inizia il test wald " << std::endl;
     DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.3355454 , 1e-7));
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
     
 
 

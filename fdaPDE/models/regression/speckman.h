@@ -30,13 +30,10 @@ using fdapde::core::FSPAI;
 
 #include <boost/math/distributions/chi_squared.hpp>
 
-
 namespace fdapde {
 namespace models {
 
-//enum CIType {bonferroni, simultaneous, one_at_the_time};
 
-// template <typename Model, typename Strategy> class WaldBase
 template <typename Model, typename Strategy> class Speckman {
 
     private:
@@ -44,8 +41,9 @@ template <typename Model, typename Strategy> class Speckman {
      struct ExactInverse{
       SpMatrix<double> compute(Model m){
          SpMatrix<double> inverseA_ {};
-         inverseA_ =  m.invA().solve(DMatrix<double>::Identity(m.n_basis(), m.n_basis()));
-         return inverseA_;         
+         // change the sign
+         SpMatrix<double> inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(m.A().rows(), m.A().cols()));
+         return inverseA_.block(0, 0, m.n_basis(), m.n_basis());         
       }
      };
 
@@ -101,8 +99,8 @@ template <typename Model, typename Strategy> class Speckman {
 
      const DMatrix<double>& Lambda() {
         // serve il .block???
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs());
+        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs());
         return Lambda_;
       }
       
@@ -172,8 +170,9 @@ template <typename Model, typename Strategy> class Speckman {
 
          if(type == simultaneous){ 
          // SIMULTANEOUS
-         boost::math::chi_squared_distribution<double> chi_squared(p);
-         double quantile = boost::math::quantile(chi_squared, alpha_);
+         //boost::math::chi_squared_distribution<double> chi_squared(p);
+         //double quantile = boost::math::quantile(chi_squared, alpha_);
+         double quantile = 1;
          
          lowerBound = (C_ * betas_).array() - (quantile * diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + (quantile * diagon.array()).sqrt();
@@ -182,7 +181,8 @@ template <typename Model, typename Strategy> class Speckman {
 
          else if (type == bonferroni){
          // BONFERRONI
-         double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
+         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
+         double quantile = 1;
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
@@ -191,7 +191,8 @@ template <typename Model, typename Strategy> class Speckman {
 
          else if (type == one_at_the_time){
          // ONE AT THE TIME
-         double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
+         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
+         double quantile = 1;
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
@@ -243,7 +244,7 @@ template <typename Model, typename Strategy> class Speckman {
          if(is_empty(Vs_)){
             Vs_ = Vs();
          }
-         std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
+         std::cout<<"controllo su Vs avviene correttamente"<<std::endl;
 
          DVector<double> statistics(C_.rows());
          // simultaneous 
@@ -293,7 +294,7 @@ template <typename Model, typename Strategy> class Speckman {
             std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
             std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
-            double stat = diff.adjoint() * Sigmadec_ * diff;
+            double stat = diff.adjoint() * C_.transpose() * Sigmadec_ * C_ * diff;
             std::cout<<"creazione stat avviene correttamente"<<std::endl;
 
 
@@ -345,11 +346,10 @@ template <typename Model, typename Strategy> class Speckman {
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
      static DMatrix<double> inverse(DMatrix<double> M){
-      // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
-      Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
-      Mdec_ = M.partialPivLu();
-      DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
-      return invM_;
+      Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+      //Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
+      //Mdec_ = M.partialPivLu();
+      return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
 
 

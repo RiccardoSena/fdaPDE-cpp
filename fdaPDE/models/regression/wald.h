@@ -37,8 +37,6 @@ using fdapde::core::lump;
 namespace fdapde {
 namespace models {
 
-enum CIType {bonferroni,simultaneous,one_at_the_time};
-
 template <typename Model, typename Strategy> class Wald {
 
     private:  
@@ -46,8 +44,7 @@ template <typename Model, typename Strategy> class Wald {
       struct ExactInverse {
       // forse static
       DMatrix<double> compute(Model m){
-        Eigen::PartialPivLU<DMatrix<double>> Tdec_ {};
-        Tdec_ = m.T().partialPivLu(); 
+        Eigen::PartialPivLU<DMatrix<double>> Tdec_ (m.T());
         DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
         DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
         std::cout<<"questa è S : " <<std::endl;
@@ -316,7 +313,8 @@ template <typename Model, typename Strategy> class Wald {
             //C_ * betaw() - beta0_;
             //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
-            DVector<double> diff = C_ * betaw() - beta0_;
+            //DVector<double> diff = C_ * betaw() - beta0_;
+            DVector<double> diff = C_ * (betaw() - beta0_);
             std::cout<<"creazione diff avviene correttamente"<<std::endl;
             
             //DVector<double> diff(1);
@@ -338,26 +336,28 @@ template <typename Model, typename Strategy> class Wald {
             std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
             std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
 
-            std::cout<<"numero di righe di diff.adj: "<<diff.adjoint().rows()<<std::endl; 
-            std::cout<<"numero di colonne di diff.adj: "<<diff.adjoint().cols()<<std::endl; 
+            std::cout<<"numero di righe di diff.transpse: "<<diff.transpose().rows()<<std::endl; 
+            std::cout<<"numero di colonne di diff.transpose: "<<diff.transpose().cols()<<std::endl; 
 
             std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
             std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
-            double stat = diff.adjoint() * Sigmadec_ * diff;
+            //double stat = diff.adjoint() * Sigmadec_ * diff;
+            DVector<double> statistics = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
             std::cout<<"creazione stat avviene correttamente"<<std::endl;
 
-
+            /*
             statistics.resize(C_.rows());
             statistics(0) = stat;
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
             }
+            */
             return statistics; 
          }
          // one at the time
-         if ( type == one_at_the_time ){
+         else if ( type == one_at_the_time ){
             int p = C_.rows();
             statistics.resize(p);
             for(int i = 0; i < p; i++){
@@ -398,11 +398,10 @@ template <typename Model, typename Strategy> class Wald {
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
      //inverse() è progettata per operare solo sulla matrice passata come argomento e non dipende da alcun altro stato interno della classe Wald, puoi renderla statica
      static DMatrix<double> inverse(DMatrix<double> M){
+      Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
-      Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
-      Mdec_ = M.partialPivLu(); 
-      DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
-      return invM_;
+      // Mdec_ = M.partialPivLu(); 
+      return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
      
      //questa è da controllare 
