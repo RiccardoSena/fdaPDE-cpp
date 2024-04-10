@@ -327,10 +327,26 @@ TEST(inference_test, WaldExact) {
     // test correctness SPECKMAN
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
     std::cout << "creato elemento inference" << std::endl;
+    std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    inferenceSpeck.betas();
+    std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
+    }
 
     inferenceSpeck.setC(C);
     std::cout << "set C" << std::endl;
-
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
     inferenceSpeck.setBeta0(beta0);
 
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
@@ -346,9 +362,9 @@ TEST(inference_test, WaldExact) {
     //DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.33554, 1e-7));
-    */
+    
 
-    /*
+    
     // test correctness EigenSignFlip
     fdapde::models::EigenSignFlip<SRPDE> inferenceESF(model);
     std::cout << "creato elemento inference" << std::endl;
