@@ -49,7 +49,7 @@ template <typename Model, typename Strategy> class Wald {
         Eigen::PartialPivLU<DMatrix<double>> Tdec_ {};
         Tdec_ = m.T().partialPivLu(); 
         DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
-        DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
+        DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
         std::cout<<"questa è S : " <<std::endl;
          std::cout << std::endl;
          for (int i = 0; i < 4; ++i) {

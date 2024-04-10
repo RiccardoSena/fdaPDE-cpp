@@ -26,8 +26,7 @@
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
-
-// using fdapde::core::SMW;
+using fdapde::core::FSPAI;
 
 #include <boost/math/distributions/chi_squared.hpp>
 
@@ -35,17 +34,17 @@
 namespace fdapde {
 namespace models {
 
-enum CIType {bonferroni, simultaneous, one_at_the_time};
+//enum CIType {bonferroni, simultaneous, one_at_the_time};
 
 // template <typename Model, typename Strategy> class WaldBase
-template <typename Model> class Speckman {
+template <typename Model, typename Strategy> class Speckman {
 
     private:
 
      struct ExactInverse{
       SpMatrix<double> compute(Model m){
          SpMatrix<double> inverseA_ {};
-         inverseA_ =  m_.invA().solve(DMatrix<double>::Identity(m_.n_basis, m_.n_basis));
+         inverseA_ =  m.invA().solve(DMatrix<double>::Identity(m.n_basis(), m.n_basis()));
          return inverseA_;         
       }
      };
@@ -55,7 +54,7 @@ template <typename Model> class Speckman {
         // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
-        fdapde::core::FSPAI fspai_R0(m_.R0());
+        FSPAI fspai_R0(m_.R0());
 
         // questi non so come vadano scelti ho messo nuemri a caso ???
         unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
@@ -64,7 +63,7 @@ template <typename Model> class Speckman {
         // calcolo inversa di R0
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
-        SpMatrix<double> inv_R0 fspai_R0.getInverse();
+        SpMatrix<double> inv_R0 = fspai_R0.getInverse();
 
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
@@ -72,7 +71,7 @@ template <typename Model> class Speckman {
         DMatrix<double> tildeA_ = m_.Psi().transpose()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
 
         //applico FSPAI su Atilde
-        fdapde::core::FSPAI fspai_A(tildeA_);
+        FSPAI fspai_A(tildeA_);
         fspai_A.compute(alpha, beta, epsilon);
 
         // inverseA_
@@ -102,7 +101,8 @@ template <typename Model> class Speckman {
 
      const DMatrix<double>& Lambda() {
         // serve il .block???
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis, m_.n_basis) * m_.PsiTD();
+        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
+        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs());
         return Lambda_;
       }
       
@@ -131,7 +131,7 @@ template <typename Model> class Speckman {
         DMatrix<double> Wt_ = Lambda_ * m_.X();
         // DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         // DMatrix<double> invU_ = inverse(U_); 
-        DMatrix<double> left_ = WaldBase<Model>::inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
+        DMatrix<double> left_ = inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
 
         Vs_ = left_ * Lambda_ * epsilon_ * epsilon_.transpose() * Lambda_.transpose() * left_.transpose();
@@ -158,11 +158,11 @@ template <typename Model> class Speckman {
          // metodo con libreria eigen 
          DMatrix<double> CVCdiag_ = ((C_ * Vs()) * C_.transpose()).diagonal();
          //metodo con ciclo for per caclolare solo la diagonale e non tutta la matrice 
-	      int size = std::min(C_.rows(), Vs().rows()) // questo lo sai a priori quindi sostituisci con la teoria  
+	      int size = std::min(C_.rows(), Vs().rows()); // questo lo sai a priori quindi sostituisci con la teoria  
 	      DVector<double> diagon(size);
          for (int i = 0; i < C_.rows(); ++i) {
             // ottengo la riga i-esima della matrice C
-            DVector ci = C_.row(i);
+            DVector<double> ci = C_.row(i);
             // calcolo il prodotto c_i^T * V * c_i
             diagon[i] = ci.transpose() * Vs() * ci;
          }
@@ -214,34 +214,94 @@ template <typename Model> class Speckman {
 
       }
 
-     // this function returns the statistics not the p-values
      DVector<double> p_value(CIType type){
-         fdapde_assert(!is_empty(C_));     // throw an exception if condition is not met  
+         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+         std::cout<<"controllo su C avviene correttamente"<<std::endl;
 
+         // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
             // print errore (need to set beta0)???
-            // set beta_0 to 0
-            setBeta0(DVector<double>::Zero(betas().size()));
+            // set beta0 to 0
+            setBeta0(DVector<double>::Zero(betas_.size()));
          }
 
-         if(is_empty(Vs_)){
-               Vs();
+         std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
+
+         std::cout<<"la lunghezza di beta0_ è : "<<betas().size()<<std::endl;
+         std::cout<<"questa è beta0_ : " <<std::endl;
+         for (int i = 0; i < betas().size(); ++i) {
+            std::cout << beta0_[i] << " ";
          }
+
+         std::cout<<"questa è betas : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < betas().size(); ++i) {
+            std::cout << betas()[i] << " ";
+         }
+         std::cout << std::endl;
+
+         if(is_empty(Vs_)){
+            Vs_ = Vs();
+         }
+         std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
 
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
-            DVector<double> diff = C_ * m_.beta() - beta0_;
+            std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
+
+            std::cout << std::endl;
+            for (int i = 0; i < betas().size(); ++i) {
+               std::cout << C_(0,i) << " ";
+            }
+            std::cout << std::endl;
+            // Ottenere le dimensioni di C_
+            std::cout<<"numero di righe di C_: "<<C_.rows()<<std::endl;
+            std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
+
+            // Ottenere le dimensioni di m_.beta()
+            std::cout<<"numero di righe di beta: "<<betas().rows()<<std::endl; 
+            std::cout<<"numero di colonne di beta: "<<betas().cols()<<std::endl; 
+
+            //C_ * betaw() - beta0_;
+            //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
+
+            DVector<double> diff = C_ * betas() - beta0_;
+            std::cout<<"creazione diff avviene correttamente"<<std::endl;
+            
+            //DVector<double> diff(1);
+            //diff << 0.89;
+            
+            std::cout<<"matrice Vw: "<<std::endl;     
+            for (int i = 0; i < Vs_.rows(); ++i) {
+               for (int j = 0; j < Vs_.cols(); ++j) {
+                  std::cout << Vs_(i,j) << " ";
+               }
+            }            std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
-            DMatrix<double> Sigmadec_ = WaldBase<Model>::inverse(Sigma);
+            std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
+
+            DMatrix<double> Sigmadec_ = inverse(Sigma);
+            std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
+
+            std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
+            std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
+
+            std::cout<<"numero di righe di diff.adj: "<<diff.adjoint().rows()<<std::endl; 
+            std::cout<<"numero di colonne di diff.adj: "<<diff.adjoint().cols()<<std::endl; 
+
+            std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
+            std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
+            std::cout<<"creazione stat avviene correttamente"<<std::endl;
+
 
             statistics.resize(C_.rows());
             statistics(0) = stat;
 
-            for(int i = 0; i < C_.rows(); i++){
-               statistics(i) == 10e20;
+            for(int i = 1; i < C_.rows(); i++){
+               statistics(i) = 10e20;
             }
             return statistics; 
          }
@@ -253,7 +313,7 @@ template <typename Model> class Speckman {
                DVector<double> col = C_.row(i);
                double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vs_ *col;
-               double stat= diff/std::sqrt(sigma);
+               double stat = diff/std::sqrt(sigma);
                statistics(i) = stat;
             }
             return statistics;
@@ -284,16 +344,16 @@ template <typename Model> class Speckman {
 
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
-     DMatrix<double> inverse(DMatrix<double> M){
+     static DMatrix<double> inverse(DMatrix<double> M){
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
       Mdec_ = M.partialPivLu();
-      DMatrix<double> invM_ = Mdec_.solve(DMatrix::Identity(M.rows(), M.cols()));
+      DMatrix<double> invM_ = Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
       return invM_;
      }
 
 
-} // end class
+} ;// end class
 } // end fdapde models
 } // end fdapde namespace
 

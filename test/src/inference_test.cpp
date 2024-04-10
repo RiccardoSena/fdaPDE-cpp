@@ -53,6 +53,8 @@ using fdapde::testing::read_mtx;
 using fdapde::testing::read_csv;
 
 #include "../../fdaPDE/models/regression/wald.h"
+#include "../../fdaPDE/models/regression/speckman.h"
+
 
 
 // This file is part of fdaPDE, a C++ library for physics-informed
@@ -283,7 +285,7 @@ TEST(inference_test, WaldExact) {
 
 
     
-     // test correctness
+     // test correctness WALD
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
     std::cout << "creato elemento inference" << std::endl;
 
@@ -312,10 +314,36 @@ TEST(inference_test, WaldExact) {
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< inference.p_value(fdapde::models::simultaneous)(0) << std::endl;
     
-    std::cout << "ora inizia il test" << std::endl;
+    std::cout << "ora inizia il test wald " << std::endl;
     DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
     EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.3355454 , 1e-7));
     
+
+
+
+    /*
+    // test correctness SPECKMAN
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    std::cout << "creato elemento inference" << std::endl;
+
+    inferenceSpeck.setC(C);
+    std::cout << "set C" << std::endl;
+
+    inferenceSpeck.setBeta0(beta0);
+
+    //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+
+    std::cout << "il valore dei pvalue è" << std::endl;
+    std::cout<< inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
+    std::cout<< inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1) << std::endl;
+
     
+    std::cout << "ora inizia il test speckman" << std::endl;
+    //DMatrix<double> matrix(1, 1);
+    //matrix << 0.00002458211564814289 ;
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.33554, 1e-7));
+    */
+
 }
