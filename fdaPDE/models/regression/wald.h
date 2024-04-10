@@ -345,17 +345,17 @@ template <typename Model, typename Strategy> class Wald {
             std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
             //double stat = diff.adjoint() * Sigmadec_ * diff;
-            DVector<double> statistics = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"creazione stat avviene correttamente"<<std::endl;
+            double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
+            std::cout<<"valore della statistica: " << stat <<std::endl;
 
-            /*
+            
             statistics.resize(C_.rows());
             statistics(0) = stat;
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
             }
-            */
+            
             return statistics; 
          }
          // one at the time

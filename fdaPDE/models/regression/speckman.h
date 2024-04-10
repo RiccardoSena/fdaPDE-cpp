@@ -29,7 +29,7 @@ using fdapde::core::FSPAI;
 #include "strpde.h"
 #include "exact_edf.h"
 
-#include <boost/math/distributions/chi_squared.hpp>
+//#include <boost/math/distributions/chi_squared.hpp>
 
 namespace fdapde {
 namespace models {
