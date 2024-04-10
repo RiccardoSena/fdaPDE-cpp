@@ -46,7 +46,9 @@ template <typename Model, typename Strategy> class Wald {
       DMatrix<double> compute(Model m){
         Eigen::PartialPivLU<DMatrix<double>> Tdec_ (m.T());
         DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
-        DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
+        //DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
+        DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
+
         std::cout<<"questa è S : " <<std::endl;
          std::cout << std::endl;
          for (int i = 0; i < 4; ++i) {
@@ -72,7 +74,7 @@ template <typename Model, typename Strategy> class Wald {
 
         int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
         int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
         // calcolo inversa di R0
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0

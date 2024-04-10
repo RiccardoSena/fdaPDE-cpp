@@ -54,6 +54,7 @@ using fdapde::testing::read_csv;
 
 #include "../../fdaPDE/models/regression/wald.h"
 #include "../../fdaPDE/models/regression/speckman.h"
+#include "../../fdaPDE/models/regression/eigen_sign_flip.h"
 
 
 
@@ -308,8 +309,8 @@ TEST(inference_test, WaldExact) {
     beta0(1)=-1;
     inference.setBeta0(beta0);
 
-    inference.computeCI(fdapde::models::simultaneous);
-    std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
+    //inference.computeCI(fdapde::models::simultaneous);
+    //std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
 
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< inference.p_value(fdapde::models::simultaneous)(0) << std::endl;
@@ -326,24 +327,76 @@ TEST(inference_test, WaldExact) {
     // test correctness SPECKMAN
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
     std::cout << "creato elemento inference" << std::endl;
+    std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    inferenceSpeck.betas();
+    std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
+    }
 
     inferenceSpeck.setC(C);
     std::cout << "set C" << std::endl;
-
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
     inferenceSpeck.setBeta0(beta0);
 
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
+    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
     std::cout << "il valore dei pvalue è" << std::endl;
-    std::cout<< inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
-    std::cout<< inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1) << std::endl;
+    std::cout<< pvalues(0) << std::endl;
+    std::cout<< pvalues(1) << std::endl;
 
     
     std::cout << "ora inizia il test speckman" << std::endl;
     //DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.33554, 1e-7));
+    
+
+    
+    // test correctness EigenSignFlip
+    fdapde::models::EigenSignFlip<SRPDE> inferenceESF(model);
+    std::cout << "creato elemento inference" << std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
+    }
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceESF.setBeta0(beta0);
+    std::cout << "set beta0 completato correttamente" << std::endl;
+
+    //inference.computeCI(fdapde::models::simultaneous);
+    //std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
+
+    DVector<double> pvalues=inferenceESF.p_value();
+    //std::cout << "il valore del pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+    //std::cout << "ora inizia il test wald " << std::endl;
+    //DMatrix<double> matrix(1, 1);
+    //matrix << 0.00002458211564814289 ;
+    EXPECT_TRUE(almost_equal(inferenceESF.p_value()(0), 0.3355454 , 1e-7));
     */
 
 }

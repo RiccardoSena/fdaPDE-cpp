@@ -20,13 +20,14 @@
 // questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
+using fdapde::core::FSPAI;
+
 
 #include "../model_macros.h"
 #include "../model_traits.h"
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
-using fdapde::core::FSPAI;
 
 #include <boost/math/distributions/chi_squared.hpp>
 
@@ -39,25 +40,35 @@ template <typename Model, typename Strategy> class Speckman {
     private:
 
      struct ExactInverse{
-      SpMatrix<double> compute(Model m){
-         SpMatrix<double> inverseA_ {};
-         // change the sign
-         SpMatrix<double> inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(m.A().rows(), m.A().cols()));
+
+      DMatrix<double> compute(Model m){
+         DMatrix<double> inverseA_ {};
+         inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(2 * m.n_basis(),2 * m.n_basis()));
+         std::cout<<"questa è inversa di A : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < 4; ++i) {
+            for(int j=0; j<4;++j){
+               std::cout << inverseA_(i, j) << " ";
+         }
+         }
+         // Ottenere le dimensioni di A_
+         std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
+         std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
          return inverseA_.block(0, 0, m.n_basis(), m.n_basis());         
       }
      };
 
      struct NonExactInverse{
-      SpMatrix<double> compute(Model m){
+      DMatrix<double> compute(Model m){
         // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
         // FSPAI approx
         //creo oggetto FSPAI( vanno controllati tipi di input e output)
-        FSPAI fspai_R0(m_.R0());
+        FSPAI fspai_R0(m.R0());
 
         // questi non so come vadano scelti ho messo nuemri a caso ???
         unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
         unsigned beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.001; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
+        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
         // calcolo inversa di R0
         fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
@@ -66,14 +77,27 @@ template <typename Model, typename Strategy> class Speckman {
         //qui non so se è giusto questo lambda
         //caclolo la matrice Atilde
         // Bisogna usare PsiTD()??
-        DMatrix<double> tildeA_ = m_.Psi().transpose()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * inv_R0 * m_.R1();
+        DMatrix<double> tildeA_ = m.Psi().transpose()* m.Psi()+ m.lambda_D() * m.R1().transpose() * inv_R0 * m.R1();
 
         //applico FSPAI su Atilde
-        FSPAI fspai_A(tildeA_);
+        // tildeA_ should be sparse matrix 
+        Eigen::SparseMatrix<double> Asparse_ = tildeA_.sparseView();
+
+        FSPAI fspai_A(Asparse_);
         fspai_A.compute(alpha, beta, epsilon);
 
         // inverseA_
-        SpMatrix<double> inverseA_ = fspai_A.getInverse();
+        DMatrix<double> inverseA_ = fspai_A.getInverse();
+        std::cout<<"questa è inversa di A : " <<std::endl;
+         std::cout << std::endl;
+         for (int i = 0; i < 4; ++i) {
+            for(int j=0; j<4;++j){
+               std::cout << inverseA_.coeff(i, j) << " ";
+         }
+         }
+         // Ottenere le dimensioni di A_
+         std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
+         std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
         return inverseA_;
       }
      };
@@ -98,23 +122,23 @@ template <typename Model, typename Strategy> class Speckman {
      Speckman(const Model& m): m_(m) {};
 
      const DMatrix<double>& Lambda() {
-        // serve il .block???
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs());
-        return Lambda_;
+        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
+         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+         return Lambda_;
       }
       
      const DVector<double>& betas() {
         // Wt = Lambda_*\W
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
-
-        DMatrix<double> Wtilde_ = Lambda() * m_.X();
-        DMatrix<double> ytilde_ = Lambda() * m_.y();
+        DMatrix<double> Lambda_ = Lambda();
+        DMatrix<double> Wtilde_ = Lambda_ * m_.X();
+        DMatrix<double> ytilde_ = Lambda_ * m_.y();
 
         //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
         DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
+        std::cout<<"questi sono i beta s che vengono calcolati dentro alla funzione: "<<betas_<<std::endl;
         return betas_;
 
      }
@@ -308,6 +332,7 @@ template <typename Model, typename Strategy> class Speckman {
          }
          // one at the time
          if ( type == one_at_the_time ){
+            std::cout<<"entra nell'if del one at the time"<<std::endl;
             int p = C_.rows();
             statistics.resize(p);
             for(int i = 0; i < p; i++){
