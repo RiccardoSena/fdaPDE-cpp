@@ -346,7 +346,8 @@ template <typename Model, typename Strategy> class Wald {
 
             //double stat = diff.adjoint() * Sigmadec_ * diff;
             double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"valore della statistica: " << stat <<std::endl;
+            std::cout<<"valore della statistica: " << std::endl;
+            std::cout << stat <<std::endl;
 
             
             statistics.resize(C_.rows());
