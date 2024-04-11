@@ -52,8 +52,8 @@ template <typename Model, typename Strategy> class Speckman {
          }
          }
          // Ottenere le dimensioni di A_
-         std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
-         std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
+         //std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
+         //std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
          return inverseA_.block(0, 0, m.n_basis(), m.n_basis());         
       }
      };
@@ -96,8 +96,8 @@ template <typename Model, typename Strategy> class Speckman {
          }
          }
          // Ottenere le dimensioni di A_
-         std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
-         std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
+         //std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
+         //std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
         return inverseA_;
       }
      };
@@ -131,14 +131,16 @@ template <typename Model, typename Strategy> class Speckman {
         // Wt = Lambda_*\W
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
-        DMatrix<double> Lambda_ = Lambda();
+        if(is_empty(Lambda_)){
+            Lambda();
+         }
         DMatrix<double> Wtilde_ = Lambda_ * m_.X();
         DMatrix<double> ytilde_ = Lambda_ * m_.y();
 
         //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
         DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
-        std::cout<<"questi sono i beta s che vengono calcolati dentro alla funzione: "<<betas_<<std::endl;
+        //std::cout<<"questi sono i beta s che vengono calcolati dentro alla funzione: "<<betas_<<std::endl;
         return betas_;
 
      }
@@ -252,16 +254,16 @@ template <typename Model, typename Strategy> class Speckman {
 
          std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
 
-         std::cout<<"la lunghezza di beta0_ è : "<<betas().size()<<std::endl;
+         std::cout<<"la lunghezza di beta0_ è : "<<betas_.size()<<std::endl;
          std::cout<<"questa è beta0_ : " <<std::endl;
-         for (int i = 0; i < betas().size(); ++i) {
+         for (int i = 0; i < betas_.size(); ++i) {
             std::cout << beta0_[i] << " ";
          }
 
          std::cout<<"questa è betas : " <<std::endl;
          std::cout << std::endl;
-         for (int i = 0; i < betas().size(); ++i) {
-            std::cout << betas()[i] << " ";
+         for (int i = 0; i < betas_.size(); ++i) {
+            std::cout << betas_[i] << " ";
          }
          std::cout << std::endl;
 
@@ -276,7 +278,7 @@ template <typename Model, typename Strategy> class Speckman {
             std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
 
             std::cout << std::endl;
-            for (int i = 0; i < betas().size(); ++i) {
+            for (int i = 0; i < betas_.size(); ++i) {
                std::cout << C_(0,i) << " ";
             }
             std::cout << std::endl;
@@ -285,13 +287,13 @@ template <typename Model, typename Strategy> class Speckman {
             std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
 
             // Ottenere le dimensioni di m_.beta()
-            std::cout<<"numero di righe di beta: "<<betas().rows()<<std::endl; 
-            std::cout<<"numero di colonne di beta: "<<betas().cols()<<std::endl; 
+            std::cout<<"numero di righe di beta: "<<betas_.rows()<<std::endl; 
+            std::cout<<"numero di colonne di beta: "<<betas_.cols()<<std::endl; 
 
             //C_ * betaw() - beta0_;
             //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
-            DVector<double> diff = C_ * betas() - beta0_;
+            DVector<double> diff = C_ * betas_ - beta0_;
             std::cout<<"creazione diff avviene correttamente"<<std::endl;
             
             //DVector<double> diff(1);
