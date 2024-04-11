@@ -45,9 +45,8 @@ template <typename Model, typename Strategy> class Speckman {
          DMatrix<double> inverseA_ {};
          inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(2 * m.n_basis(),2 * m.n_basis()));
          std::cout<<"questa è inversa di A : " <<std::endl;
-         std::cout << std::endl;
          for (int i = 0; i < 4; ++i) {
-            for(int j=0; j<4;++j){
+            for(int j=0; j < 4; ++j){
                std::cout << inverseA_(i, j) << " ";
          }
          }
@@ -152,13 +151,21 @@ template <typename Model, typename Strategy> class Speckman {
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
+         //DMatrix<double> epsilon_ = m_.y() - m_.fitted();
+         //DMatrix<double> U=m_.X().transpose()*m_.X();
+         //DMatrix<double> E=epsilon_*epsilon_.transpose();
+         // Vs_ = inverse(U)*Wt_.transpose()*Lambda_*E*Lambda_.transpose()*Wt_*inverse(U);
+
+        
         DMatrix<double> Wt_ = Lambda_ * m_.X();
-        // DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
-        // DMatrix<double> invU_ = inverse(U_); 
+        //DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
+        //DMatrix<double> invU_ = inverse(U_); 
         DMatrix<double> left_ = inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
+        
 
         Vs_ = left_ * Lambda_ * epsilon_ * epsilon_.transpose() * Lambda_.transpose() * left_.transpose();
+        
         return Vs_;
      }
 
@@ -243,7 +250,7 @@ template <typename Model, typename Strategy> class Speckman {
 
      DVector<double> p_value(CIType type){
          fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
-         std::cout<<"controllo su C avviene correttamente"<<std::endl;
+         //std::cout<<"controllo su C avviene correttamente"<<std::endl;
 
          // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
@@ -252,76 +259,102 @@ template <typename Model, typename Strategy> class Speckman {
             setBeta0(DVector<double>::Zero(betas_.size()));
          }
 
-         std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
+         //std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
 
-         std::cout<<"la lunghezza di beta0_ è : "<<betas_.size()<<std::endl;
-         std::cout<<"questa è beta0_ : " <<std::endl;
-         for (int i = 0; i < betas_.size(); ++i) {
-            std::cout << beta0_[i] << " ";
-         }
+         //std::cout<<"la lunghezza di beta0_ è : "<<betas_.size()<<std::endl;
+         //std::cout<<"questa è beta0_ : " <<std::endl;
+         //for (int i = 0; i < betas_.size(); ++i) {
+         //   std::cout << beta0_[i] << " ";
+         //}
 
-         std::cout<<"questa è betas : " <<std::endl;
-         std::cout << std::endl;
-         for (int i = 0; i < betas_.size(); ++i) {
-            std::cout << betas_[i] << " ";
-         }
-         std::cout << std::endl;
+         //std::cout<<"questa è betas : " <<std::endl;
+         //std::cout << std::endl;
+         //for (int i = 0; i < betas_.size(); ++i) {
+         //   std::cout << betas_[i] << " ";
+         //}
+         //std::cout << std::endl;
 
          if(is_empty(Vs_)){
             Vs_ = Vs();
          }
-         std::cout<<"controllo su Vs avviene correttamente"<<std::endl;
-
+         std::cout<<"questa è Vs: "<<std::endl;
+         for (int i = 0; i < Vs_.rows(); ++i) {
+            for (int j = 0; j < Vs_.cols(); ++j) {
+               std::cout << Vs_(i,j) << " ";
+            }
+         }
+         std::cout << std::endl;
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
-            std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
+           // std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
 
-            std::cout << std::endl;
-            for (int i = 0; i < betas_.size(); ++i) {
-               std::cout << C_(0,i) << " ";
-            }
-            std::cout << std::endl;
+           // std::cout << std::endl;
+            //for (int i = 0; i < betas_.size(); ++i) {
+            //   std::cout << C_(0,i) << " ";
+            //}
+            //std::cout << std::endl;
             // Ottenere le dimensioni di C_
-            std::cout<<"numero di righe di C_: "<<C_.rows()<<std::endl;
-            std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
+            //std::cout<<"numero di righe di C_: "<<C_.rows()<<std::endl;
+            //std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
 
             // Ottenere le dimensioni di m_.beta()
-            std::cout<<"numero di righe di beta: "<<betas_.rows()<<std::endl; 
-            std::cout<<"numero di colonne di beta: "<<betas_.cols()<<std::endl; 
+            //std::cout<<"numero di righe di beta: "<<betas_.rows()<<std::endl; 
+            //std::cout<<"numero di colonne di beta: "<<betas_.cols()<<std::endl; 
 
             //C_ * betaw() - beta0_;
             //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
             DVector<double> diff = C_ * betas_ - beta0_;
-            std::cout<<"creazione diff avviene correttamente"<<std::endl;
+            std::cout<<"dif: "<<diff<<std::endl;
             
             //DVector<double> diff(1);
             //diff << 0.89;
             
-            std::cout<<"matrice Vw: "<<std::endl;     
-            for (int i = 0; i < Vs_.rows(); ++i) {
-               for (int j = 0; j < Vs_.cols(); ++j) {
-                  std::cout << Vs_(i,j) << " ";
-               }
-            }            std::cout << std::endl;           
+            //std::cout<<"matrice Vw: "<<std::endl;     
+            //for (int i = 0; i < Vs_.rows(); ++i) {
+             //  for (int j = 0; j < Vs_.cols(); ++j) {
+            //      std::cout << Vs_(i,j) << " ";
+            //   }
+            //}            std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
-            std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
+            std::cout<<"Sigma: "<<std::endl;
+            for (int i = 0; i < Sigma.rows(); ++i) {
+               for (int j = 0; j < Sigma.rows(); ++j) {
+                  std::cout<<Sigma(i,j)<<" ";
+               }
+            }
+
+
+            //Sigmadec_ non penso venga calcolata correttamente 
+            //DMatrix<double> Sigmadec_(Sigma.rows(),Sigma.cols());
+            //Sigmadec_(0,0)=9354590421.417017;
+            //Sigmadec_(0,1)=-108995256.8119;
+            //Sigmadec_(1,0)=-108995256.8119;
+            //Sigmadec_(1,1)=1269963.195261;
+
 
             DMatrix<double> Sigmadec_ = inverse(Sigma);
-            std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
+            std::cout<<"Sigmadec : "<<std::endl;
 
-            std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
-            std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
+            for (int i = 0; i < Sigma.rows(); ++i) {
+               for (int j = 0; j < Sigma.rows(); ++j) {
+                  std::cout<<Sigmadec_(i,j)<<" ";
+               }
+            }
+           // std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
 
-            std::cout<<"numero di righe di diff.adj: "<<diff.adjoint().rows()<<std::endl; 
-            std::cout<<"numero di colonne di diff.adj: "<<diff.adjoint().cols()<<std::endl; 
+            //std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
+            //std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
 
-            std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
-            std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
+            //std::cout<<"numero di righe di diff.adj: "<<diff.adjoint().rows()<<std::endl; 
+            //std::cout<<"numero di colonne di diff.adj: "<<diff.adjoint().cols()<<std::endl; 
+
+            //std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
+            //std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
             double stat = diff.adjoint() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"creazione stat avviene correttamente"<<std::endl;
+            //std::cout<<"creazione stat avviene correttamente"<<std::endl;
 
 
             statistics.resize(C_.rows());
@@ -334,7 +367,7 @@ template <typename Model, typename Strategy> class Speckman {
          }
          // one at the time
          if ( type == one_at_the_time ){
-            std::cout<<"entra nell'if del one at the time"<<std::endl;
+            //std::cout<<"entra nell'if del one at the time"<<std::endl;
             int p = C_.rows();
             statistics.resize(p);
             for(int i = 0; i < p; i++){
