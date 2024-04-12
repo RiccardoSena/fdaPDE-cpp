@@ -112,7 +112,7 @@ template <typename Model, typename Strategy> class Speckman {
 
      DVector<double> betas_ {};            // sol of srpde ( q x 1 ) matrix
      DVector<double> beta0_ {};           // inference hypothesis H0 (p x 1) matrix
-     int alpha_ = 0;                      // level of the confidence intervals
+     double alpha_ = 0;                      // level of the confidence intervals
 
 
     public:
@@ -176,11 +176,12 @@ template <typename Model, typename Strategy> class Speckman {
           setAlpha(0.05);         // default value 5%
          }
         
-         else{
-
-            if(is_empty(Vs_)){
-               Vs();
-            }
+         if(is_empty(Vs_)){
+             Vs();
+         }
+         if(is_empty(betas_)){
+            betas();
+        }
          
          int p = C_.rows();
          // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente
@@ -234,6 +235,7 @@ template <typename Model, typename Strategy> class Speckman {
 
          else{
             // inserire errore: nome intervallo non valido
+            return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
          }
 
          //costruisco la matrice che restituisce i confidence intervals
@@ -242,9 +244,9 @@ template <typename Model, typename Strategy> class Speckman {
          CIMatrix.col(1) = upperBound;        
         
          return CIMatrix;
-         }
          
-         return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
+         
+   
 
       }
 
@@ -391,7 +393,7 @@ template <typename Model, typename Strategy> class Speckman {
      }
 
      // setter for alpha
-     void setAlpha(int alpha){
+     void setAlpha(double alpha){
       fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;

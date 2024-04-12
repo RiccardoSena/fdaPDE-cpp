@@ -49,14 +49,14 @@ template <typename Model, typename Strategy> class Wald {
         //DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
         DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
 
-        std::cout<<"questa è S : " <<std::endl;
-         std::cout << std::endl;
-         for (int i = 0; i < 4; ++i) {
-            for(int j=0; j<4;++j){
-            std::cout << S(i,j)<< " ";
-         }
-         }
-         std::cout << std::endl;
+        //std::cout<<"questa è S : " <<std::endl;
+        //std::cout << std::endl;
+         //for (int i = 0; i < 4; ++i) {
+          //  for(int j=0; j<4;++j){
+           // std::cout << S(i,j)<< " ";
+         //}
+         //}
+         //std::cout << std::endl;
         return S;
         }
       };
@@ -106,14 +106,14 @@ template <typename Model, typename Strategy> class Wald {
         SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
         // m_.Psi().transpose() or m_.PsiTD()
         DMatrix<double> S = m.Psi() * invMt_ * m.PsiTD() * m.Q();
-        std::cout<<"questa è S : " <<std::endl;
-         std::cout << std::endl;
-         for (int i = 0; i < 4; ++i) {
-            for(int j=0; j<4;++j){
-            std::cout << S(i,j)<< " ";
-         }
-         }
-         std::cout << std::endl;
+        //std::cout<<"questa è S : " <<std::endl;
+        // std::cout << std::endl;
+        // for (int i = 0; i < 4; ++i) {
+         //   for(int j=0; j<4;++j){
+         //   std::cout << S(i,j)<< " ";
+        // }
+        // }
+        // std::cout << std::endl;
         return S;
         }
       };
@@ -177,8 +177,7 @@ template <typename Model, typename Strategy> class Wald {
         fdapde_assert(!is_empty(C_));     // throw an exception if condition is not met  
         
         if(alpha_ == 0.0) {
-         alpha_=0.05;
-         //setAlpha(0.05);         // default value 5%
+         setAlpha(0.05);         // default value 5%
         }
         if(is_empty(Vw_)){
             Vw();
@@ -209,51 +208,26 @@ template <typename Model, typename Strategy> class Wald {
         DVector<double> upperBound(size);
 
         if(type == simultaneous){ 
-         std::cout<<"entra nell'if simultaneous"<<std::endl;
-
         // SIMULTANEOUS
-        //boost::math::chi_squared_distribution<double> chi_squared(p);
-        //double quantile = boost::math::quantile(chi_squared, alpha_);
         double quantile2 = chi_squared_quantile(0.95,p);
         std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
 
 
         double quantile = 5.991465;
-        /*
-        std::cout<<" the quantile  is "<<quantile<<std::endl;
-        std::cout<<" the betaw_  is "<<betaw_<<std::endl;
-        std::cout<<" the C  is "<<std::endl;
-        for (int i = 0; i < C_.rows(); ++i) {
-            for (int j = 0; j < C_.cols(); ++j) {
-               std::cout<<C_(i,j)<<"  ";
-            }
-         }
-        std::cout<<std::endl;
-
-
-        
-        DVector<double> Cbeta=C_*betaw_;
-        std::cout<<" the Cbeta  is "<<Cbeta<<std::endl;
-        DVector<double> radice= (quantile * diagon.array() ).sqrt();
-        std::cout<<" the Cbeta  is "<<radice<<std::endl;
-        lowerBound=Cbeta-radice;
-        upperBound=Cbeta+radice;
-         */
 
         lowerBound = (C_ * betaw_).array() - (quantile * diagon.array()).sqrt();
         upperBound = (C_ * betaw_).array() + (quantile * diagon.array()).sqrt();
-         std::cout<<" the lower bound is "<<lowerBound<<std::endl;
-         std::cout<<" the upper bound is "<<upperBound<<std::endl;
+        // std::cout<<" the lower bound is "<<lowerBound<<std::endl;
+        // std::cout<<" the upper bound is "<<upperBound<<std::endl;
 
         }
 
         else if (type == bonferroni){
         // Bonferroni
-        //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
         double quantile = normal_standard_quantile(1-alpha_/(2*p));
         std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
-        //double quantile = 2.241403;
+        //double quantile = 2.241403; quantile con alpha = 0.05
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
@@ -262,12 +236,10 @@ template <typename Model, typename Strategy> class Wald {
 
         else if (type == one_at_the_time){
         // One at the time
-        //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
         double quantile = normal_standard_quantile(1-alpha_/2);
         std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
-
-        //double quantile = 1.959964;
+        //double quantile = 1.959964; quantile con alpha=0.05
         
         lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
         upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
@@ -282,115 +254,81 @@ template <typename Model, typename Strategy> class Wald {
         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
         CIMatrix.col(0) = lowerBound;
         CIMatrix.col(1) = upperBound;
-         std::cout<<" the result is "<<std::endl;
-         for (int i =0; i<CIMatrix.rows(); ++i){
+        std::cout<<" Confidence intervals "<<std::endl;
+        for (int i =0; i<CIMatrix.rows(); ++i){
             for (int j =0; j<CIMatrix.cols(); ++j){
                std::cout<<CIMatrix(i,j)<<"  ";
 
             }
-
-         }
-
-
+        }
+        std::cout<<std::endl;
         return CIMatrix;
-        
-
-        //return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
-     
 
 
      // this function returns the statistics not the p-values
-     // come hanno fatto gli altri nel report 
      DVector<double> p_value(CIType type){
          fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
-         std::cout<<"controllo su C avviene correttamente"<<std::endl;
+         //std::cout<<"controllo su C avviene correttamente"<<std::endl;
 
-         // is_empty va bene anche per i Vectors?
          if(is_empty(beta0_)){
             // print errore (need to set beta0)???
-            // set beta0 to 0
-            setBeta0(DVector<double>::Zero(betaw().size()));
+            setBeta0(DVector<double>::Zero(betaw().size())); // set beta0 to 0
          }
 
-         std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
+         //std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
 
-         std::cout<<"la lunghezza di beta0_ è : "<<betaw().size()<<std::endl;
-         std::cout<<"questa è beta0_ : " <<std::endl;
-         for (int i = 0; i < betaw().size(); ++i) {
-            std::cout << beta0_[i] << " ";
+         //std::cout<<"la lunghezza di beta0_ è : "<<betaw().size()<<std::endl;
+         //std::cout<<"questa è beta0_ : " <<std::endl;
+         //for (int i = 0; i < betaw().size(); ++i) {
+         //   std::cout << beta0_[i] << " ";
+         //}
+         if(is_empty(betaw_)){
+            Vw_ = betaw();
          }
-
-         std::cout<<"questa è betaw : " <<std::endl;
-         std::cout << std::endl;
-         for (int i = 0; i < betaw().size(); ++i) {
-            std::cout << betaw()[i] << " ";
-         }
-         std::cout << std::endl;
+         std::cout<<"questa è betaw : " <<betaw_<<std::endl;
 
          if(is_empty(Vw_)){
             Vw_ = Vw();
          }
-         std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
+         //std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
 
          DVector<double> statistics(C_.rows());
-         // simultaneous 
+         
          if( type == simultaneous ){
-            std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
+            // simultaneous
 
-            std::cout << std::endl;
-            for (int i = 0; i < betaw().size(); ++i) {
-               std::cout << C_(0,i) << " ";
-            }
-            std::cout << std::endl;
-            // Ottenere le dimensioni di C_
-            std::cout<<"numero di righe di C_: "<<C_.rows()<<std::endl;
-            std::cout<<"numero di colonne di C_: "<<C_.cols()<<std::endl;
-
-            // Ottenere le dimensioni di m_.beta()
-            std::cout<<"numero di righe di betaw: "<<betaw().rows()<<std::endl; 
-            std::cout<<"numero di colonne di betaw: "<<betaw().cols()<<std::endl; 
-
-            //C_ * betaw() - beta0_;
-            //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
-
-            //DVector<double> diff = C_ * betaw() - beta0_;
             DVector<double> diff = C_ * (betaw() - beta0_);
-            std::cout<<"creazione diff avviene correttamente"<<std::endl;
             
-            //DVector<double> diff(1);
-            //diff << 0.89;
-            
-            std::cout<<"matrice Vw: "<<std::endl;     
-            for (int i = 0; i < Vw_.rows(); ++i) {
-               for (int j = 0; j < Vw_.cols(); ++j) {
-                  std::cout << Vw_(i,j) << " ";
-               }
-            }
-            std::cout << std::endl;           
+            //std::cout<<"matrice Vw: "<<std::endl;     
+            //for (int i = 0; i < Vw_.rows(); ++i) {
+            //   for (int j = 0; j < Vw_.cols(); ++j) {
+             //     std::cout << Vw_(i,j) << " ";
+             //  }
+            //}
+            //std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
-            std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
+            //std::cout<<"creazione Sigma avviene correttamente"<<std::endl;
 
             DMatrix<double> Sigmadec_ = inverse(Sigma);
-            std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
+            //std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
 
-            std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
-            std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
+            //std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
+            //std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
 
-            std::cout<<"numero di righe di diff.transpse: "<<diff.transpose().rows()<<std::endl; 
-            std::cout<<"numero di colonne di diff.transpose: "<<diff.transpose().cols()<<std::endl; 
+            //std::cout<<"numero di righe di diff.transpse: "<<diff.transpose().rows()<<std::endl; 
+            //std::cout<<"numero di colonne di diff.transpose: "<<diff.transpose().cols()<<std::endl; 
 
-            std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
-            std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
+            //std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
+            //std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
             //double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"valore della statistica: " << std::endl;
-            std::cout << stat <<std::endl;
-
+            std::cout<<"valore della statistica: " <<stat<< std::endl;
             
             statistics.resize(C_.rows());
-            statistics(0) = stat;
+            //statistics(0) = 1-chi_squared_cdf(stat, 2);
+            statistics(0)=stat;
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
@@ -398,8 +336,9 @@ template <typename Model, typename Strategy> class Wald {
             
             return statistics; 
          }
-         // one at the time
+
          else if ( type == one_at_the_time ){
+            // one at the time
             int p = C_.rows();
             statistics.resize(p);
             for(int i = 0; i < p; i++){
@@ -407,12 +346,14 @@ template <typename Model, typename Strategy> class Wald {
                double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
-               statistics(i) = stat;
+               std::cout<<"il valore della statistica è :"<<stat<<std::endl;
+               statistics(i) = 2*gaussian_cdf(-std::abs(stat),0,1);
+
             }
             return statistics;
          }
          else{
-            //inserire messaggio di errore
+            //inserire messaggio di errore 
             return DVector<double>::Zero(1);
          }
      }
@@ -424,7 +365,7 @@ template <typename Model, typename Strategy> class Wald {
      }
 
      // setter for alpha
-     void setAlpha(int alpha){
+     void setAlpha(double alpha){
       fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
       if( 0 <= alpha && alpha <= 1) {
          alpha_ = alpha;
@@ -433,8 +374,7 @@ template <typename Model, typename Strategy> class Wald {
 
      // setter per i beta0_
      void setBeta0(DVector<double> beta0){
-      // funziona così per i Eigen::Vector??
-      beta0_ = beta0;
+       beta0_ = beta0;
      }
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
@@ -475,28 +415,73 @@ template <typename Model, typename Strategy> class Wald {
       return quantile * quantile;
      }
 
-      // questa è da controllare 
      // Funzione per calcolare i quantili di una distribuzione normale standard
+     //questa funziona correttamente 
      double normal_standard_quantile(double percentile) {
-    // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
-      return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
-   }
+         // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
+         return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
+     }
 
-      //questa è da controllare 
      // Funzione di approssimazione per il calcolo dell'inverso dell'errore
+     // questa funziona correttamente 
      double inverse_erf(double x) {
-      const double epsilon = 1e-10; // Tolleranza per l'approssimazione
-      double y = 0.0;
-      double delta;
-      do {
-         delta = (std::erf(y) - x) / (2.0 / std::sqrt(M_PI) * std::exp(-y * y));
-         y -= delta;
-      } while (std::fabs(delta) > epsilon);
-      return y;
-   }
+         const double epsilon = 1e-10; // Tolleranza per l'approssimazione
+         double y = 0.0;
+         double delta;
+         do {
+            delta = (std::erf(y) - x) / (2.0 / std::sqrt(M_PI) * std::exp(-y * y));
+            y -= delta;
+         } while (std::fabs(delta) > epsilon);
+         return y;
+     }
+     
+
+
+     //pvalues
+     double gamma(double x) {
+         // Implementation of the gamma function using the Lanczos approximation
+         // (This is a simple version and may not be as accurate as other implementations)
+         const double sqrt_2pi = 2.50662827463100050242; // sqrt(2 * pi)
+         const double lanczos_coefficients[6] = {1.000000000190015, 76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.001208650973866179};
+         double sum = lanczos_coefficients[0];
+         double denom = x + 1.0;
+         for (int i = 1; i < 6; ++i) {
+            sum += lanczos_coefficients[i] / (x + i);
+            denom *= (x + 1.0);
+         }
+         return sqrt_2pi * sum / denom;
+      }
+
+      double incomplete_gamma(double a, double x) {
+         // Implementation of the incomplete gamma function using the continued fraction expansion
+         const double epsilon = 1e-15;
+         double ans, c, r;
+
+         r = c = ans = 0.0;
+
+         do {
+            r += 1.0;
+            c *= x / r;
+            ans += c;
+         } while (c > epsilon * ans);
+
+         return ans * std::exp(-x + a * std::log(x) - std::lgamma(a));
+      }
+
+      double chi_squared_cdf(double x, double k) {
+         if (x <= 0 || k <= 0) return 0.0;
+         return incomplete_gamma(k / 2.0, x / 2.0) / gamma(k / 2.0);
+      }
+
+     
+     // funzione per calcolare il pvalue di una normale 
+     double gaussian_cdf(double x, double mean, double stddev) { 
+         return 0.5 * (1 + std::erf((x - mean) / (stddev * std::sqrt(2)))); 
+     }
+
       // aggiungere destructor?
 
-} ;
+   } ;
 }  // closing models namespace
 }  // closing fdapde namespace
 
