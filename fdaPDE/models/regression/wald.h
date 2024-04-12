@@ -129,7 +129,7 @@ template <typename Model, typename Strategy> class Wald {
      
      DVector<double> betaw_ {};        // sol of srpde ( q x 1 ) matrix
      DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
-     int alpha_ = 0;                   // level of the confidence intervals
+     double alpha_ = 0;                   // level of the confidence intervals
 
      // variabili da aggungere: 
      // una variabile che fa il check che il modello sia stato runnato prima di fare inferenza
@@ -176,8 +176,9 @@ template <typename Model, typename Strategy> class Wald {
      DMatrix<double> computeCI(CIType type){ 
         fdapde_assert(!is_empty(C_));     // throw an exception if condition is not met  
         
-        if(alpha_ == 0) {
-         setAlpha(0.05);         // default value 5%
+        if(alpha_ == 0.0) {
+         alpha_=0.05;
+         //setAlpha(0.05);         // default value 5%
         }
         if(is_empty(Vw_)){
             Vw();
@@ -186,6 +187,7 @@ template <typename Model, typename Strategy> class Wald {
          betaw();
         }
          
+         std::cout<<"alpha è "<<alpha_<<std::endl;
          int p = C_.rows();
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente e 
         //che sulle righe della matrice di siano c1, c2, c3...
@@ -211,12 +213,13 @@ template <typename Model, typename Strategy> class Wald {
 
         // SIMULTANEOUS
         //boost::math::chi_squared_distribution<double> chi_squared(p);
-        // double quantile = boost::math::quantile(chi_squared, alpha_);
-        //double quantile = chi_squared_quantile(p, 1-alpha_);
-        //std::cout<<" the quantile  is "<<quantile<<std::endl;
+        //double quantile = boost::math::quantile(chi_squared, alpha_);
+        double quantile2 = chi_squared_quantile(0.95,p);
+        std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
 
 
         double quantile = 5.991465;
+        /*
         std::cout<<" the quantile  is "<<quantile<<std::endl;
         std::cout<<" the betaw_  is "<<betaw_<<std::endl;
         std::cout<<" the C  is "<<std::endl;
@@ -231,14 +234,14 @@ template <typename Model, typename Strategy> class Wald {
         
         DVector<double> Cbeta=C_*betaw_;
         std::cout<<" the Cbeta  is "<<Cbeta<<std::endl;
-        DVector<double> radice= (quantile * diagon.array() / m_.n_obs()).sqrt();
+        DVector<double> radice= (quantile * diagon.array() ).sqrt();
         std::cout<<" the Cbeta  is "<<radice<<std::endl;
         lowerBound=Cbeta-radice;
         upperBound=Cbeta+radice;
+         */
 
-
-        //lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_.n_obs()).sqrt();
-        //upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_.n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - (quantile * diagon.array()).sqrt();
+        upperBound = (C_ * betaw_).array() + (quantile * diagon.array()).sqrt();
          std::cout<<" the lower bound is "<<lowerBound<<std::endl;
          std::cout<<" the upper bound is "<<upperBound<<std::endl;
 
@@ -247,12 +250,13 @@ template <typename Model, typename Strategy> class Wald {
         else if (type == bonferroni){
         // Bonferroni
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
-         double quantile = normal_standard_quantile(1-alpha_/(2*p));
+        double quantile = normal_standard_quantile(1-alpha_/(2*p));
+        std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
-        //double quantile = 1;
+        //double quantile = 2.241403;
         
-        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
 
         }
 
@@ -260,11 +264,13 @@ template <typename Model, typename Strategy> class Wald {
         // One at the time
         //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
         double quantile = normal_standard_quantile(1-alpha_/2);
+        std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
-        //double quantile = 1;
+
+        //double quantile = 1.959964;
         
-        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array() / m_.n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + quantile * (diagon.array() / m_.n_obs()).sqrt();
+        lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
+        upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
 
         }
 
@@ -444,12 +450,16 @@ template <typename Model, typename Strategy> class Wald {
      double chi_squared_quantile(double percentile, int degrees_of_freedom) {
       // Percentuale complementare
       double p = 1.0 - percentile;
-
+      std::cout<<"p è "<<p<<std::endl;
       // Calcolare il valore z corrispondente al percentile complementare
       double z = std::sqrt(2.0 * degrees_of_freedom);
+      std::cout<<"z è "<<z<<std::endl;
 
       // Calcolare il valore del quantile utilizzando la funzione inversa della distribuzione normale standard
       double quantile = z - ((1.0 / 3.0) * (1.0 / z) - 1.0 / (36.0 * z * z * z)) * (1.0 / std::sqrt(2.0)) * std::log(p / std::sqrt(2.0 * M_PI));
+      std::cout<<"quantile è "<<quantile<<std::endl;
+      // questo valore che viene è quasi corretto se fai la funzione restituisce direttamnte questo quantile*quantile
+      //non so cosa facciamo questi due if 
       
       // Applicare correzioni successive per gradi di libertà maggiori di 1
       if (degrees_of_freedom > 1) {
@@ -460,6 +470,7 @@ template <typename Model, typename Strategy> class Wald {
       if (degrees_of_freedom > 2) {
          quantile -= (1.0 / (6.0 * z)) * ((1.0 - (2.0 / (9.0 * degrees_of_freedom))) / std::sqrt(2.0 / (9.0 * degrees_of_freedom)) - 1.0) * std::log(p / std::sqrt(2.0 * M_PI));
       }
+      std::cout<<"quantile  finale è "<<quantile*quantile<<std::endl;
 
       return quantile * quantile;
      }

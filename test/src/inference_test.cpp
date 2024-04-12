@@ -315,7 +315,7 @@ TEST(inference_test, WaldExact) {
     beta0(1)=-1;
     inference.setBeta0(beta0);
 
-    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
+    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
     DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
