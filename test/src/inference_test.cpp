@@ -285,13 +285,18 @@ TEST(inference_test, WaldExact) {
     //EXPECT_TRUE(almost_equal(model.beta(), "../data/models/srpde/2D_test2/beta.mtx"));
 
 
-    /*
+    
      // test correctness WALD
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
     std::cout << "creato elemento inference" << std::endl;
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //C(0,0)=1;
+    //C(0,1)=1;
+    //C(1,0)=1;
+    //C(1,1)=-1;
+    
     //c(1,1,1,-1)
     //DMatrix<double> C(1,cols);
     //C.setOnes(); // matrice C ha una sola riga di tutti 1
@@ -310,23 +315,23 @@ TEST(inference_test, WaldExact) {
     beta0(1)=-1;
     inference.setBeta0(beta0);
 
-    //inference.computeCI(fdapde::models::simultaneous);
-    //std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
+    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
+    std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
-    DVector<double> pvalues=inference.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< pvalues(0) << std::endl;
-    std::cout<< pvalues(1) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
     
     std::cout << "ora inizia il test wald " << std::endl;
     DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::one_at_the_time)(0), 0.4119913 , 1e-7));
-    */
-
-
-
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 1.77351 , 1e-7));
     
+
+
+
+    /*
     // test correctness SPECKMAN
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
     std::cout << "creato elemento inference" << std::endl;
@@ -372,7 +377,7 @@ TEST(inference_test, WaldExact) {
 
 
 
-/*    
+    
     // test correctness EigenSignFlip
     fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
     inferenceESF.Lambda();

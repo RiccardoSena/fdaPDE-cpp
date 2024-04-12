@@ -179,12 +179,12 @@ template <typename Model, typename Strategy> class Wald {
         if(alpha_ == 0) {
          setAlpha(0.05);         // default value 5%
         }
-
-        else{
-
-         if(is_empty(Vw_)){
+        if(is_empty(Vw_)){
             Vw();
          }
+        if(is_empty(betaw_)){
+         betaw();
+        }
          
          int p = C_.rows();
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente e 
@@ -192,7 +192,7 @@ template <typename Model, typename Strategy> class Wald {
         
         // devi capire quale è il metodo più veloce facendoti restituire il tempo di esecuzione
         // 1) metodo con libreria eigen 
-        DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
+        //DMatrix<double> CVCdiag_ = ((C_ * Vw_) * C_.transpose()).diagonal();
         // 2) metodo con ciclo for per calcolare solo la diagonale e non tutta la matrice 
 	     int size = std::min(C_.rows(), Vw_.rows());
 	     DVector<double> diagon(size);
@@ -203,19 +203,44 @@ template <typename Model, typename Strategy> class Wald {
             diagon[i] = ci.transpose() * Vw_* ci;
         }
 
-        DVector<double> lowerBound;
-        DVector<double> upperBound;
+        DVector<double> lowerBound(size);
+        DVector<double> upperBound(size);
 
         if(type == simultaneous){ 
+         std::cout<<"entra nell'if simultaneous"<<std::endl;
+
         // SIMULTANEOUS
         //boost::math::chi_squared_distribution<double> chi_squared(p);
         // double quantile = boost::math::quantile(chi_squared, alpha_);
-        double quantile = chi_squared_quantile(p, 1-alpha_);
+        //double quantile = chi_squared_quantile(p, 1-alpha_);
+        //std::cout<<" the quantile  is "<<quantile<<std::endl;
 
-        //double quantile = 1;
+
+        double quantile = 5.991465;
+        std::cout<<" the quantile  is "<<quantile<<std::endl;
+        std::cout<<" the betaw_  is "<<betaw_<<std::endl;
+        std::cout<<" the C  is "<<std::endl;
+        for (int i = 0; i < C_.rows(); ++i) {
+            for (int j = 0; j < C_.cols(); ++j) {
+               std::cout<<C_(i,j)<<"  ";
+            }
+         }
+        std::cout<<std::endl;
+
+
         
-        lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_.n_obs()).sqrt();
-        upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_.n_obs()).sqrt();
+        DVector<double> Cbeta=C_*betaw_;
+        std::cout<<" the Cbeta  is "<<Cbeta<<std::endl;
+        DVector<double> radice= (quantile * diagon.array() / m_.n_obs()).sqrt();
+        std::cout<<" the Cbeta  is "<<radice<<std::endl;
+        lowerBound=Cbeta-radice;
+        upperBound=Cbeta+radice;
+
+
+        //lowerBound = (C_ * betaw_).array() - (quantile * diagon.array() / m_.n_obs()).sqrt();
+        //upperBound = (C_ * betaw_).array() + (quantile * diagon.array() / m_.n_obs()).sqrt();
+         std::cout<<" the lower bound is "<<lowerBound<<std::endl;
+         std::cout<<" the upper bound is "<<upperBound<<std::endl;
 
         }
 
@@ -245,18 +270,26 @@ template <typename Model, typename Strategy> class Wald {
 
         else{
          // inserire errore: nome intervallo non valido
-         
+         return DMatrix<double>::Zero(1, 1);
         }
 
         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
         CIMatrix.col(0) = lowerBound;
         CIMatrix.col(1) = upperBound;
-        
+         std::cout<<" the result is "<<std::endl;
+         for (int i =0; i<CIMatrix.rows(); ++i){
+            for (int j =0; j<CIMatrix.cols(); ++j){
+               std::cout<<CIMatrix(i,j)<<"  ";
+
+            }
+
+         }
+
 
         return CIMatrix;
-        }
+        
 
-        return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
+        //return DMatrix<double>::Zero(1, 1);// questo va cambiato ma se non c'è non runna
      }
      
 
