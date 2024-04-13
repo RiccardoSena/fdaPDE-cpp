@@ -209,7 +209,7 @@ template <typename Model, typename Strategy> class Wald {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        double quantile2 = chi_squared_quantile(0.95,p);
+        double quantile2 = chi_squared_quantile(0.95,2);
         std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
 
 
@@ -385,7 +385,38 @@ template <typename Model, typename Strategy> class Wald {
       // Mdec_ = M.partialPivLu(); 
       return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
-     
+double chi_squared_quantile(double percentile, double degrees_of_freedom) {
+    double guess = degrees_of_freedom;
+    const double tolerance = 1e-10;
+    double step = 0.1;
+
+    double cdf = 0.0;
+    int max_iterations = 1000; // Limite massimo di iterazioni
+    int iterations = 0; // Contatore di iterazioni
+
+    // Cerca il valore della statistica corrispondente al percentile desiderato
+    while (cdf < percentile) {
+        guess += step;
+        cdf = 1 - chi_squared_cdf(guess, degrees_of_freedom);
+    }
+
+    // Ricerca del valore della statistica con maggiore accuratezza
+    while (std::abs(cdf - percentile) > tolerance && iterations < max_iterations) {
+        step /= 10; // Diminuisci il passo di ricerca
+        cdf = 1 - chi_squared_cdf(guess, degrees_of_freedom);
+        if (cdf < percentile) {
+            guess += step;
+        } else {
+            guess -= step;
+        }
+        iterations++; // Incrementa il contatore di iterazioni
+    }
+
+    return guess;
+}
+
+
+     /*
      //questa è da controllare 
      double chi_squared_quantile(double percentile, int degrees_of_freedom) {
       // Percentuale complementare
@@ -413,7 +444,7 @@ template <typename Model, typename Strategy> class Wald {
       std::cout<<"quantile  finale è "<<quantile*quantile<<std::endl;
 
       return quantile * quantile;
-     }
+     }*/
 
      // Funzione per calcolare i quantili di una distribuzione normale standard
      //questa funziona correttamente 
@@ -439,9 +470,7 @@ template <typename Model, typename Strategy> class Wald {
 
      //pvalues
      double gamma(double x) {
-         // Implementation of the gamma function using the Lanczos approximation
-         // (This is a simple version and may not be as accurate as other implementations)
-         const double sqrt_2pi = 2.50662827463100050242; // sqrt(2 * pi)
+         const double sqrt_2pi = 2.50662827463100050242;
          const double lanczos_coefficients[6] = {1.000000000190015, 76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.001208650973866179};
          double sum = lanczos_coefficients[0];
          double denom = x + 1.0;
@@ -449,29 +478,47 @@ template <typename Model, typename Strategy> class Wald {
             sum += lanczos_coefficients[i] / (x + i);
             denom *= (x + 1.0);
          }
+         std::cout<<"restituito dalla gamma function: " <<sqrt_2pi * sum / denom<<std::endl;
          return sqrt_2pi * sum / denom;
       }
 
-      double incomplete_gamma(double a, double x) {
-         // Implementation of the incomplete gamma function using the continued fraction expansion
-         const double epsilon = 1e-15;
-         double ans, c, r;
+  double incomplete_gamma(double a, double x) {
+    const double epsilon = 1e-15;
+    double ans = 0.0;
+    double term = 1.0; // Termine iniziale della serie
+    int k = 0; // Contatore per il numero di iterazioni
 
-         r = c = ans = 0.0;
+    while (std::abs(term) > epsilon * std::abs(ans)) {
+        ans += term;
+        term *= x / (a + k);
+        k++;
 
-         do {
-            r += 1.0;
-            c *= x / r;
-            ans += c;
-         } while (c > epsilon * ans);
+        // Controllo per evitare loop infiniti
+        if (k > 1000) {
+            // Gestisci il caso in cui la serie non converge entro un numero massimo di iterazioni
+            return -1.0; // Oppure gestisci diversamente il caso di non convergenza
+        }
+    }
 
-         return ans * std::exp(-x + a * std::log(x) - std::lgamma(a));
-      }
+
+      std::cout<<"restituito dalla incomplete gamma function: " <<ans * std::exp(-x + a * std::log(x) - gamma(a))<<std::endl;
+
+      return ans * std::exp(-x + a * std::log(x) - gamma(a));
+   }
 
       double chi_squared_cdf(double x, double k) {
-         if (x <= 0 || k <= 0) return 0.0;
+         std::cout<<"il valore di x è "<<x<<std::endl;
+         std::cout<<"il valore di k è "<<k<<std::endl;
+
+
+         if (x <= 0 || k <= 0) {
+            std::cout<<"entra nell if con x e k sbagliati"<<std::endl;
+            return 0.0;
+            }
+         
          return incomplete_gamma(k / 2.0, x / 2.0) / gamma(k / 2.0);
       }
+
 
      
      // funzione per calcolare il pvalue di una normale 
