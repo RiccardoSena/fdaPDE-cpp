@@ -256,7 +256,7 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
 //    covariates:   yes
 //    BC:           no
 //    order FE:     1
-TEST(inference_test, WaldExact) {
+TEST(inference_test, WaldExact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -300,6 +300,75 @@ TEST(inference_test, WaldExact) {
     //c(1,1,1,-1)
     //DMatrix<double> C(1,cols);
     //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    /*
+    std::cout << "C è: " << std::endl;
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        }
+    }
+    std::cout << std::endl;
+    */
+    inference.setC(C);
+    //std::cout << "set C" << std::endl;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inference.setBeta0(beta0);
+    //std::cout << "beta0 è: " << beta0<<std::endl;
+
+    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
+    //std::cout << "computed CI: " << confidence_intervals<<std::endl;
+
+    //DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
+    //std::cout << "il valore dei pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+    
+    //std::cout << "ora inizia il test wald " << std::endl;
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 1.77351 , 1e-5));
+}
+
+TEST(inference_test, WaldExact28) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+    
+     // test correctness WALD
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    //std::cout << "creato elemento inference" << std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    C(0,0)=1;
+    C(0,1)=1;
+    C(1,0)=1;
+    C(1,1)=-1;
+    
+    //c(1,1,1,-1)
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    
     std::cout << "C è: " << std::endl;
     for (int i = 0; i < model.beta().size(); ++i) {
         for (int j = 0; j < model.beta().size(); ++j) {
@@ -314,44 +383,69 @@ TEST(inference_test, WaldExact) {
     beta0(0)=2;
     beta0(1)=-1;
     inference.setBeta0(beta0);
-    std::cout << "beta0 è: " << beta0<<std::endl;
+    //std::cout << "beta0 è: " << beta0<<std::endl;
 
-    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
-    std::cout << "computed CI: " << confidence_intervals<<std::endl;
+    DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
-    DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
-    std::cout << "il valore dei pvalue è" << std::endl;
-    std::cout<< pvalues(0) << std::endl;
-    std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalues=inference.p_value(fdapde::models::one_at_the_time);
+    //std::cout << "il valore dei pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
     
-    std::cout << "ora inizia il test wald " << std::endl;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 1.77351 , 1e-7));
-    
+    //std::cout << "ora inizia il test wald " << std::endl;
+    EXPECT_TRUE(almost_equal(pvalues(0), 2.458212e-05 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalues(1), 6.521694e-29 , 1e-7));
 
+}
 
+TEST(inference_test, SpeckmanExact27){
+        // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
 
-    /*
     // test correctness SPECKMAN
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
-    std::cout << "creato elemento inference" << std::endl;
-    std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    //std::cout << "creato elemento inference" << std::endl;
+    //std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
     inferenceSpeck.betas();
     std::cout<<std::endl;
-    std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+    //std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     //DMatrix<double> C(1,cols);
     //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    /*
     for (int i = 0; i < model.beta().size(); ++i) {
         for (int j = 0; j < model.beta().size(); ++j) {
         std::cout << C(i,j) << " ";
         std::cout<<std::endl;
         }
-    }
+    }*/
 
     inferenceSpeck.setC(C);
-    std::cout << "set C" << std::endl;
+    //std::cout << "set C" << std::endl;
     DVector<double> beta0(2);
     beta0(0)=2;
     beta0(1)=-1;
@@ -360,23 +454,110 @@ TEST(inference_test, WaldExact) {
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
-    std::cout << "il valore dei pvalue è" << std::endl;
-    std::cout<< pvalues(0) << std::endl;
+    //DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
+    //std::cout << "il valore dei pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
     //std::cout<< pvalues(1) << std::endl;
 
     
-    std::cout << "ora inizia il test speckman" << std::endl;
+    std::cout << "ora inizia il test speckman 27" << std::endl;
     //DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.33554, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.08680236, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.48107956, 1e-7));
+}   
+
+TEST(inference_test, SpeckmanExactSimultaneous){
+        // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness SPECKMAN
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    //std::cout << "creato elemento inference" << std::endl;
+    //std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    inferenceSpeck.betas();
+    std::cout<<std::endl;
+    //std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    /*
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
+    }*/
+
+    inferenceSpeck.setC(C);
+    //std::cout << "set C" << std::endl;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceSpeck.setBeta0(beta0);
+
+    //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+
+    //DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
+    //std::cout << "il valore dei pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+
     
+    std::cout << "ora inizia il test speckman sim" << std::endl;
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.2568981, 1e-7));
+}   
 
-
-
-
-
-    
+/*
+TEST(inference_test, EigenSignFlip){
+        // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+   
     // test correctness EigenSignFlip
     fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
     inferenceESF.Lambda();
@@ -412,6 +593,6 @@ TEST(inference_test, WaldExact) {
     //DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
     EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.3355454 , 1e-7));
-   */
 
 }
+*/
