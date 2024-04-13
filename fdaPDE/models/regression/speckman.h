@@ -42,18 +42,19 @@ template <typename Model, typename Strategy> class Speckman {
      struct ExactInverse{
 
       DMatrix<double> compute(Model m){
-         DMatrix<double> inverseA_ {};
-         inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(2 * m.n_basis(),2 * m.n_basis()));
+         Eigen::PartialPivLU<DMatrix<double>> Adec_ (m.E());
+         DMatrix<double> inverseA_ = Adec_.solve(DMatrix<double>::Identity(m.E().rows(), m.E().cols()));
+         /*inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(2 * m.n_basis(),2 * m.n_basis()));
          std::cout<<"questa è inversa di A : " <<std::endl;
          for (int i = 0; i < 4; ++i) {
             for(int j=0; j < 4; ++j){
                std::cout << inverseA_(i, j) << " ";
          }
-         }
+         }*/
          // Ottenere le dimensioni di A_
          //std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
          //std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
-         return inverseA_.block(0, 0, m.n_basis(), m.n_basis());         
+         return inverseA_;       
       }
      };
 
@@ -122,7 +123,7 @@ template <typename Model, typename Strategy> class Speckman {
 
      const DMatrix<double>& Lambda() {
         //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
-         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.Psi().transpose();
          return Lambda_;
       }
       
@@ -131,13 +132,11 @@ template <typename Model, typename Strategy> class Speckman {
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
         if(is_empty(Lambda_)){
-            Lambda();
+            Lambda_ = Lambda();
          }
         DMatrix<double> Wtilde_ = Lambda_ * m_.X();
         DMatrix<double> ytilde_ = Lambda_ * m_.y();
-
-        //DMatrix<double> temp = (Wtilde_.transpose() * Wtilde_).partialPivLU().solve(DMatrix<double>::Identity(,));
-        DMatrix<double> temp = inverse(Wtilde_.transpose() * Wtilde_);
+        DMatrix<double> temp = inverseS(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
         //std::cout<<"questi sono i beta s che vengono calcolati dentro alla funzione: "<<betas_<<std::endl;
         return betas_;
@@ -146,7 +145,7 @@ template <typename Model, typename Strategy> class Speckman {
 
      DMatrix<double>& Vs() {
          if(is_empty(Lambda_)){
-            Lambda();
+            Lambda_ = Lambda();
          }
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
@@ -160,11 +159,9 @@ template <typename Model, typename Strategy> class Speckman {
         DMatrix<double> Wt_ = Lambda_ * m_.X();
         //DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         //DMatrix<double> invU_ = inverse(U_); 
-        DMatrix<double> left_ = inverse(Wt_.transpose() * Wt_) * Wt_.transpose();
+        DMatrix<double> left_ = inverseS(Wt_.transpose() * Wt_);
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
-        
-
-        Vs_ = left_ * Lambda_ * epsilon_ * epsilon_.transpose() * Lambda_.transpose() * left_.transpose();
+        Vs_ = left_ * Wt_.transpose() * Lambda_ * (epsilon_ * epsilon_.transpose()) * Lambda_.transpose() * Wt_ * left_;
         
         return Vs_;
      }
@@ -245,9 +242,6 @@ template <typename Model, typename Strategy> class Speckman {
         
          return CIMatrix;
          
-         
-   
-
       }
 
      DVector<double> p_value(CIType type){
@@ -258,7 +252,7 @@ template <typename Model, typename Strategy> class Speckman {
          if(is_empty(beta0_)){
             // print errore (need to set beta0)???
             // set beta0 to 0
-            setBeta0(DVector<double>::Zero(betas_.size()));
+            setBeta0(DVector<double>::Zero(betas().size()));
          }
 
          //std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
@@ -279,13 +273,14 @@ template <typename Model, typename Strategy> class Speckman {
          if(is_empty(Vs_)){
             Vs_ = Vs();
          }
+         /*
          std::cout<<"questa è Vs: "<<std::endl;
          for (int i = 0; i < Vs_.rows(); ++i) {
             for (int j = 0; j < Vs_.cols(); ++j) {
                std::cout << Vs_(i,j) << " ";
             }
          }
-         std::cout << std::endl;
+         std::cout << std::endl;*/
          DVector<double> statistics(C_.rows());
          // simultaneous 
          if( type == simultaneous ){
@@ -307,8 +302,8 @@ template <typename Model, typename Strategy> class Speckman {
             //C_ * betaw() - beta0_;
             //std::cout<<"la moltiplicazione non è il rpoblema"<<std::endl;
 
-            DVector<double> diff = C_ * betas_ - beta0_;
-            std::cout<<"dif: "<<diff<<std::endl;
+            DVector<double> diff = C_ * betas() - beta0_;
+            //std::cout<<"dif: "<<diff<<std::endl;
             
             //DVector<double> diff(1);
             //diff << 0.89;
@@ -320,11 +315,13 @@ template <typename Model, typename Strategy> class Speckman {
             //   }
             //}            std::cout << std::endl;           
             DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
+            
             std::cout<<"Sigma: "<<std::endl;
             for (int i = 0; i < Sigma.rows(); ++i) {
                for (int j = 0; j < Sigma.rows(); ++j) {
                   std::cout<<Sigma(i,j)<<" ";
                }
+               std::cout << std::endl;
             }
 
 
@@ -336,16 +333,19 @@ template <typename Model, typename Strategy> class Speckman {
             //Sigmadec_(1,1)=1269963.195261;
 
 
-            DMatrix<double> Sigmadec_ = inverse(Sigma);
+            DMatrix<double> Sigmadec_ = inverseS(Sigma);
+         
             std::cout<<"Sigmadec : "<<std::endl;
-
+            
             for (int i = 0; i < Sigma.rows(); ++i) {
                for (int j = 0; j < Sigma.rows(); ++j) {
                   std::cout<<Sigmadec_(i,j)<<" ";
                }
+               std::cout << std::endl;
             }
+         
            // std::cout<<"creazione Sigmadec_ avviene correttamente"<<std::endl;
-
+           
             //std::cout<<"numero di righe di sigmadec_: "<<Sigmadec_.rows()<<std::endl;
             //std::cout<<"numero di colonne di sigmadec_: "<<Sigmadec_.cols()<<std::endl;
 
@@ -355,9 +355,9 @@ template <typename Model, typename Strategy> class Speckman {
             //std::cout<<"numero di righe di diff: "<<diff.rows()<<std::endl; 
             //std::cout<<"numero di colonne di diff: "<<diff.cols()<<std::endl;
 
-            double stat = diff.adjoint() * C_.transpose() * Sigmadec_ * C_ * diff;
-            //std::cout<<"creazione stat avviene correttamente"<<std::endl;
-
+            double stat = diff.adjoint() * Sigmadec_ * diff;
+            std::cout<<"Statistica Speckman sim: "<< stat<< std::endl;
+            
 
             statistics.resize(C_.rows());
             statistics(0) = stat;
@@ -372,11 +372,13 @@ template <typename Model, typename Strategy> class Speckman {
             //std::cout<<"entra nell'if del one at the time"<<std::endl;
             int p = C_.rows();
             statistics.resize(p);
+            std::cout << "Statistics Speckman oat: " << std::endl;
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
-               double diff = col.adjoint()* m_.beta() - beta0_[i];
-               double sigma = col.adjoint() * Vs_ *col;
+               double diff = col.adjoint() * betas() - beta0_[i];
+               double sigma = col.adjoint() * Vs_ * col;
                double stat = diff/std::sqrt(sigma);
+               std::cout << stat << std::endl;
                statistics(i) = stat;
             }
             return statistics;
@@ -407,10 +409,10 @@ template <typename Model, typename Strategy> class Speckman {
 
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
-     static DMatrix<double> inverse(DMatrix<double> M){
-      Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
-      //Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
-      //Mdec_ = M.partialPivLu();
+      DMatrix<double> inverseS(const DMatrix<double> M){
+      //Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+      Eigen::PartialPivLU<DMatrix<double>> Mdec_ {};
+      Mdec_ = M.partialPivLu();
       return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
 

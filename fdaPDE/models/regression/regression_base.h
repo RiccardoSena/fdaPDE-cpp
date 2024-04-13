@@ -139,6 +139,9 @@ class RegressionBase :
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         return W_ * DMatrix<double>::Identity(X().rows(), X().rows())- W_ * X() * z;
     }
+    DMatrix<double> E() const {
+        return (PsiTD() * Psi() + P());
+    }
     //
     // FINE PARTE AGGIUNTA
 

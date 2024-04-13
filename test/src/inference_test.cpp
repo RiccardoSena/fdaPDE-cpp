@@ -326,7 +326,7 @@ TEST(inference_test, WaldExact27) {
     //std::cout<< pvalues(1) << std::endl;
     
     //std::cout << "ora inizia il test wald " << std::endl;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 1.77351 , 1e-5));
+    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
 }
 
 TEST(inference_test, WaldExact28) {
@@ -529,7 +529,8 @@ TEST(inference_test, SpeckmanExactSimultaneous){
 
     
     std::cout << "ora inizia il test speckman sim" << std::endl;
-    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.2568981, 1e-7));
+    std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::simultaneous)(0) << std::endl;
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.2454234, 1e-7));
 }   
 
 /*

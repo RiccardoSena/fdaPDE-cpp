@@ -18,6 +18,7 @@
 #define __WALD_H__
 
 // questi sono da controllare 
+#include <cmath>
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
@@ -186,7 +187,7 @@ template <typename Model, typename Strategy> class Wald {
          betaw();
         }
          
-         std::cout<<"alpha è "<<alpha_<<std::endl;
+         //std::cout<<"alpha è "<<alpha_<<std::endl;
          int p = C_.rows();
         // supponendo che abbiamo la matrice C che in teoria dovrebbe essere inserita dall'utente e 
         //che sulle righe della matrice di siano c1, c2, c3...
@@ -209,8 +210,8 @@ template <typename Model, typename Strategy> class Wald {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        double quantile2 = chi_squared_quantile(0.95,2);
-        std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
+        //double quantile2 = chi_squared_quantile(0.95,2);
+        //std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
 
 
         double quantile = 5.991465;
@@ -225,7 +226,7 @@ template <typename Model, typename Strategy> class Wald {
         else if (type == bonferroni){
         // Bonferroni
         double quantile = normal_standard_quantile(1-alpha_/(2*p));
-        std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
+        //std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
         //double quantile = 2.241403; quantile con alpha = 0.05
         
@@ -237,7 +238,7 @@ template <typename Model, typename Strategy> class Wald {
         else if (type == one_at_the_time){
         // One at the time
         double quantile = normal_standard_quantile(1-alpha_/2);
-        std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
+        //std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
         //double quantile = 1.959964; quantile con alpha=0.05
         
@@ -254,6 +255,7 @@ template <typename Model, typename Strategy> class Wald {
         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
         CIMatrix.col(0) = lowerBound;
         CIMatrix.col(1) = upperBound;
+        /*
         std::cout<<" Confidence intervals "<<std::endl;
         for (int i =0; i<CIMatrix.rows(); ++i){
             for (int j =0; j<CIMatrix.cols(); ++j){
@@ -261,7 +263,7 @@ template <typename Model, typename Strategy> class Wald {
 
             }
         }
-        std::cout<<std::endl;
+        std::cout<<std::endl;*/
         return CIMatrix;
      }
 
@@ -284,9 +286,9 @@ template <typename Model, typename Strategy> class Wald {
          //   std::cout << beta0_[i] << " ";
          //}
          if(is_empty(betaw_)){
-            Vw_ = betaw();
+            betaw_ = betaw();
          }
-         std::cout<<"questa è betaw : " <<betaw_<<std::endl;
+         //std::cout<<"questa è betaw : " <<betaw_<<std::endl;
 
          if(is_empty(Vw_)){
             Vw_ = Vw();
@@ -298,7 +300,7 @@ template <typename Model, typename Strategy> class Wald {
          if( type == simultaneous ){
             // simultaneous
 
-            DVector<double> diff = C_ * (betaw() - beta0_);
+            DVector<double> diff = C_ * betaw() - beta0_;
             
             //std::cout<<"matrice Vw: "<<std::endl;     
             //for (int i = 0; i < Vw_.rows(); ++i) {
@@ -324,11 +326,11 @@ template <typename Model, typename Strategy> class Wald {
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
             //double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"valore della statistica: " <<stat<< std::endl;
+            std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
             
             statistics.resize(C_.rows());
             //statistics(0) = 1-chi_squared_cdf(stat, 2);
-            statistics(0)=stat;
+            statistics(0) = stat;
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
@@ -341,12 +343,13 @@ template <typename Model, typename Strategy> class Wald {
             // one at the time
             int p = C_.rows();
             statistics.resize(p);
+            std::cout<<"Statistics Wald oat: "<<std::endl;
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
                double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
-               std::cout<<"il valore della statistica è :"<<stat<<std::endl;
+               std::cout << stat << std::endl;
                statistics(i) = 2*gaussian_cdf(-std::abs(stat),0,1);
 
             }
@@ -414,8 +417,6 @@ double chi_squared_quantile(double percentile, double degrees_of_freedom) {
 
     return guess;
 }
-
-
      /*
      //questa è da controllare 
      double chi_squared_quantile(double percentile, int degrees_of_freedom) {
@@ -478,7 +479,7 @@ double chi_squared_quantile(double percentile, double degrees_of_freedom) {
             sum += lanczos_coefficients[i] / (x + i);
             denom *= (x + 1.0);
          }
-         std::cout<<"restituito dalla gamma function: " <<sqrt_2pi * sum / denom<<std::endl;
+         //std::cout<<"restituito dalla gamma function: " <<sqrt_2pi * sum / denom<<std::endl;
          return sqrt_2pi * sum / denom;
       }
 
@@ -501,18 +502,18 @@ double chi_squared_quantile(double percentile, double degrees_of_freedom) {
     }
 
 
-      std::cout<<"restituito dalla incomplete gamma function: " <<ans * std::exp(-x + a * std::log(x) - gamma(a))<<std::endl;
+      //std::cout<<"restituito dalla incomplete gamma function: " <<ans * std::exp(-x + a * std::log(x) - gamma(a))<<std::endl;
 
       return ans * std::exp(-x + a * std::log(x) - gamma(a));
    }
 
       double chi_squared_cdf(double x, double k) {
-         std::cout<<"il valore di x è "<<x<<std::endl;
-         std::cout<<"il valore di k è "<<k<<std::endl;
+         //std::cout<<"il valore di x è "<<x<<std::endl;
+         //std::cout<<"il valore di k è "<<k<<std::endl;
 
 
          if (x <= 0 || k <= 0) {
-            std::cout<<"entra nell if con x e k sbagliati"<<std::endl;
+            //std::cout<<"entra nell if con x e k sbagliati"<<std::endl;
             return 0.0;
             }
          
