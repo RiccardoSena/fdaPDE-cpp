@@ -210,11 +210,11 @@ template <typename Model, typename Strategy> class Wald {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        //double quantile2 = chi_squared_quantile(0.95,2);
-        //std::cout<<" the quantile calcolato  is "<<quantile2<<std::endl;
+        double quantile = inverseChiSquaredCDF(0.95,2);
+        //std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
 
-        double quantile = 5.991465;
+        //double quantile = 5.991465;
 
         lowerBound = (C_ * betaw_).array() - (quantile * diagon.array()).sqrt();
         upperBound = (C_ * betaw_).array() + (quantile * diagon.array()).sqrt();
@@ -296,6 +296,7 @@ template <typename Model, typename Strategy> class Wald {
          //std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
 
          DVector<double> statistics(C_.rows());
+         int p=C_.rows();
          
          if( type == simultaneous ){
             // simultaneous
@@ -326,11 +327,21 @@ template <typename Model, typename Strategy> class Wald {
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
             //double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
+            //std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
             
             statistics.resize(C_.rows());
-            //statistics(0) = 1-chi_squared_cdf(stat, 2);
-            statistics(0) = stat;
+            double pvalue=chi_squared_cdf(stat,p);
+            if(pvalue<0){
+               statistics(0)=1;
+            }
+            if(pvalue>1){
+               statistics(0)=0;
+            }
+            else{
+               statistics(0) = 1-pvalue;
+               }
+            //statistics(0) = stat           
+            //std::cout<<"Statistc Wald pvalue: " <<statistics(0)<< std::endl;
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
@@ -350,8 +361,16 @@ template <typename Model, typename Strategy> class Wald {
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
                std::cout << stat << std::endl;
-               statistics(i) = 2*gaussian_cdf(-std::abs(stat),0,1);
-
+               double pvalue=2*gaussian_cdf(-std::abs(stat),0,1);
+               if(pvalue<0){
+                  statistics(i)=0;
+               }
+               if(pvalue>1){
+                  statistics(i)=1;
+               }
+               else{
+                  statistics(i) = pvalue;
+               }
             }
             return statistics;
          }
@@ -382,72 +401,97 @@ template <typename Model, typename Strategy> class Wald {
 
      // funzione ausiliare per invertire una matrice densa in maniera efficiente
      //inverse() è progettata per operare solo sulla matrice passata come argomento e non dipende da alcun altro stato interno della classe Wald, puoi renderla statica
-     static DMatrix<double> inverse(DMatrix<double> M){
+   static DMatrix<double> inverse(DMatrix<double> M){
       Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
       // Mdec_ = M.partialPivLu(); 
       return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
-double chi_squared_quantile(double percentile, double degrees_of_freedom) {
-    double guess = degrees_of_freedom;
-    const double tolerance = 1e-10;
-    double step = 0.1;
 
-    double cdf = 0.0;
-    int max_iterations = 1000; // Limite massimo di iterazioni
-    int iterations = 0; // Contatore di iterazioni
 
-    // Cerca il valore della statistica corrispondente al percentile desiderato
-    while (cdf < percentile) {
-        guess += step;
-        cdf = 1 - chi_squared_cdf(guess, degrees_of_freedom);
-    }
+   
 
-    // Ricerca del valore della statistica con maggiore accuratezza
-    while (std::abs(cdf - percentile) > tolerance && iterations < max_iterations) {
-        step /= 10; // Diminuisci il passo di ricerca
-        cdf = 1 - chi_squared_cdf(guess, degrees_of_freedom);
-        if (cdf < percentile) {
-            guess += step;
-        } else {
-            guess -= step;
-        }
-        iterations++; // Incrementa il contatore di iterazioni
-    }
+     //pvalues
+     // calcolo del pvalue di una chiquadro 
+     //questa funziona correttamente 
+      double gamma(double x) {
+         if (x <= 0) {
+            return 0; // Valore non valido, restituisci 0
+         }
+            
+         if (x == 1) {
+            return 1; // Caso base: gamma(1) = 1
+         }
+         
+         if (x > 1) {
+               //std::cout<<"x è maggiore di 1 "<<std::endl;
 
-    return guess;
-}
-     /*
-     //questa è da controllare 
-     double chi_squared_quantile(double percentile, int degrees_of_freedom) {
-      // Percentuale complementare
-      double p = 1.0 - percentile;
-      std::cout<<"p è "<<p<<std::endl;
-      // Calcolare il valore z corrispondente al percentile complementare
-      double z = std::sqrt(2.0 * degrees_of_freedom);
-      std::cout<<"z è "<<z<<std::endl;
-
-      // Calcolare il valore del quantile utilizzando la funzione inversa della distribuzione normale standard
-      double quantile = z - ((1.0 / 3.0) * (1.0 / z) - 1.0 / (36.0 * z * z * z)) * (1.0 / std::sqrt(2.0)) * std::log(p / std::sqrt(2.0 * M_PI));
-      std::cout<<"quantile è "<<quantile<<std::endl;
-      // questo valore che viene è quasi corretto se fai la funzione restituisce direttamnte questo quantile*quantile
-      //non so cosa facciamo questi due if 
-      
-      // Applicare correzioni successive per gradi di libertà maggiori di 1
-      if (degrees_of_freedom > 1) {
-         quantile -= (1.0 / (6.0 * z)) * ((1.0 - (2.0 / (9.0 * degrees_of_freedom))) / std::sqrt(2.0 / (9.0 * degrees_of_freedom)) - 1.0) * std::log(p / std::sqrt(2.0 * M_PI));
+            double logGamma = 0.5 * log(2 * M_PI * x) + (x - 0.5) * log(x) - x + 1.0 / (12 * x);
+            return exp(logGamma);
+         } else {
+               //std::cout<<"x è 1 "<<x<<std::endl;
+            // Formula di riflessione di Euler
+            return M_PI / (sin(M_PI * x) * gamma(1 - x));
+         }
       }
 
-      // Applicare correzioni successive per gradi di libertà maggiori di 2
-      if (degrees_of_freedom > 2) {
-         quantile -= (1.0 / (6.0 * z)) * ((1.0 - (2.0 / (9.0 * degrees_of_freedom))) / std::sqrt(2.0 / (9.0 * degrees_of_freedom)) - 1.0) * std::log(p / std::sqrt(2.0 * M_PI));
+      double integrand(double t, double a) {
+         return pow(t, a - 1) * exp(-t);
       }
-      std::cout<<"quantile  finale è "<<quantile*quantile<<std::endl;
 
-      return quantile * quantile;
-     }*/
+      double gamma_incompleta(double a, double x, int numIntervals = 1000) {
+         double sum = 0.0;
+         double intervalWidth = x / numIntervals;
 
-     // Funzione per calcolare i quantili di una distribuzione normale standard
+         for (int i = 0; i < numIntervals; ++i) {
+            double left = i * intervalWidth;
+            double right = (i + 1) * intervalWidth;
+            sum += (integrand(right, a) + integrand(left, a)) / 2.0 * (right - left);
+         }
+         // std::cout<<"gamma_incompleta restituisce"<<sum<<std::endl;
+
+         return sum;
+      }
+
+      double chi_squared_cdf(double chiSquaredStat, int degreesOfFreedom) {
+         //std::cout<<"gamma restituisce "<<gamma(degreesOfFreedom / 2.0)<<std::endl;
+         double pValue = gamma_incompleta(degreesOfFreedom/2.0,chiSquaredStat/2.0)/gamma(degreesOfFreedom / 2.0);
+        // std::cout<<"pvalue è "<<pValue<<std::endl;
+
+         return pValue;
+      }
+     
+     // funzione per calcolare il pvalue di una normale 
+     // questa funziona correttamente
+     double gaussian_cdf(double x, double mean, double stddev) { 
+         return 0.5 * (1 + std::erf((x - mean) / (stddev * std::sqrt(2)))); 
+     }
+
+
+
+     // quantili 
+     // calcolo di quantile di una chiquadro
+     //questa funziona correttamente 
+     double inverseChiSquaredCDF(double alpha, int degreesOfFreedom, double tolerance = 1e-6) {
+         double low = 0.0;
+         double high = 1000.0; // Puoi regolare il limite superiore in base alle tue esigenze
+
+         // Applica la ricerca binaria fino a raggiungere la precisione desiderata
+         while (high - low > tolerance) {
+            double mid = (low + high) / 2.0;
+            double pValue = chi_squared_cdf(mid, degreesOfFreedom);
+
+            if (pValue < alpha) {
+                  low = mid;
+            } else {
+                  high = mid;
+            }
+         }
+
+         return (low + high) / 2.0;
+      }
+
+      // Funzione per calcolare i quantili di una distribuzione normale standard
      //questa funziona correttamente 
      double normal_standard_quantile(double percentile) {
          // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
@@ -466,67 +510,6 @@ double chi_squared_quantile(double percentile, double degrees_of_freedom) {
          } while (std::fabs(delta) > epsilon);
          return y;
      }
-     
-
-
-     //pvalues
-     double gamma(double x) {
-         const double sqrt_2pi = 2.50662827463100050242;
-         const double lanczos_coefficients[6] = {1.000000000190015, 76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.001208650973866179};
-         double sum = lanczos_coefficients[0];
-         double denom = x + 1.0;
-         for (int i = 1; i < 6; ++i) {
-            sum += lanczos_coefficients[i] / (x + i);
-            denom *= (x + 1.0);
-         }
-         //std::cout<<"restituito dalla gamma function: " <<sqrt_2pi * sum / denom<<std::endl;
-         return sqrt_2pi * sum / denom;
-      }
-
-  double incomplete_gamma(double a, double x) {
-    const double epsilon = 1e-15;
-    double ans = 0.0;
-    double term = 1.0; // Termine iniziale della serie
-    int k = 0; // Contatore per il numero di iterazioni
-
-    while (std::abs(term) > epsilon * std::abs(ans)) {
-        ans += term;
-        term *= x / (a + k);
-        k++;
-
-        // Controllo per evitare loop infiniti
-        if (k > 1000) {
-            // Gestisci il caso in cui la serie non converge entro un numero massimo di iterazioni
-            return -1.0; // Oppure gestisci diversamente il caso di non convergenza
-        }
-    }
-
-
-      //std::cout<<"restituito dalla incomplete gamma function: " <<ans * std::exp(-x + a * std::log(x) - gamma(a))<<std::endl;
-
-      return ans * std::exp(-x + a * std::log(x) - gamma(a));
-   }
-
-      double chi_squared_cdf(double x, double k) {
-         //std::cout<<"il valore di x è "<<x<<std::endl;
-         //std::cout<<"il valore di k è "<<k<<std::endl;
-
-
-         if (x <= 0 || k <= 0) {
-            //std::cout<<"entra nell if con x e k sbagliati"<<std::endl;
-            return 0.0;
-            }
-         
-         return incomplete_gamma(k / 2.0, x / 2.0) / gamma(k / 2.0);
-      }
-
-
-     
-     // funzione per calcolare il pvalue di una normale 
-     double gaussian_cdf(double x, double mean, double stddev) { 
-         return 0.5 * (1 + std::erf((x - mean) / (stddev * std::sqrt(2)))); 
-     }
-
       // aggiungere destructor?
 
    } ;
