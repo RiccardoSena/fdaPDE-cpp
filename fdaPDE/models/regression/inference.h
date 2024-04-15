@@ -17,21 +17,12 @@
 #ifndef __INFERENCE_H__
 #define __INFERENCE_H__
 
-// questi sono da controllare 
 #include <cmath>
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
-using fdapde::core::FSPAI;
-using fdapde::core::lump;
 
-#include "../model_macros.h"
-#include "../model_traits.h"
-#include "../model_base.h"
-#include "srpde.h"
-#include "strpde.h"
-#include "exact_edf.h"
 
-// #include <boost/math/distributions/chi_squared.hpp>
+
 #include <cmath>
 #include <random>
 

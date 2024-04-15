@@ -72,15 +72,21 @@ template <typename Model, typename Strategy> class Wald {
         // Dalla Sub Woodbury decomposition
         // bisogna fare prima un'approssimazione dell'inversa di R0, usando FSPAI
         // R0 should be stored as a sparse matrix
-        FSPAI fspai_R0(m.R0());
+        //FSPAI fspai_R0(m.R0());
 
-        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-        int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        //int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+        //int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        //double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
         // calcolo inversa di R0
-        fspai_R0.compute(alpha, beta, epsilon);
+        //fspai_R0.compute(alpha, beta, epsilon);
         //getter per l'inversa di R0
-        SpMatrix<double> invR0_= fspai_R0.getInverse();
+        //SpMatrix<double> R0_lumped = lump(m.R0());
+        //Eigen::ConjugateGradient<SpMatrix<double>> cg;
+        //cg.compute(R0_lumped);
+        //SpMatrix<double> invR0_= cg.solve(DMatrix<double>::Identity(m.R0().rows(), m.R0().cols()));
+        
+        ///// DA INVERTIRE
+        SpMatrix<double> invR0_ = lump(m.R0());
       /*
         //altirmenti calcolo in modo esatto R0^-1 e poi uso il lumping per renderla sparsa:
         DMatrix<double> R0inv=inverse(m.R0());
@@ -90,6 +96,10 @@ template <typename Model, typename Strategy> class Wald {
         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
+        int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+        int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+
         //Et_ should be stored as a sparse matrix 
         Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
         FSPAI fspai_E(Et_sparse);
@@ -211,7 +221,7 @@ template <typename Model, typename Strategy> class Wald {
 
         if(type == simultaneous){ 
         // SIMULTANEOUS
-        double quantile = inverseChiSquaredCDF(0.95,2);
+        double quantile = inverseChiSquaredCDF(0.95, p);
         //std::cout<<" the quantile calcolato  is "<<quantile<<std::endl;
 
 
@@ -327,7 +337,7 @@ template <typename Model, typename Strategy> class Wald {
 
             double stat = diff.adjoint() * Sigmadec_ * diff;
             //double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
-            //std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
+            std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
             
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);

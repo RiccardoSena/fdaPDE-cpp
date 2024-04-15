@@ -133,7 +133,7 @@ template <typename Model, typename Strategy> class Speckman {
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
         if(is_empty(Lambda_)){
-            Lambda_ = Lambda()*Lambda();
+            Lambda_ = Lambda() * Lambda();
          }
          DMatrix<double> W = m_.X();
          //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
@@ -156,7 +156,7 @@ template <typename Model, typename Strategy> class Speckman {
 
      DMatrix<double>& Vs() {
          if(is_empty(Lambda_)){
-            Lambda_ = Lambda()*Lambda();
+            Lambda_ = Lambda() * Lambda();
          }
          //check if WLW_dec has been computed
          // compute the decomposition of W^T*Lambda^2*W
@@ -235,7 +235,7 @@ template <typename Model, typename Strategy> class Speckman {
          // SIMULTANEOUS
          //boost::math::chi_squared_distribution<double> chi_squared(p);
          //double quantile = boost::math::quantile(chi_squared, alpha_);
-         double quantile = 1;
+         double quantile = inverseChiSquaredCDF(0.95, p);
          
          lowerBound = (C_ * betas_).array() - (quantile * diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + (quantile * diagon.array()).sqrt();
@@ -245,7 +245,7 @@ template <typename Model, typename Strategy> class Speckman {
          else if (type == bonferroni){
          // BONFERRONI
          //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/(2*p));
-         double quantile = 1;
+         double quantile = normal_standard_quantile(1-alpha_/(2*p));
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
@@ -255,7 +255,7 @@ template <typename Model, typename Strategy> class Speckman {
          else if (type == one_at_the_time){
          // ONE AT THE TIME
          //double quantile = std::sqrt(2.0) * boost::math::erf_inv(1-alpha_/2);
-         double quantile = 1;
+         double quantile = normal_standard_quantile(1-alpha_/2);
          
          lowerBound = (C_ * betas_).array() - quantile * (diagon.array()).sqrt();
          upperBound = (C_ * betas_).array() + quantile * (diagon.array()).sqrt();
@@ -408,7 +408,6 @@ template <typename Model, typename Strategy> class Speckman {
             //std::cout<<"entra nell'if del one at the time"<<std::endl;
             int p = C_.rows();
             statistics.resize(p);
-            std::cout << "Statistics Speckman oat: " << std::endl;
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
                double diff = col.adjoint() * betas() - beta0_[i];
