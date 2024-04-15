@@ -30,6 +30,7 @@ using fdapde::core::lump;
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
+#include "inference.h"
 
 // #include <boost/math/distributions/chi_squared.hpp>
 #include <cmath>
@@ -294,11 +295,10 @@ template <typename Model, typename Strategy> class Wald {
             Vw_ = Vw();
          }
          //std::cout<<"controllo su Vw avviene correttamente"<<std::endl;
-
-         DVector<double> statistics(C_.rows());
-         int p=C_.rows();
+         int p = C_.rows();
+         DVector<double> statistics(p);
          
-         if( type == simultaneous ){
+         if(type == simultaneous){
             // simultaneous
 
             DVector<double> diff = C_ * betaw() - beta0_;
@@ -329,16 +329,16 @@ template <typename Model, typename Strategy> class Wald {
             //double stat = m_.n_obs() * diff.transpose() * C_.transpose() * Sigmadec_ * C_ * diff;
             //std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
             
-            statistics.resize(C_.rows());
-            double pvalue=chi_squared_cdf(stat,p);
-            if(pvalue<0){
+            statistics.resize(p);
+            double pvalue = chi_squared_cdf(stat, p);
+            if(pvalue < 0){
                statistics(0)=1;
             }
-            if(pvalue>1){
+            if(pvalue > 1){
                statistics(0)=0;
             }
             else{
-               statistics(0) = 1-pvalue;
+               statistics(0) = 1 - pvalue;
                }
             //statistics(0) = stat           
             //std::cout<<"Statistc Wald pvalue: " <<statistics(0)<< std::endl;
@@ -350,7 +350,7 @@ template <typename Model, typename Strategy> class Wald {
             return statistics; 
          }
 
-         else if ( type == one_at_the_time ){
+         else if (type == one_at_the_time){
             // one at the time
             int p = C_.rows();
             statistics.resize(p);
@@ -361,12 +361,12 @@ template <typename Model, typename Strategy> class Wald {
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
                std::cout << stat << std::endl;
-               double pvalue=2*gaussian_cdf(-std::abs(stat),0,1);
-               if(pvalue<0){
-                  statistics(i)=0;
+               double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
+               if(pvalue < 0){
+                  statistics(i) = 0;
                }
-               if(pvalue>1){
-                  statistics(i)=1;
+               if(pvalue > 1){
+                  statistics(i) = 1;
                }
                else{
                   statistics(i) = pvalue;
@@ -407,110 +407,6 @@ template <typename Model, typename Strategy> class Wald {
       // Mdec_ = M.partialPivLu(); 
       return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
      }
-
-
-   
-
-     //pvalues
-     // calcolo del pvalue di una chiquadro 
-     //questa funziona correttamente 
-      double gamma(double x) {
-         if (x <= 0) {
-            return 0; // Valore non valido, restituisci 0
-         }
-            
-         if (x == 1) {
-            return 1; // Caso base: gamma(1) = 1
-         }
-         
-         if (x > 1) {
-               //std::cout<<"x è maggiore di 1 "<<std::endl;
-
-            double logGamma = 0.5 * log(2 * M_PI * x) + (x - 0.5) * log(x) - x + 1.0 / (12 * x);
-            return exp(logGamma);
-         } else {
-               //std::cout<<"x è 1 "<<x<<std::endl;
-            // Formula di riflessione di Euler
-            return M_PI / (sin(M_PI * x) * gamma(1 - x));
-         }
-      }
-
-      double integrand(double t, double a) {
-         return pow(t, a - 1) * exp(-t);
-      }
-
-      double gamma_incompleta(double a, double x, int numIntervals = 1000) {
-         double sum = 0.0;
-         double intervalWidth = x / numIntervals;
-
-         for (int i = 0; i < numIntervals; ++i) {
-            double left = i * intervalWidth;
-            double right = (i + 1) * intervalWidth;
-            sum += (integrand(right, a) + integrand(left, a)) / 2.0 * (right - left);
-         }
-         // std::cout<<"gamma_incompleta restituisce"<<sum<<std::endl;
-
-         return sum;
-      }
-
-      double chi_squared_cdf(double chiSquaredStat, int degreesOfFreedom) {
-         //std::cout<<"gamma restituisce "<<gamma(degreesOfFreedom / 2.0)<<std::endl;
-         double pValue = gamma_incompleta(degreesOfFreedom/2.0,chiSquaredStat/2.0)/gamma(degreesOfFreedom / 2.0);
-        // std::cout<<"pvalue è "<<pValue<<std::endl;
-
-         return pValue;
-      }
-     
-     // funzione per calcolare il pvalue di una normale 
-     // questa funziona correttamente
-     double gaussian_cdf(double x, double mean, double stddev) { 
-         return 0.5 * (1 + std::erf((x - mean) / (stddev * std::sqrt(2)))); 
-     }
-
-
-
-     // quantili 
-     // calcolo di quantile di una chiquadro
-     //questa funziona correttamente 
-     double inverseChiSquaredCDF(double alpha, int degreesOfFreedom, double tolerance = 1e-6) {
-         double low = 0.0;
-         double high = 1000.0; // Puoi regolare il limite superiore in base alle tue esigenze
-
-         // Applica la ricerca binaria fino a raggiungere la precisione desiderata
-         while (high - low > tolerance) {
-            double mid = (low + high) / 2.0;
-            double pValue = chi_squared_cdf(mid, degreesOfFreedom);
-
-            if (pValue < alpha) {
-                  low = mid;
-            } else {
-                  high = mid;
-            }
-         }
-
-         return (low + high) / 2.0;
-      }
-
-      // Funzione per calcolare i quantili di una distribuzione normale standard
-     //questa funziona correttamente 
-     double normal_standard_quantile(double percentile) {
-         // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
-         return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
-     }
-
-     // Funzione di approssimazione per il calcolo dell'inverso dell'errore
-     // questa funziona correttamente 
-     double inverse_erf(double x) {
-         const double epsilon = 1e-10; // Tolleranza per l'approssimazione
-         double y = 0.0;
-         double delta;
-         do {
-            delta = (std::erf(y) - x) / (2.0 / std::sqrt(M_PI) * std::exp(-y * y));
-            y -= delta;
-         } while (std::fabs(delta) > epsilon);
-         return y;
-     }
-      // aggiungere destructor?
 
    } ;
 }  // closing models namespace

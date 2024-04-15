@@ -28,6 +28,7 @@ using fdapde::core::FSPAI;
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
+#include "inference.h"
 
 //#include <boost/math/distributions/chi_squared.hpp>
 
@@ -135,11 +136,13 @@ template <typename Model, typename Strategy> class Speckman {
             Lambda_ = Lambda()*Lambda();
          }
          DMatrix<double> W = m_.X();
-         Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
-         WLW_dec.compute(W.transpose()*Lambda_*(W));         
-         betas_ = WLW_dec.solve(W.transpose()*Lambda_*(m_.y()));
+         //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
+         //WLW_dec.compute(W.transpose()*Lambda_*(W));  
+         //betas_ = WLW_dec.solve(W.transpose()*Lambda_*(m_.y()));
+         DMatrix<double> invWtW = inverseS(W.transpose() * Lambda_ * (W));      
+         betas_ = invWtW * W.transpose() * Lambda_ * (m_.y());
          
-         /*questa è la nostra implementazione
+         /* implementazione che non va..
   
         DMatrix<double> Wtilde_ = Lambda_ * m_.X();
         DMatrix<double> ytilde_ = Lambda_ * m_.y();
@@ -158,24 +161,24 @@ template <typename Model, typename Strategy> class Speckman {
          //check if WLW_dec has been computed
          // compute the decomposition of W^T*Lambda^2*W
          DMatrix<double> W = m_.X();
-         Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
-         WLW_dec.compute(W.transpose()*Lambda_*(W));
-       // get the residuals needed
-         DVector<double> eps_hat = (m_.y()-m_.fitted());
+         //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
+         //WLW_dec.compute(W.transpose()*Lambda_*(W));
+         DMatrix<double> invWtW = inverseS(W.transpose() * Lambda_ * (W));
+         // get the residuals needed
+         DVector<double> eps_hat = (m_.y() - m_.fitted());
          // compute squared residuals
-         DVector<double> Res2=eps_hat.array()*eps_hat.array();
+         DVector<double> Res2 = eps_hat.array() * eps_hat.array();
          
          // resize the variance-covariance matrix
          int q = 2;
-         Vs_.resize(q,q);
-         
+         Vs_.resize(q,q);        
          
          DMatrix<double> W_t = W.transpose();
          
          DMatrix<double> diag = Res2.asDiagonal();
          
-         Vs_ = (WLW_dec).solve((W_t)*Lambda_*Res2.asDiagonal()*Lambda_*(W)*(WLW_dec).solve(DMatrix<double>::Identity(q,q)));
-  
+         //Vs_ = (WLW_dec).solve((W_t)*Lambda_*Res2.asDiagonal()*Lambda_*(W)*(WLW_dec).solve(DMatrix<double>::Identity(q,q)));
+         Vs_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
@@ -184,7 +187,7 @@ template <typename Model, typename Strategy> class Speckman {
          //DMatrix<double> E=epsilon_*epsilon_.transpose();
          // Vs_ = inverse(U)*Wt_.transpose()*Lambda_*E*Lambda_.transpose()*Wt_*inverse(U);
 
-        /*questa è la nostra implementazione 
+        /* implementazione che non va.. 
         DMatrix<double> Wt_ = Lambda_ * m_.X();
         //DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         //DMatrix<double> invU_ = inverse(U_); 
@@ -310,9 +313,10 @@ template <typename Model, typename Strategy> class Speckman {
             }
          }
          std::cout << std::endl;*/
-         DVector<double> statistics(C_.rows());
+         int p = C_.rows();
+         DVector<double> statistics(p);
          // simultaneous 
-         if( type == simultaneous ){
+         if(type == simultaneous){
            // std::cout<<"riesce ad entrare nell'if giusto"<<std::endl;
 
            // std::cout << std::endl;
@@ -353,15 +357,6 @@ template <typename Model, typename Strategy> class Speckman {
                std::cout << std::endl;
             }
 
-
-            //Sigmadec_ non penso venga calcolata correttamente 
-            //DMatrix<double> Sigmadec_(Sigma.rows(),Sigma.cols());
-            //Sigmadec_(0,0)=9354590421.417017;
-            //Sigmadec_(0,1)=-108995256.8119;
-            //Sigmadec_(1,0)=-108995256.8119;
-            //Sigmadec_(1,1)=1269963.195261;
-
-
             DMatrix<double> Sigmadec_ = inverseS(Sigma);
             // questo è per usare inverse della libreria eigen 
             //DMatrix<double> Sigmadec_ = Sigma.inverse();
@@ -390,8 +385,18 @@ template <typename Model, typename Strategy> class Speckman {
             std::cout<<"Statistica Speckman sim: "<< stat<< std::endl;
             
 
-            statistics.resize(C_.rows());
-            statistics(0) = stat;
+            statistics.resize(p);
+            double pvalue = chi_squared_cdf(stat, p);
+
+            if(pvalue < 0){
+               statistics(0)=1;
+            }
+            if(pvalue > 1){
+               statistics(0)=0;
+            }
+            else{
+               statistics(0) = 1 - pvalue;
+               }
 
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
@@ -399,7 +404,7 @@ template <typename Model, typename Strategy> class Speckman {
             return statistics; 
          }
          // one at the time
-         if ( type == one_at_the_time ){
+         if (type == one_at_the_time){
             //std::cout<<"entra nell'if del one at the time"<<std::endl;
             int p = C_.rows();
             statistics.resize(p);
@@ -410,7 +415,16 @@ template <typename Model, typename Strategy> class Speckman {
                double sigma = col.adjoint() * Vs_ * col;
                double stat = diff/std::sqrt(sigma);
                std::cout << stat << std::endl;
-               statistics(i) = stat;
+               double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
+               if(pvalue < 0){
+                  statistics(i) = 0;
+               }
+               if(pvalue > 1){
+                  statistics(i) = 1;
+               }
+               else{
+                  statistics(i) = pvalue;
+               }
             }
             return statistics;
          }

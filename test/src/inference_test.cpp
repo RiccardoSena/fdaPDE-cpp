@@ -256,7 +256,7 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
 //    covariates:   yes
 //    BC:           no
 //    order FE:     1
-/*
+
 TEST(inference_test, WaldExact27Sim) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -524,11 +524,11 @@ TEST(inference_test, WaldExact28oat) {
     //std::cout<< pvalues(1) << std::endl;
     
     //std::cout << "ora inizia il test wald " << std::endl;
-    EXPECT_TRUE(almost_equal(pvalues(0), 2.458212e-05 , 1e-7));
-    EXPECT_TRUE(almost_equal(pvalues(1), 6.521694e-29 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalues(0), 1.03099e-02 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalues(1), 2.76879e-17 , 1e-7));
 
 }
-*/
+
 
 
 TEST(inference_test, SpeckmanExact27oat){
@@ -600,7 +600,70 @@ TEST(inference_test, SpeckmanExact27oat){
 } 
  
 
-TEST(inference_test, SpeckmanExactsim){
+TEST(inference_test, SpeckmanExact28){
+        // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness SPECKMAN
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    //std::cout << "creato elemento inference" << std::endl;
+    //std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    inferenceSpeck.betas();
+    std::cout<<std::endl;
+    //std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    C(0,0)=1;
+    C(0,1)=1;
+    C(1,0)=1;
+    C(1,1)=-1;
+
+
+    inferenceSpeck.setC(C);
+    //std::cout << "set C" << std::endl;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceSpeck.setBeta0(beta0);
+
+    //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+
+    //DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
+    //std::cout << "il valore dei pvalue è" << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+
+    
+    std::cout << "ora inizia il test speckman sim" << std::endl;
+    std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.8937451158, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.0008644394, 1e-7));
+}   
+
+TEST(inference_test, SpeckmanExact27sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -663,10 +726,10 @@ TEST(inference_test, SpeckmanExactsim){
     
     std::cout << "ora inizia il test speckman sim" << std::endl;
     std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::simultaneous)(0) << std::endl;
-    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.2454234, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.1574313, 1e-7));
 }   
 
-/*
+
 TEST(inference_test, EigenSignFlip27sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -793,6 +856,6 @@ TEST(inference_test, EigenSignFlip27oat){
     EXPECT_TRUE(almost_equal(pvalues(1), 0.924 , 1e-7));
 
 }
-*/
+
 
 

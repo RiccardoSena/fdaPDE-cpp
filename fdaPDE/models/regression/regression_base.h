@@ -33,14 +33,6 @@ using fdapde::core::BinaryVector;
 namespace fdapde {
 namespace models {
 
-//// PARTE AGGIUNTA
-// inizio
-struct exact {};
-struct nonexact {};
-enum CIType {bonferroni,simultaneous,one_at_the_time};
-// fine
-////
-
 // base class for any *regression* model
 template <typename Model, typename RegularizationType>
 class RegressionBase :
