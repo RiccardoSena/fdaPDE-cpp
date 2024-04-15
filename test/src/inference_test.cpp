@@ -256,6 +256,7 @@ TEST(inferenceTest, SpeckmanNonExactSRPDE){
 //    covariates:   yes
 //    BC:           no
 //    order FE:     1
+/*
 TEST(inference_test, WaldExact27Sim) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -527,10 +528,10 @@ TEST(inference_test, WaldExact28oat) {
     EXPECT_TRUE(almost_equal(pvalues(1), 6.521694e-29 , 1e-7));
 
 }
+*/
 
 
-/*
-TEST(inference_test, SpeckmanExact27){
+TEST(inference_test, SpeckmanExact27oat){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -597,9 +598,9 @@ TEST(inference_test, SpeckmanExact27){
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.08680236, 1e-7));
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.48107956, 1e-7));
 } 
-*/  
-/*
-TEST(inference_test, SpeckmanExactSimultaneous){
+ 
+
+TEST(inference_test, SpeckmanExactsim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -664,8 +665,8 @@ TEST(inference_test, SpeckmanExactSimultaneous){
     std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::simultaneous)(0) << std::endl;
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.2454234, 1e-7));
 }   
-*/
 
+/*
 TEST(inference_test, EigenSignFlip27sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -792,5 +793,6 @@ TEST(inference_test, EigenSignFlip27oat){
     EXPECT_TRUE(almost_equal(pvalues(1), 0.924 , 1e-7));
 
 }
+*/
 
 

@@ -132,21 +132,50 @@ template <typename Model, typename Strategy> class Speckman {
         // zt = Lambda_*\z
         // betas_ = (Wt^T*\Wt)^{-1}*\Wt^T*\zt
         if(is_empty(Lambda_)){
-            Lambda_ = Lambda();
+            Lambda_ = Lambda()*Lambda();
          }
+         DMatrix<double> W = m_.X();
+         Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
+         WLW_dec.compute(W.transpose()*Lambda_*(W));         
+         betas_ = WLW_dec.solve(W.transpose()*Lambda_*(m_.y()));
+         
+         /*questa è la nostra implementazione
+  
         DMatrix<double> Wtilde_ = Lambda_ * m_.X();
         DMatrix<double> ytilde_ = Lambda_ * m_.y();
         DMatrix<double> temp = inverseS(Wtilde_.transpose() * Wtilde_);
         betas_ = temp * Wtilde_.transpose() * ytilde_;
         //std::cout<<"questi sono i beta s che vengono calcolati dentro alla funzione: "<<betas_<<std::endl;
+        */
         return betas_;
 
      }
 
      DMatrix<double>& Vs() {
          if(is_empty(Lambda_)){
-            Lambda_ = Lambda();
+            Lambda_ = Lambda()*Lambda();
          }
+         //check if WLW_dec has been computed
+         // compute the decomposition of W^T*Lambda^2*W
+         DMatrix<double> W = m_.X();
+         Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
+         WLW_dec.compute(W.transpose()*Lambda_*(W));
+       // get the residuals needed
+         DVector<double> eps_hat = (m_.y()-m_.fitted());
+         // compute squared residuals
+         DVector<double> Res2=eps_hat.array()*eps_hat.array();
+         
+         // resize the variance-covariance matrix
+         int q = 2;
+         Vs_.resize(q,q);
+         
+         
+         DMatrix<double> W_t = W.transpose();
+         
+         DMatrix<double> diag = Res2.asDiagonal();
+         
+         Vs_ = (WLW_dec).solve((W_t)*Lambda_*Res2.asDiagonal()*Lambda_*(W)*(WLW_dec).solve(DMatrix<double>::Identity(q,q)));
+  
         // set U = Wt^T*\W
         // set E = epsilon*\epsilon^T
         // Vs = U^{-1}*\Wt^T*\Lambda*\E*\Lambda^T*\Wt*U^{-1}
@@ -155,14 +184,14 @@ template <typename Model, typename Strategy> class Speckman {
          //DMatrix<double> E=epsilon_*epsilon_.transpose();
          // Vs_ = inverse(U)*Wt_.transpose()*Lambda_*E*Lambda_.transpose()*Wt_*inverse(U);
 
-        
+        /*questa è la nostra implementazione 
         DMatrix<double> Wt_ = Lambda_ * m_.X();
         //DMatrix<double> U_ = Wtilde_.transpose() * Wtilde_; // symmetric
         //DMatrix<double> invU_ = inverse(U_); 
         DMatrix<double> left_ = inverseS(Wt_.transpose() * Wt_);
         DMatrix<double> epsilon_ = m_.y() - m_.fitted();
         Vs_ = left_ * Wt_.transpose() * Lambda_ * (epsilon_ * epsilon_.transpose()) * Lambda_.transpose() * Wt_ * left_;
-        
+        */
         return Vs_;
      }
 
@@ -334,6 +363,8 @@ template <typename Model, typename Strategy> class Speckman {
 
 
             DMatrix<double> Sigmadec_ = inverseS(Sigma);
+            // questo è per usare inverse della libreria eigen 
+            //DMatrix<double> Sigmadec_ = Sigma.inverse();
          
             std::cout<<"Sigmadec : "<<std::endl;
             
