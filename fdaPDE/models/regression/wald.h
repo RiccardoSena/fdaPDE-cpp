@@ -50,15 +50,6 @@ template <typename Model, typename Strategy> class Wald {
             DMatrix<double> invT_ = Tdec_.solve(DMatrix<double>::Identity(m.T().rows(), m.T().cols()));
             //DMatrix<double> S = m.Psi() * invT_.block(0, 0, m.n_basis(), m.n_basis()) * m.PsiTD() * m.Q(); 
             DMatrix<double> S = m.Psi() * invT_ * m.PsiTD() * m.Q(); 
-
-            std::cout<<"questa è S : " <<std::endl;
-            std::cout << std::endl;
-            for (int i = 0; i < 4; ++i) {
-                  for(int j=0; j<4;++j){
-                  std::cout << S(i,j)<< " ";
-               }
-            }
-            std::cout << std::endl;
             return S;
          }
       };
@@ -222,7 +213,6 @@ template <typename Model, typename Strategy> class Wald {
          if(type == simultaneous){ 
             // SIMULTANEOUS
             double quantile = inverseChiSquaredCDF(1-alpha_, p);
-            //double quantile = 5.991465;
 
             lowerBound = (C_ * betaw_).array() - (quantile * diagon.array()).sqrt();
             upperBound = (C_ * betaw_).array() + (quantile * diagon.array()).sqrt();
@@ -232,7 +222,6 @@ template <typename Model, typename Strategy> class Wald {
          else if (type == bonferroni){
             // BONFERRONI
             double quantile = normal_standard_quantile(1-alpha_/(2*p));
-            //double quantile = 2.241403;
             
             lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
             upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
@@ -242,7 +231,6 @@ template <typename Model, typename Strategy> class Wald {
          else if (type == one_at_the_time){
             // ONE AT THE TIME
             double quantile = normal_standard_quantile(1-alpha_/2);
-            //double quantile = 1.959964;
             
             lowerBound = (C_ * betaw_).array() - quantile * (diagon.array()).sqrt();
             upperBound = (C_ * betaw_).array() + quantile * (diagon.array()).sqrt();
@@ -257,15 +245,7 @@ template <typename Model, typename Strategy> class Wald {
          DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;
-         /*
-         std::cout<<" Confidence intervals "<<std::endl;
-         for (int i =0; i<CIMatrix.rows(); ++i){
-            for (int j =0; j<CIMatrix.cols(); ++j){
-               std::cout<<CIMatrix(i,j)<<"  ";
 
-            }
-         }
-         std::cout<<std::endl;*/
          return CIMatrix;
       }
 
@@ -275,7 +255,6 @@ template <typename Model, typename Strategy> class Wald {
          fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
          if(is_empty(beta0_)){
-            // print errore (need to set beta0)???
             setBeta0(DVector<double>::Zero(betaw().size())); // set beta0 to 0
          }
 
@@ -296,7 +275,6 @@ template <typename Model, typename Strategy> class Wald {
             DMatrix<double> Sigma = C_ * Vw_ * C_.transpose();
             DMatrix<double> Sigmadec_ = inverse(Sigma);
             double stat = diff.adjoint() * Sigmadec_ * diff;
-            std::cout<<"Statistc Wald sim: " <<stat<< std::endl;
             
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
@@ -321,13 +299,11 @@ template <typename Model, typename Strategy> class Wald {
             //  ONE AT THE TIME 
             int p = C_.rows();
             statistics.resize(p);
-            std::cout<<"Statistics Wald oat: "<<std::endl;
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
                double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
-               std::cout << stat << std::endl;
                double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
                if(pvalue < 0){
                   statistics(i) = 0;

@@ -45,16 +45,6 @@ template <typename Model, typename Strategy> class Speckman {
          DMatrix<double> compute(Model m){
             Eigen::PartialPivLU<DMatrix<double>> Adec_ (m.E());
             DMatrix<double> inverseA_ = Adec_.solve(DMatrix<double>::Identity(m.E().rows(), m.E().cols()));
-            /*inverseA_ =  - m.invA().solve(DMatrix<double>::Identity(2 * m.n_basis(),2 * m.n_basis()));
-            std::cout<<"questa è inversa di A : " <<std::endl;
-            for (int i = 0; i < 4; ++i) {
-               for(int j=0; j < 4; ++j){
-                  std::cout << inverseA_(i, j) << " ";
-            }
-            }*/
-            // Ottenere le dimensioni di A_
-            //std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
-            //std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
             return inverseA_;       
          }
       };
@@ -144,7 +134,7 @@ template <typename Model, typename Strategy> class Speckman {
          DMatrix<double> invWtW = inverseS(W.transpose() * Lambda_ * (W));      
          betas_ = invWtW * W.transpose() * Lambda_ * (m_.y());
             
-            /* implementazione che non va..
+            /* implementazione alternativa..
    
          DMatrix<double> Wtilde_ = Lambda_ * m_.X();
          DMatrix<double> ytilde_ = Lambda_ * m_.y();
@@ -288,14 +278,6 @@ template <typename Model, typename Strategy> class Speckman {
          if(is_empty(Vs_)){
             Vs_ = Vs();
          }
-            /*
-            std::cout<<"questa è Vs: "<<std::endl;
-            for (int i = 0; i < Vs_.rows(); ++i) {
-               for (int j = 0; j < Vs_.cols(); ++j) {
-                  std::cout << Vs_(i,j) << " ";
-               }
-            }
-            std::cout << std::endl;*/
          
          int p = C_.rows();
          DVector<double> statistics(p);
@@ -306,8 +288,6 @@ template <typename Model, typename Strategy> class Speckman {
             DMatrix<double> Sigma = C_ * Vs_ * C_.transpose();
             DMatrix<double> Sigmadec_ = inverseS(Sigma);
             double stat = diff.adjoint() * Sigmadec_ * diff;
-            
-            std::cout<<"Statistica Speckman sim: "<< stat<< std::endl;
             
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
@@ -337,7 +317,6 @@ template <typename Model, typename Strategy> class Speckman {
                double diff = col.adjoint() * betas() - beta0_[i];
                double sigma = col.adjoint() * Vs_ * col;
                double stat = diff/std::sqrt(sigma);
-               std::cout << stat << std::endl;
                double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
                if(pvalue < 0){
                   statistics(i) = 0;
