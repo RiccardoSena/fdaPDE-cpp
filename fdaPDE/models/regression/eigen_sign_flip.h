@@ -39,119 +39,20 @@ template <typename Model> class EigenSignFlip {
 
     private:
 
-     Model m_;
+        Model m_;
 
 
     public:
-     EigenSignFlip() = default;                 // constructors
-     EigenSignFlip(const Model& m): m_(m) {};
-     DMatrix<double> C_ {};               // inference matrix C (p x q) matrix               
+        EigenSignFlip() = default;                 // constructors
+        EigenSignFlip(const Model& m): m_(m) {};
+        DMatrix<double> C_ {};               // inference matrix C (p x q) matrix               
 
-     int n;                                     // dimension of matrix Pi_
-     //DiagMatrix<double> Pi_ {};           // diagonal matrix for sign flip (n x n) matrix
-     DVector<double> beta0_ {};           // inference hypothesis H0 (p x 1) matrix
-     DMatrix<double> Lambda_ {};          // Speckman correction matrix (n x n) matrix
+        int n;                                     // dimension of matrix Pi_
+        //DiagMatrix<double> Pi_ {};           // diagonal matrix for sign flip (n x n) matrix
+        DVector<double> beta0_ {};           // inference hypothesis H0 (p x 1) matrix
+        DMatrix<double> Lambda_ {};          // Speckman correction matrix (n x n) matriX
 
-
-     DiagMatrix<double> Pi() {  
-
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<double> dist(-1, 1);
-        DiagMatrix<double> Pi_(m_.n_obs());
-        for(int i = 0; i < m_.n_obs(); ++i){
-            Pi_.diagonal()[i] = dist(gen);
-        }
-        return Pi_;
-     }
-
-/*
-     DVector<double> p_value(){
-        // T  = W^T * Pi(z − W * beta − Psi* f )
-        //compute score components under H0
-        
-        if(is_empty(beta0_)){
-            // print errore (need to set beta0)???
-            // set beta0 to 0
-            setBeta0(DVector<double>::Zero(m_.beta().size()));
-        }
-        //std::cout<<"controllo su beta0 avviene correttamente"<<std::endl;
-
-        //std::cout<<"la lunghezza di beta0_ è : "<<beta0_.size()<<std::endl;
-        //std::cout<<"questa è beta0_ : " <<std::endl;
-        //for (int i = 0; i < beta0_.size(); ++i) {
-        //   std::cout << beta0_[i] << " ";
-        //}
-        
-        //Compute the observed test statistic Tobs
-        DVector<double> Tobs_= m_.X().transpose() * DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) * (m_.y()- m_.X() * m_.beta());
-        //std::cout<<"la test statistic è : "<<std::endl;
-        //for (int i = 0; i < Tobs_.size(); ++i) {
-        //   std::cout << Tobs_[i] << " ";
-        //}
-        int M = 1000;
-        DMatrix<double> T_(m_.X().cols(), M);
-        std::cout<<"T viene inizializzato vuoto correttamente"<<std::endl;
-        DVector<double> count(Tobs_.size());
-        // M lo vogliamo impostare noi???
-        for (int i = 0; i < M; ++i) {
-            // generate matrix Pi_
-            DiagMatrix<double> Pi_ = Pi();
-            // compute test statistic Ti with Pi_ just generated 
-            // ie costruisco un vettore di Ti che contiene tutti i valori della statistica per ogni Pi diverso 
-            DMatrix<double> Pi_Matrix = DMatrix<double>::Zero(Pi_.rows(), Pi_.cols());
-            Pi_Matrix.diagonal() = Pi_.diagonal();
-            
-            std::cout<<"Pi è diventata una matrice densa"<<std::endl;
-            std::cout<<"il numero di righe di X è "<<m_.X().rows()<<std::endl;
-            std::cout<<"il numero di colonne di X è "<<m_.X().cols()<<std::endl;
-            std::cout<<"il numero di righe di Pi è "<<Pi_Matrix.rows()<<std::endl;
-            std::cout<<"il numero di colonne di Pi è "<<Pi_Matrix.cols()<<std::endl;
-            std::cout<<"il numero di righe di y è "<<m_.y().rows()<<std::endl;
-            std::cout<<"il numero di colonne di y è "<<m_.y().cols()<<std::endl;
-            
-            T_.col(i) = m_.X().transpose() * Pi_Matrix * (m_.y() - m_.X() * beta0_);
-            DVector<double> count_temp = (T_.col(i).array() > Tobs_.array()).cast<double>();
-            count += count_temp;
-        }
-        std::cout<<"calcolo di T avviene correttamente e T è :"<<std::endl;
-        for (int i = 0; i < T_.rows(); ++i) {
-            for (int j = 0; j < T_.cols(); ++j) {
-                std::cout << T_(i, j) << " ";
-            }
-            std::cout << std::endl; // Aggiungi una nuova riga dopo ogni riga di elementi
-        }
-        
-        // pvalue= sum( Ti> Tobs)/M
-        // Replicare Tobs_ M volte
-        auto replicated_Tobs = Tobs_.replicate(1, M);
-        std::cout << "Replicated Tobs_:" << std::endl << replicated_Tobs << std::endl;
-
-        // Effettua il confronto elemento per elemento tra T_ e replicated_Tobs
-        auto comparison = T_.array() > replicated_Tobs.array();
-        std::cout << "Comparison:" << std::endl << comparison << std::endl;
-
-        // Calcola il conteggio delle occorrenze di ciascuna riga in base al confronto
-        auto rowwise_count = comparison.rowwise().count();
-        std::cout << "Row-wise count:" << std::endl << rowwise_count << std::endl;
-
-        // Cast dei risultati in double
-        DVector<double> count = rowwise_count.cast<double>();
-        std::cout << "Count (double cast):" << std::endl << count << std::endl;
-        
-        //DVector<double> count = (T_.array() > Tobs_.replicate(1, M).array()).rowwise().count().cast<double>();
-        std::cout<<"count  è : "<<std::endl;
-        for (int i = 0; i < count.size(); ++i) {
-           std::cout << count[i] << " ";
-        }
-        return count/M;
-     }
-    */
-
-
-
-
-     DVector<double> p_value(CIType type){
+    DVector<double> p_value(CIType type){
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
@@ -161,18 +62,13 @@ template <typename Model> class EigenSignFlip {
 
         int p = C_.rows(); 
 
-        // declare the vector that will store the p-values
-        DVector<double> result;
-        // get the number of flips
-        int n_flip=1000;
+        DVector<double> result;     // declare the vector that will store the p-values
+        int n_flip=1000;            // get the number of flips
         
-        // compute Lambda
-        DMatrix<double> Lambda=Lambda_;
-        
-        // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda);
+        DMatrix<double> Lambda=Lambda_;         // compute Lambda
+        Eigen::EigenSolver<DMatrix<double>> solver(Lambda);        // compute eigenvectors and eigenvalues of Lambda
 
-        // Ottieni gli autovalori e gli autovettori
+        // get real part of eigenvalues and eigenvectors
         DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
         DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
 
@@ -183,13 +79,13 @@ template <typename Model> class EigenSignFlip {
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod=beta_hat;
         
-        // simultaneous test
-        if(type == simultaneous){    
+        if(type == simultaneous){  
+            // SIMULTANEOUS   
             // extract the current betas in test
             for(int i=0; i<p; i++){
-            for(int j=0; j<C_.cols(); j++){
-                if(C_(i,j)>0){
-                    beta_hat_mod[j]=beta0_[j];
+                for(int j=0; j<C_.cols(); j++){
+                    if(C_(i,j)>0){
+                        beta_hat_mod[j]=beta0_[j];
                     }
                 }
             }
@@ -226,11 +122,11 @@ template <typename Model> class EigenSignFlip {
                     count_Up=count_Up+1;
                     //std::cout<<"count up è: "<<count_Up<<std::endl;
                 }
-                else{ //Here we use the custom-operator defined in Eigen_Sign_Flip.h
+                else{ 
                 if(is_Unilaterally_Smaller(stat_flip,stat)){ 
                     count_Down=count_Down+1;
                     //std::cout<<"count down è: "<<count_Down<<std::endl;
-                    }                    //Here we use the custom-operator defined in Eigen_Sign_Flip.h 
+                    }                    
                 }
             }
             
@@ -246,8 +142,7 @@ template <typename Model> class EigenSignFlip {
             }
         }
         else{
-            
-            // one-at-the-time tests    
+            // ONE AT THE TIME   
             DMatrix<double> Partial_res_H0(Lambda.cols(), p);
             for(int i=0; i<p; ++i){
             // Extract the current beta in test
@@ -255,7 +150,8 @@ template <typename Model> class EigenSignFlip {
 
             for(int j=0; j<C_.cols(); j++){
                 if(C_(i,j)>0){
-                    beta_hat_mod[j]=beta0_[j];}
+                    beta_hat_mod[j]=beta0_[j];
+                }
             }
             // compute the partial residuals
             Partial_res_H0.col(i) = m_.y() - m_.X()* beta_hat_mod; // (z-W*beta_hat(non in test)-W*beta_0(in test))
@@ -305,9 +201,9 @@ template <typename Model> class EigenSignFlip {
      }
     
       // setter per i beta0_
-     void setBeta0(DVector<double> beta0){
+    void setBeta0(DVector<double> beta0){
       beta0_ = beta0;
-     }
+    }
 
     inline bool is_Unilaterally_Greater (DVector<double> v, DVector<double> u){
         int q=v.size();
@@ -332,6 +228,7 @@ template <typename Model> class EigenSignFlip {
     }
     return true;
     };
+
     inline DVector<double> min(const DVector<double> & v, const DVector<double> & u){
         DVector<double> result;
         result.resize(v.size());
@@ -346,11 +243,7 @@ template <typename Model> class EigenSignFlip {
      }
 
 
-
-
-
     DMatrix<double> Lambda() {
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_).block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
         DMatrix<double> inverseA_ {};
         inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
@@ -358,8 +251,6 @@ template <typename Model> class EigenSignFlip {
     }
 
 }; // closing EigenSignFlip class
-
-
 } // closing models namespace
 } // closing fdapde namespace
 

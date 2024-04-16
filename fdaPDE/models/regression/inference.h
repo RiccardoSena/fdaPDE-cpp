@@ -83,7 +83,6 @@ namespace models {
     }
      
     // funzione per calcolare il pvalue di una normale 
-    // questa funziona correttamente
     double gaussian_cdf(double x, double mean, double stddev) { 
         return 0.5 * (1 + std::erf((x - mean) / (stddev * std::sqrt(2)))); 
     }
@@ -92,7 +91,6 @@ namespace models {
 
     // quantili 
     // calcolo di quantile di una chiquadro
-    //questa funziona correttamente 
     double inverseChiSquaredCDF(double alpha, int degreesOfFreedom, double tolerance = 1e-6) {
         double low = 0.0;
         double high = 1000.0; // Puoi regolare il limite superiore in base alle tue esigenze
@@ -113,7 +111,6 @@ namespace models {
     }
 
     // Funzione di approssimazione per il calcolo dell'inverso dell'errore
-    // questa funziona correttamente 
     double inverse_erf(double x) {
         const double epsilon = 1e-10; // Tolleranza per l'approssimazione
         double y = 0.0;
@@ -126,7 +123,6 @@ namespace models {
     }
     
     // Funzione per calcolare i quantili di una distribuzione normale standard
-    //questa funziona correttamente 
     double normal_standard_quantile(double percentile) {
         // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
         return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
