@@ -1093,3 +1093,44 @@ TEST(inference_test, inference28) {
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.0008644394, 1e-7));
 
 }
+
+TEST(inference_test, WaldNonExact) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceWald.setBeta0(beta0);
+
+    std::cout << "p-value non exact: " << inferenceWald.p_value(fdapde::models::simultaneous)(0) << std::endl;
+
+}

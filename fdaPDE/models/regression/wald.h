@@ -77,7 +77,13 @@ template <typename Model, typename Strategy> class Wald {
             //SpMatrix<double> invR0_= cg.solve(DMatrix<double>::Identity(m.R0().rows(), m.R0().cols()));
             
             ///// DA INVERTIRE
-            SpMatrix<double> invR0_ = lump(m.R0());
+            SpMatrix<double> decR0_ = lump(m.R0());            
+            Eigen::SparseLU<SpMatrix<double>> sol;
+            sol.analyzePattern(decR0_);
+            sol.factorize(decR0_);
+            SpMatrix<double> id(m.R0().rows(), m.R0().cols());
+            id.setIdentity();
+            SpMatrix<double> invR0_ = sol.solve(id);
             
             //altrimenti calcolo in modo esatto R0^-1 e poi uso il lumping per renderla sparsa:
             //DMatrix<double> R0inv=inverse(m.R0());
@@ -116,6 +122,7 @@ template <typename Model, typename Strategy> class Wald {
             SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             // m_.Psi().transpose() or m_.PsiTD()
             DMatrix<double> S = m.Psi() * invMt_ * m.PsiTD() * m.Q();
+            /*
             std::cout<<"questa è S : " <<std::endl;
             std::cout << std::endl;
                for (int i = 0; i < 4; ++i) {
@@ -123,7 +130,7 @@ template <typename Model, typename Strategy> class Wald {
                   std::cout << S(i,j)<< " ";
                }
             }
-            std::cout << std::endl;
+            std::cout << std::endl;*/
             return S;
          }
       };
