@@ -71,13 +71,11 @@ template <typename Model, typename Strategy> class Wald {
             // calcolo inversa di R0
             //fspai_R0.compute(alpha, beta, epsilon);
             //getter per l'inversa di R0
-            //SpMatrix<double> R0_lumped = lump(m.R0());
-            //Eigen::ConjugateGradient<SpMatrix<double>> cg;
-            //cg.compute(R0_lumped);
-            //SpMatrix<double> invR0_= cg.solve(DMatrix<double>::Identity(m.R0().rows(), m.R0().cols()));
-            
-            ///// DA INVERTIRE
-            SpMatrix<double> decR0_ = lump(m.R0());            
+           
+            SpMatrix<double> decR0_ = lump(m.R0());  
+
+            // fare con 1/R0_ii
+
             Eigen::SparseLU<SpMatrix<double>> sol;
             sol.analyzePattern(decR0_);
             sol.factorize(decR0_);
