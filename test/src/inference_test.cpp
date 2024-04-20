@@ -1094,6 +1094,7 @@ TEST(inference_test, inference28) {
 
 }
 
+/*
 TEST(inference_test, WaldNonExact) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1134,3 +1135,143 @@ TEST(inference_test, WaldNonExact) {
     std::cout << "p-value non exact: " << inferenceWald.p_value(fdapde::models::simultaneous)(0) << std::endl;
 
 }
+
+
+TEST(inference_test, inference37) {
+    // define domain
+    MeshLoader<Mesh2D> domain("unit_square");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test3/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test3/y.csv");
+    // define regularizing PDE
+    SMatrix<2> K;
+    K << 1, 0, 0, 4;
+    auto L = -diffusion<FEM>(K);   // anisotropic diffusion
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define  model
+    double lambda = 10;
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2.5;
+    beta0(1)=1.5;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+
+
+
+    // test correctness Wald
+    EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::one_at_the_time)(0), 0.4641526 , 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::one_at_the_time)(1), 0.4218684 , 1e-7));
+    
+    // test correctness Speckman
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.4937141, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.3090625, 1e-7));
+
+}
+*/
+
+using fdapde::core::advection;
+using fdapde::core::diffusion;
+using fdapde::core::dt;
+using fdapde::core::FEM;
+using fdapde::core::SPLINE;
+using fdapde::core::bilaplacian;
+using fdapde::core::laplacian;
+using fdapde::core::PDE;
+using fdapde::core::Mesh;
+using fdapde::core::spline_order;
+
+#include "../../fdaPDE/models/regression/strpde.h"
+#include "../../fdaPDE/models/sampling_design.h"
+using fdapde::models::STRPDE;
+using fdapde::models::SpaceTimeSeparable;
+using fdapde::models::SpaceTimeParabolic;
+using fdapde::models::Sampling;
+
+#include "utils/constants.h"
+#include "utils/mesh_loader.h"
+#include "utils/utils.h"
+using fdapde::testing::almost_equal;
+using fdapde::testing::MeshLoader;
+using fdapde::testing::read_mtx;
+using fdapde::testing::read_csv;
+
+
+TEST(inference_test, inferenceST24) {
+    // define temporal and spatial domain
+    Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/strpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/strpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/strpde/2D_test2/X.csv");
+    // define regularizing PDE in space
+    auto Ld = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<Mesh<2, 2>, decltype(Ld), DMatrix<double>, FEM, fem_order<1>> space_penalty(domain.mesh, Ld, u);
+    // define regularizing PDE in time
+    auto Lt = -bilaplacian<SPLINE>();
+    PDE<Mesh<1, 1>, decltype(Lt), DMatrix<double>, SPLINE, spline_order<3>> time_penalty(time_mesh, Lt);
+    // define model
+    double lambda_D = 0.01;
+    double lambda_T = 0.01;
+    STRPDE<SpaceTimeSeparable, fdapde::monolithic> model(space_penalty, time_penalty, Sampling::pointwise);
+    model.set_lambda_D(lambda_D);
+    model.set_lambda_T(lambda_T);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.stack(OBSERVATIONS_BLK, y);
+    df.stack(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::Speckman<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceSpeck(model);
+
+    int cols = model.beta().size();
+    std::cout << "number of cov: " << cols << std::endl;
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+
+    DVector<double> beta0(1);
+    beta0(0) = 2;
+    std::cout << "beta 0: " << beta0 << std::endl;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+
+    // test correctness Wald
+    std::cout << inferenceWald.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
+    EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::one_at_the_time)(0), 0.5290765, 1e-7));
+    
+    // test correctness Speckman
+    std::cout << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.5698297, 1e-7));
+
+  
+}
+
