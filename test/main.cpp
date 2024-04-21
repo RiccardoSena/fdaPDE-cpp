@@ -21,7 +21,8 @@
 */
 
 
-#include "src/inference_test.cpp"
+//#include "src/inference_test.cpp"
+#include "src/inferencetime_test.cpp"
 
 int main(int argc, char **argv){
   // start testing
