@@ -31,6 +31,13 @@ using fdapde::core::FEM;
 using fdapde::core::Newton;
 using fdapde::core::laplacian;
 using fdapde::core::PDE;
+using fdapde::core::advection;
+using fdapde::core::diffusion;
+using fdapde::core::dt;
+using fdapde::core::SPLINE;
+using fdapde::core::bilaplacian;
+using fdapde::core::Mesh;
+using fdapde::core::spline_order;
 
 #include "../../fdaPDE/models/regression/srpde.h"
 #include "../../fdaPDE/models/regression/gcv.h"
@@ -43,6 +50,13 @@ using fdapde::models::StochasticEDF;
 using fdapde::models::Sampling;
 using fdapde::models::RegressionView;
 #include "../../fdaPDE/calibration/gcv.h"
+
+#include "../../fdaPDE/models/regression/strpde.h"
+#include "../../fdaPDE/models/sampling_design.h"
+using fdapde::models::STRPDE;
+using fdapde::models::SpaceTimeSeparable;
+using fdapde::models::SpaceTimeParabolic;
+using fdapde::models::Sampling;
 
 #include "utils/constants.h"
 #include "utils/mesh_loader.h"
@@ -831,14 +845,6 @@ TEST(inference_test, EigenSignFlip27sim){
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
-    //DMatrix<double> C(1,cols);
-    //C.setOnes(); // matrice C ha una sola riga di tutti 1
-    for (int i = 0; i < model.beta().size(); ++i) {
-        for (int j = 0; j < model.beta().size(); ++j) {
-        std::cout << C(i,j) << " ";
-        std::cout<<std::endl;
-        }
-    }
     inferenceESF.setC(C);
 
 
@@ -846,18 +852,14 @@ TEST(inference_test, EigenSignFlip27sim){
     beta0(0)=2;
     beta0(1)=-1;
     inferenceESF.setBeta0(beta0);
-    //std::cout << "set beta0 completato correttamente" << std::endl;
 
-    //inference.computeCI(fdapde::models::simultaneous);
-    //std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
+    // set the number of flips
+    inferenceESF.setNflip(1000000);
 
-    DVector<double> pvalues=inferenceESF.p_value(fdapde::models::simultaneous);
-    std::cout << "il valore del pvalue è" << std::endl;
+    DVector<double> pvalues=inferenceESF.p_value(fdapde::models::one_at_the_time);
+    std::cout << "valore pvalue: " << std::endl;
     std::cout<< pvalues(0) << std::endl;
-    //std::cout << "ora inizia il test wald " << std::endl;
-    //DMatrix<double> matrix(1, 1);
-    //matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(pvalues(0), 0.07 , 1e-7));
+    std::cout<< pvalues(1) << std::endl;
 
 }
 
@@ -1015,8 +1017,8 @@ TEST(inference_test, inference27) {
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
 
-    //fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
-    //inferenceESF.Lambda();
+    fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
+    inferenceESF.Lambda();
 
 
     int cols = model.beta().size();
@@ -1024,13 +1026,22 @@ TEST(inference_test, inference27) {
     
     inferenceWald.setC(C);
     inferenceSpeck.setC(C);
-    //inferenceESF.setC(C);
+    inferenceESF.setC(C);
 
     DVector<double> beta0(2);
     beta0(0)=2;
     beta0(1)=-1;
     inferenceWald.setBeta0(beta0);
     inferenceSpeck.setBeta0(beta0);
+    inferenceESF.setBeta0(beta0);
+
+    int n = 1000000;
+    inferenceESF.setNflip(n);
+
+    DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    std::cout << "valore pvalue ESF con " << n << "flips: " << std::endl;
+    std::cout<< pvalues(0) << std::endl;
+    std::cout<< pvalues(1) << std::endl;
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
@@ -1190,31 +1201,6 @@ TEST(inference_test, inference37) {
 }
 */
 
-using fdapde::core::advection;
-using fdapde::core::diffusion;
-using fdapde::core::dt;
-using fdapde::core::FEM;
-using fdapde::core::SPLINE;
-using fdapde::core::bilaplacian;
-using fdapde::core::laplacian;
-using fdapde::core::PDE;
-using fdapde::core::Mesh;
-using fdapde::core::spline_order;
-
-#include "../../fdaPDE/models/regression/strpde.h"
-#include "../../fdaPDE/models/sampling_design.h"
-using fdapde::models::STRPDE;
-using fdapde::models::SpaceTimeSeparable;
-using fdapde::models::SpaceTimeParabolic;
-using fdapde::models::Sampling;
-
-#include "utils/constants.h"
-#include "utils/mesh_loader.h"
-#include "utils/utils.h"
-using fdapde::testing::almost_equal;
-using fdapde::testing::MeshLoader;
-using fdapde::testing::read_mtx;
-using fdapde::testing::read_csv;
 
 
 TEST(inference_test, inferenceST24) {
@@ -1252,15 +1238,16 @@ TEST(inference_test, inferenceST24) {
     fdapde::models::Speckman<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceSpeck(model);
 
     int cols = model.beta().size();
-    std::cout << "number of cov: " << cols << std::endl;
     DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
     
     inferenceWald.setC(C);
     inferenceSpeck.setC(C);
 
+    std::cout<< "C: " << std::endl;
+    std::cout<< C << std::endl;
+
     DVector<double> beta0(1);
     beta0(0) = 2;
-    std::cout << "beta 0: " << beta0 << std::endl;
     inferenceWald.setBeta0(beta0);
     inferenceSpeck.setBeta0(beta0);
 

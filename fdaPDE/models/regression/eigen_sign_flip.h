@@ -26,6 +26,7 @@
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
+#include "inference.h"
 
 // questo va aggiunto per funzione count???
 #include <algorithm>
@@ -40,6 +41,7 @@ template <typename Model> class EigenSignFlip {
     private:
 
         Model m_;
+        int n_flip = 1;
 
 
     public:
@@ -63,7 +65,6 @@ template <typename Model> class EigenSignFlip {
         int p = C_.rows(); 
 
         DVector<double> result;     // declare the vector that will store the p-values
-        int n_flip=1000;            // get the number of flips
         
         DMatrix<double> Lambda=Lambda_;         // compute Lambda
         Eigen::EigenSolver<DMatrix<double>> solver(Lambda);        // compute eigenvectors and eigenvalues of Lambda
@@ -240,8 +241,11 @@ template <typename Model> class EigenSignFlip {
 
     void setC(DMatrix<double> C){
       C_ = C;
-     }
+    }
 
+    void setNflip(int m){
+        n_flip = m;
+    }
 
     DMatrix<double> Lambda() {
         DMatrix<double> inverseA_ {};
