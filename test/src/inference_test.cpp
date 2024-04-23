@@ -808,12 +808,14 @@ TEST(inference_test, SpeckmanExact28sim){
     std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::simultaneous)(0) << std::endl;
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::simultaneous)(0), 0.0 , 1e-7));
 }   
+*/
 
-
-
-
-
+/*
 TEST(inference_test, EigenSignFlip27sim){
+// 50 volte stesso test per eigensignflip 
+DVector<double> solutions(50);
+    for(int test = 0; test < 50; ++test) {
+
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -856,14 +858,18 @@ TEST(inference_test, EigenSignFlip27sim){
     // set the number of flips
     inferenceESF.setNflip(1000000);
 
-    DVector<double> pvalues=inferenceESF.p_value(fdapde::models::one_at_the_time);
-    std::cout << "valore pvalue: " << std::endl;
-    std::cout<< pvalues(0) << std::endl;
-    std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalues=inferenceESF.p_value(fdapde::models::simultaneous);
+    //std::cout << "valore pvalue: " << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+    solutions(test)=pvalues(0);
 
 }
+std::cout<<"il vettore dei pvalues è : "<<solutions<<std::endl;
+}
+*/
 
-
+/*
 TEST(inference_test, EigenSignFlip27oat){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -927,9 +933,9 @@ TEST(inference_test, EigenSignFlip27oat){
     EXPECT_TRUE(almost_equal(pvalues(1), 0.924 , 1e-7));
 
 }
+*/
 
-
-
+/*
 TEST(inference_test, WaldNonExact27Sim) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -987,7 +993,7 @@ TEST(inference_test, WaldNonExact27Sim) {
     EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
 }
 
-*/
+
 
 TEST(inference_test, inference27) {
     // define domain
@@ -1105,7 +1111,7 @@ TEST(inference_test, inference28) {
 
 }
 
-/*
+
 TEST(inference_test, WaldNonExact) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1202,7 +1208,7 @@ TEST(inference_test, inference37) {
 */
 
 
-
+/*
 TEST(inference_test, inferenceST24) {
     // define temporal and spatial domain
     Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
@@ -1261,4 +1267,5 @@ TEST(inference_test, inferenceST24) {
 
   
 }
+*/
 

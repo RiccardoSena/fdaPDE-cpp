@@ -101,7 +101,7 @@ template <typename Model> class EigenSignFlip {
             // Initialize observed statistic and sign-flipped statistic
             DVector<double> stat=TildeX*Tilder;
             DVector<double> stat_flip=stat;
-            std::cout<<"questo è stat observed: "<<stat<<std::endl;
+            //std::cout<<"questo è stat observed: "<<stat<<std::endl;
             //Random sign-flips
             std::random_device rd; 
             std::default_random_engine eng{rd()};

@@ -75,13 +75,21 @@ template <typename Model, typename Strategy> class Wald {
             SpMatrix<double> decR0_ = lump(m.R0());  
 
             // fare con 1/R0_ii
+            DiagMatrix<double> invR0_(decR0_.rows());
+            invR0_.setZero(); // Imposta tutti gli elementi a zero
 
-            Eigen::SparseLU<SpMatrix<double>> sol;
-            sol.analyzePattern(decR0_);
-            sol.factorize(decR0_);
-            SpMatrix<double> id(m.R0().rows(), m.R0().cols());
-            id.setIdentity();
-            SpMatrix<double> invR0_ = sol.solve(id);
+            for (int i = 0; i < decR0_.rows(); ++i) {
+               double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
+               invR0_.diagonal()[i] = 1.0 / diagElement; 
+            }
+
+
+            //Eigen::SparseLU<SpMatrix<double>> sol;
+            //sol.analyzePattern(decR0_);
+            //sol.factorize(decR0_);
+            //SpMatrix<double> id(m.R0().rows(), m.R0().cols());
+            //id.setIdentity();
+            //SpMatrix<double> invR0_ = sol.solve(id);
             
             //altrimenti calcolo in modo esatto R0^-1 e poi uso il lumping per renderla sparsa:
             //DMatrix<double> R0inv=inverse(m.R0());
@@ -167,7 +175,6 @@ template <typename Model, typename Strategy> class Wald {
       }
 
       const DMatrix<double>& Vw() {
-
          DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
          DMatrix<double> ss = s_.compute(m_) * s_.compute(m_).transpose();
          DMatrix<double> left = invSigma_ * m_.X().transpose();
@@ -296,7 +303,8 @@ template <typename Model, typename Strategy> class Wald {
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
             }
-            
+            std::cout<<"il valore del pvalue è "<<statistics<<std::endl;
+
             return statistics; 
          }
 
