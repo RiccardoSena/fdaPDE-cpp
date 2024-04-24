@@ -150,11 +150,7 @@ template <typename Model, typename Strategy> class Speckman {
          if(is_empty(Lambda_)){
             Lambda_ = Lambda();
          }
-         //check if WLW_dec has been computed
-         // compute the decomposition of W^T*Lambda^2*W
          DMatrix<double> W = m_.X();
-         //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
-         //WLW_dec.compute(W.transpose()*Lambda_*(W));
          DMatrix<double> invWtW = inverseS(W.transpose() * Lambda_ * (W));
          // get the residuals needed
          DVector<double> eps_hat = (m_.y() - m_.fitted());
@@ -162,6 +158,7 @@ template <typename Model, typename Strategy> class Speckman {
          DVector<double> Res2 = eps_hat.array() * eps_hat.array();
             
          // resize the variance-covariance matrix
+         // qua non doverbbe essere m_.q() al posto di due
          int q = 2;
          Vs_.resize(q,q);        
             

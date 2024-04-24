@@ -1,0 +1,234 @@
+// This file is part of fdaPDE, a C++ library for physics-informed
+// spatial and functional data analysis.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef __INFERENCE_BASE_H__
+#define __INFERENCE_BASE_H__
+
+#include <fdaPDE/linear_algebra.h>
+#include <fdaPDE/utils.h>
+using fdapde::core::FSPAI;
+using fdapde::core::lump;
+
+#include "../model_macros.h"
+#include "../model_traits.h"
+#include "../model_base.h"
+#include "srpde.h"
+#include "strpde.h"
+#include "exact_edf.h"
+#include "stochastic_edf.h"
+#include "inference.h"
+
+// #include <boost/math/distributions/chi_squared.hpp>
+#include <cmath>
+#include <random>
+
+
+namespace fdapde {
+namespace models {
+
+template <typename Model> class InferenceBase{
+
+    protected:
+
+      Model m_;
+      DMatrix<double> V_ {};
+      DMatrix<double> C_ {};            // inference matrix C (p x q) matrix  
+      DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
+      DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
+      double alpha_ = 0;                // level of the confidence intervals
+
+
+    public: 
+     
+      InferenceBase() = default;                   // deafult constructor
+      InferenceBase(const Model& m): m_(m) {};     // constructor    
+
+      virtual void beta() {};
+      virtual void V() = 0;
+
+
+      virtual DMatrix<double> computeCI(CIType type){ 
+
+         fdapde_assert(!is_empty(C_));  
+
+         if(alpha_ == 0.0) {
+            setAlpha(0.05);         // default value 5%
+         }
+         if(is_empty(V_)){
+            V();
+         }
+         if(is_empty(betaw_)){
+            betaw();
+         }
+         
+         int p = C_.rows();
+         int size = std::min(C_.rows(), V_.rows());
+         DVector<double> diagon(size);
+         for (int i = 0; i < C_.rows(); ++i) {
+            DVector<double> ci = C_.row(i);
+            diagon[i] = ci.transpose() * V_ * ci;
+         }
+
+         DVector<double> lowerBound(size);
+         DVector<double> upperBound(size);
+
+         if(type == simultaneous){ 
+            // SIMULTANEOUS
+            double quantile = inverseChiSquaredCDF(1 - alpha_, p);
+            lowerBound = (C_ * beta_).array() - (quantile * diagon.array()).sqrt();
+            upperBound = (C_ * beta_).array() + (quantile * diagon.array()).sqrt();         
+         }
+         else if (type == bonferroni){
+            // BONFERRONI
+            double quantile = normal_standard_quantile(1 - alpha_/(2 * p));            
+            lowerBound = (C_ * beta_).array() - quantile * (diagon.array()).sqrt();
+            upperBound = (C_ * beta_).array() + quantile * (diagon.array()).sqrt();
+         }
+         else if (type == one_at_the_time){
+            // ONE AT THE TIME
+            double quantile = normal_standard_quantile(1 - alpha_/2);            
+            lowerBound = (C_ * beta_).array() - quantile * (diagon.array()).sqrt();
+            upperBound = (C_ * beta_).array() + quantile * (diagon.array()).sqrt();
+         }
+         else{
+            // inserire errore: nome intervallo non valido
+            return DMatrix<double>::Zero(1, 1);
+         }
+
+         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
+         CIMatrix.col(0) = lowerBound;
+         CIMatrix.col(1) = upperBound;
+         return CIMatrix;
+      }
+
+      virtual DVector<double> p_value(CIType type){
+
+         fdapde_assert(!is_empty(C_));      
+         if(is_empty(beta0_)){
+            setBeta0(DVector<double>::Zero(betaw().size())); 
+         }
+         if(is_empty(beta_)){
+            beta();
+         }
+         if(is_empty(V_)){
+            V();
+         }
+         int p = C_.rows();
+         DVector<double> statistics(p);         
+         if(type == simultaneous){
+            // SIMULTANEOUS 
+            DVector<double> diff = C_ * beta_ - beta0_;          
+            DMatrix<double> Sigma = C_ * V_ * C_.transpose();
+            DMatrix<double> Sigmadec_ = inverse(Sigma);
+            double stat = diff.adjoint() * Sigmadec_ * diff;            
+            statistics.resize(p);
+            double pvalue = chi_squared_cdf(stat, p);
+            if(pvalue < 0){
+               statistics(0)=1;
+            }
+            if(pvalue > 1){
+               statistics(0)=0;
+            }
+            else{
+               statistics(0) = 1 - pvalue;
+            }
+            for(int i = 1; i < C_.rows(); i++){
+               statistics(i) = 10e20;
+            }
+            return statistics; 
+         }
+
+         else if (type == one_at_the_time){
+            //  ONE AT THE TIME 
+            int p = C_.rows();
+            statistics.resize(p);
+            for(int i = 0; i < p; i++){
+               DVector<double> col = C_.row(i);
+               double diff = col.adjoint()* beta_ - beta0_[i];
+               double sigma = col.adjoint() * V_ *col;
+               double stat = diff/std::sqrt(sigma);
+               double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
+               if(pvalue < 0){
+                  statistics(i) = 0;
+               }
+               if(pvalue > 1){
+                  statistics(i) = 1;
+               }
+               else{
+                  statistics(i) = pvalue;
+               }
+            }
+            return statistics;
+         }
+         else{
+            //inserire messaggio di errore 
+            return DVector<double>::Zero(1);
+         }
+      }
+
+      // return the sparse approx of E^{-1}
+      DMatrix<double> invE_approx(){
+        SpMatrix<double> decR0_ = lump(m_.R0());  
+        DiagMatrix<double> invR0_(decR0_.rows());
+        invR0_.setZero(); // Imposta tutti gli elementi a zero
+        for (int i = 0; i < decR0_.rows(); ++i) {
+            double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
+            invR0_.diagonal()[i] = 1.0 / diagElement; 
+        }    
+                 DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * m.invR0() * m.R1();
+         //applico FSPAI su Atilde
+         int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+         int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+         double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+
+         //Et_ should be stored as a sparse matrix 
+         Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+         FSPAI fspai_E(Et_sparse);
+         fspai_E.compute(alpha, beta, epsilon);
+         DMatrix<double> invE_ = fspai_E.getInverse();
+         return invE_;  
+      }
+     
+      // setter for matrix of combination of coefficients C
+      void setC(DMatrix<double> C){
+         C_ = C;
+      }
+
+      // setter for alpha
+      void setAlpha(double alpha){
+         fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
+         if( 0 <= alpha && alpha <= 1) {
+            alpha_ = alpha;
+         }
+      }
+
+      // setter per i beta0_
+      void setBeta0(DVector<double> beta0){
+         beta0_ = beta0;
+      }
+
+      static DMatrix<double> inverse(DMatrix<double> M){
+         Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+         // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+         // Mdec_ = M.partialPivLu(); 
+         return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
+      }
+}
+
+} // namespace models
+} // namespace fdapde
+
+#endif   // __INFERENCE_BASE_H__

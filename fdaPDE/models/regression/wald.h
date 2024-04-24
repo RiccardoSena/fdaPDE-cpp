@@ -148,8 +148,7 @@ template <typename Model, typename Strategy> class Wald {
 
       // DMatrix<double> S_ {};            // smoothing matrix S (n x n) matrix
       DMatrix<double> Vw_ {};           // variance matrix of betaw_ (q x q) matrix
-      DMatrix<double> C_ {};            // inference matrix C (p x q) matrix
-      
+      DMatrix<double> C_ {};            // inference matrix C (p x q) matrix      
       DVector<double> betaw_ {};        // sol of srpde ( q x 1 ) matrix
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
       double alpha_ = 0;                   // level of the confidence intervals
@@ -262,7 +261,6 @@ template <typename Model, typename Strategy> class Wald {
       }
 
 
-      // this function returns the statistics not the p-values
       DVector<double> p_value(CIType type){
          fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
