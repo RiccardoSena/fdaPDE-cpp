@@ -29,6 +29,7 @@ using fdapde::core::lump;
 #include "strpde.h"
 #include "exact_edf.h"
 #include "stochastic_edf.h"
+#include "inference_base.h"
 #include "inference.h"
 
 
@@ -50,6 +51,8 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
          }
       };
 
+      DMatrix<double> Lambda_ {};
+
     public: 
      using Base = InferenceBase<Model>;
      using Base::m_;
@@ -58,7 +61,6 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
 
-     DMatrix<double> Lambda_ {};
 
      // constructors
      Speckman2() = default;                   // deafult constructor
@@ -99,7 +101,7 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
         V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;         
      }
  
-}
+};
 
 
 } // namespace models

@@ -29,6 +29,7 @@ using fdapde::core::lump;
 #include "strpde.h"
 #include "exact_edf.h"
 #include "stochastic_edf.h"
+#include "inference_base.h"
 #include "inference.h"
 
 
@@ -49,9 +50,10 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
             DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             DMatrix<double> invE_ = m.invE_approx();
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;            
+            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * Base::inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            return invMt_;            
         }       
-     }
+     };
 
 
     public: 
@@ -82,13 +84,13 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
 
      void V() override{
         DMatrix<double> invSigma_ = Base::inverse(m_.X().transpose() * m_.X());
-        DMatrix<double> S = m.Psi() * s_.compute(m_) * m.PsiTD() * m.Q(); 
+        DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
         DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * m_.X().transpose();
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
      }
 
-}
+};
 
 } // namespace models
 } // namespace fdapde

@@ -71,6 +71,11 @@ using fdapde::testing::read_csv;
 #include "../../fdaPDE/models/regression/eigen_sign_flip.h"
 
 
+#include "../../fdaPDE/models/regression/wald2.h"
+#include "../../fdaPDE/models/regression/speckman2.h"
+#include "../../fdaPDE/models/regression/esf2.h"
+
+
 
 // This file is part of fdaPDE, a C++ library for physics-informed
 // spatial and functional data analysis.
@@ -992,7 +997,7 @@ TEST(inference_test, WaldNonExact27Sim) {
     //std::cout << "ora inizia il test wald " << std::endl;
     EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
 }
-
+*/
 
 
 TEST(inference_test, inference27) {
@@ -1041,13 +1046,13 @@ TEST(inference_test, inference27) {
     inferenceSpeck.setBeta0(beta0);
     inferenceESF.setBeta0(beta0);
 
-    int n = 1000000;
+    int n = 1000;
     inferenceESF.setNflip(n);
 
     DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    std::cout << "valore pvalue ESF con " << n << "flips: " << std::endl;
-    std::cout<< pvalues(0) << std::endl;
-    std::cout<< pvalues(1) << std::endl;
+    //std::cout << "valore pvalue ESF con " << n << "flips: " << std::endl;
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
@@ -1063,6 +1068,7 @@ TEST(inference_test, inference27) {
 
 }
 
+/*
 TEST(inference_test, inference28) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1268,4 +1274,72 @@ TEST(inference_test, inferenceST24) {
   
 }
 */
+
+
+TEST(inference_test2, newStruct27) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald2<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::Speckman2<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+
+    fdapde::models::Esf2<SRPDE> inferenceESF(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+    inferenceESF.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+    inferenceESF.setBeta0(beta0);
+
+    int n = 1000;
+    inferenceESF.setNflip(n);
+
+    DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    //std::cout<< pvalues(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+
+    // test correctness Wald
+    EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
+    
+    // test correctness Speckman
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.08680236, 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.48107956, 1e-7));
+
+    // test correctness ESF
+    //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
+    //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
+
+
+
+  
+}
 

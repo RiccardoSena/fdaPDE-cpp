@@ -178,7 +178,6 @@ template <typename Model, typename Strategy> class Wald {
          DMatrix<double> ss = s_.compute(m_) * s_.compute(m_).transpose();
          DMatrix<double> left = invSigma_ * m_.X().transpose();
          Vw_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
-         std::cout<<"il valore di V è : "<<Vw_<<std::endl;
          return Vw_;
       }
 
@@ -301,7 +300,6 @@ template <typename Model, typename Strategy> class Wald {
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
             }
-            std::cout<<"il valore del pvalue è "<<statistics<<std::endl;
 
             return statistics; 
          }

@@ -57,10 +57,11 @@ template <typename Model> class InferenceBase{
       InferenceBase(const Model& m): m_(m) {};     // constructor    
 
       virtual void beta() {};
+
       virtual void V() = 0;
 
 
-      virtual DMatrix<double> computeCI(CIType type){ 
+      DMatrix<double> computeCI(CIType type){ 
 
          fdapde_assert(!is_empty(C_));  
 
@@ -70,8 +71,8 @@ template <typename Model> class InferenceBase{
          if(is_empty(V_)){
             V();
          }
-         if(is_empty(betaw_)){
-            betaw();
+         if(is_empty(beta_)){
+            beta();
          }
          
          int p = C_.rows();
@@ -118,7 +119,10 @@ template <typename Model> class InferenceBase{
 
          fdapde_assert(!is_empty(C_));      
          if(is_empty(beta0_)){
-            setBeta0(DVector<double>::Zero(betaw().size())); 
+            if(is_empty(beta_)){
+               beta();
+            }
+            setBeta0(DVector<double>::Zero(beta_.size())); 
          }
          if(is_empty(beta_)){
             beta();
@@ -137,10 +141,10 @@ template <typename Model> class InferenceBase{
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
             if(pvalue < 0){
-               statistics(0)=1;
+               statistics(0) = 1;
             }
             if(pvalue > 1){
-               statistics(0)=0;
+               statistics(0) = 0;
             }
             else{
                statistics(0) = 1 - pvalue;
@@ -157,7 +161,7 @@ template <typename Model> class InferenceBase{
             statistics.resize(p);
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
-               double diff = col.adjoint()* beta_ - beta0_[i];
+               double diff = col.adjoint() * beta_ - beta0_[i];
                double sigma = col.adjoint() * V_ *col;
                double stat = diff/std::sqrt(sigma);
                double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
@@ -188,18 +192,18 @@ template <typename Model> class InferenceBase{
             double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
             invR0_.diagonal()[i] = 1.0 / diagElement; 
         }    
-                 DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * m.invR0() * m.R1();
-         //applico FSPAI su Atilde
-         int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-         int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-         double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        DMatrix<double> Et_ = m_.PsiTD()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * m_.invR0() * m_.R1();
+        //applico FSPAI su Atilde
+        int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+        int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
 
-         //Et_ should be stored as a sparse matrix 
-         Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
-         FSPAI fspai_E(Et_sparse);
-         fspai_E.compute(alpha, beta, epsilon);
-         DMatrix<double> invE_ = fspai_E.getInverse();
-         return invE_;  
+        //Et_ should be stored as a sparse matrix 
+        Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+        FSPAI fspai_E(Et_sparse);
+        fspai_E.compute(alpha, beta, epsilon);
+        DMatrix<double> invE_ = fspai_E.getInverse();
+        return invE_;  
       }
      
       // setter for matrix of combination of coefficients C
@@ -226,7 +230,7 @@ template <typename Model> class InferenceBase{
          // Mdec_ = M.partialPivLu(); 
          return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
       }
-}
+};
 
 } // namespace models
 } // namespace fdapde

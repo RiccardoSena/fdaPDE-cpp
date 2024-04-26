@@ -65,8 +65,9 @@ template <typename Model> class EigenSignFlip {
         int p = C_.rows(); 
 
         DVector<double> result;     // declare the vector that will store the p-values
-        
-        DMatrix<double> Lambda=Lambda_;         // compute Lambda
+
+        // qua non dovrebbe essere Lambda = Lambda()?       
+        DMatrix<double> Lambda = Lambda_;         // compute Lambda
         Eigen::EigenSolver<DMatrix<double>> solver(Lambda);        // compute eigenvectors and eigenvalues of Lambda
 
         // get real part of eigenvalues and eigenvectors
