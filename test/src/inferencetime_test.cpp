@@ -136,7 +136,7 @@ using fdapde::testing::read_csv;
 //    order FE:     1
 //    time penalization: separable (mass penalization)
 
-TEST(inferencetime_test, WaldExact27Sim) {
+TEST(inferencetime_test, Exact24) {
     // define temporal and spatial domain
     Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -170,28 +170,76 @@ TEST(inferencetime_test, WaldExact27Sim) {
 
 
     // test correctness WALD
-    fdapde::models::Wald<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inference(model);
+    fdapde::models::Wald<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceW(model);
+    fdapde::models::Speckman<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceS(model);
     int cols = model.beta().size();
-    std::cout<<"il valore dei beta è: "<<model.beta()<<std::endl;
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);    
-    inference.setC(C);
+    inferenceW.setC(C);
+    inferenceS.setC(C);
     //std::cout << "set C" << std::endl;
     DVector<double> beta0(1);
     beta0(0)=2;
     //beta0(1)=-1;
-    inference.setBeta0(beta0);
-    std::cout << "beta0 è: " << beta0<<std::endl;
+    inferenceW.setBeta0(beta0);
+    inferenceS.setBeta0(beta0);
+
+    //DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << confidence_intervals<<std::endl;
+    
+    EXPECT_TRUE(almost_equal(inferenceW.p_value(fdapde::models::one_at_the_time)(0), 0.7660934 , 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceS.p_value(fdapde::models::one_at_the_time)(0), 0.715712 , 1e-7));
+
+}
+
+TEST(inferencetime_test2, Exact242) {
+    // define temporal and spatial domain
+    Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/strpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/strpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/strpde/2D_test2/X.csv");
+    // define regularizing PDE in space
+    auto Ld = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<Mesh<2, 2>, decltype(Ld), DMatrix<double>, FEM, fem_order<1>> space_penalty(domain.mesh, Ld, u);
+    // define regularizing PDE in time
+    auto Lt = -bilaplacian<SPLINE>();
+    PDE<Mesh<1, 1>, decltype(Lt), DMatrix<double>, SPLINE, spline_order<3>> time_penalty(time_mesh, Lt);
+    // define model
+    double lambda_D = 0.01;
+    double lambda_T = 0.01;
+    STRPDE<SpaceTimeSeparable, fdapde::monolithic> model(space_penalty, time_penalty, Sampling::pointwise);
+    model.set_lambda_D(lambda_D);
+    model.set_lambda_T(lambda_T);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.stack(OBSERVATIONS_BLK, y);
+    df.stack(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness WALD
+    fdapde::models::Wald2<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceW(model);
+    fdapde::models::Speckman2<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceS(model);
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);    
+    inferenceW.setC(C);
+    inferenceS.setC(C);
+    //std::cout << "set C" << std::endl;
+    DVector<double> beta0(1);
+    beta0(0)=2;
+    //beta0(1)=-1;
+    inferenceW.setBeta0(beta0);
+    inferenceS.setBeta0(beta0);
 
     //DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
-    DVector<double> pvalues=inference.p_value(fdapde::models::one_at_the_time);
-    std::cout << "il valore dei pvalue è" << std::endl;
-    std::cout<< pvalues(0) << std::endl;
-    //std::cout<< pvalues(1) << std::endl;
-    
-    //std::cout << "ora inizia il test wald " << std::endl;
-    EXPECT_TRUE(almost_equal(pvalues(0), 0.5290765 , 1e-7));
-    //EXPECT_TRUE(almost_equal(pvalues(1), 0.4119913 , 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceW.p_value(fdapde::models::one_at_the_time)(0), 0.7660934 , 1e-7));
+    EXPECT_TRUE(almost_equal(inferenceS.p_value(fdapde::models::one_at_the_time)(0), 0.715712 , 1e-7));
 
 }

@@ -313,7 +313,6 @@ template <typename Model, typename Strategy> class Wald {
                double diff = col.adjoint()* m_.beta() - beta0_[i];
                double sigma = col.adjoint() * Vw_ *col;
                double stat = diff/std::sqrt(sigma);
-               std::cout<<"il valore della stat è "<<stat<<std::endl;
                double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
                if(pvalue < 0){
                   statistics(i) = 0;
