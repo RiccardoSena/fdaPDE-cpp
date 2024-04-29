@@ -167,8 +167,6 @@ TEST(inferencetime_test, Exact24) {
     model.init();
     model.solve();
 
-
-
     // test correctness WALD
     fdapde::models::Wald<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceW(model);
     fdapde::models::Speckman<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceS(model);
@@ -222,7 +220,7 @@ TEST(inferencetime_test2, Exact242) {
     model.init();
     model.solve();
 
-    // test correctness WALD
+    // test correctness 
     fdapde::models::Wald2<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceW(model);
     fdapde::models::Speckman2<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceS(model);
     int cols = model.beta().size();
@@ -231,7 +229,7 @@ TEST(inferencetime_test2, Exact242) {
     inferenceS.setC(C);
     //std::cout << "set C" << std::endl;
     DVector<double> beta0(1);
-    beta0(0)=2;
+    beta0(0)  = 2;
     //beta0(1)=-1;
     inferenceW.setBeta0(beta0);
     inferenceS.setBeta0(beta0);
@@ -243,3 +241,4 @@ TEST(inferencetime_test2, Exact242) {
     EXPECT_TRUE(almost_equal(inferenceS.p_value(fdapde::models::one_at_the_time)(0), 0.715712 , 1e-7));
 
 }
+
