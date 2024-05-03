@@ -184,15 +184,15 @@ template <typename Model> class InferenceBase{
       }
 
       // return the sparse approx of E^{-1}
-      DMatrix<double> invE_approx(){
-        SpMatrix<double> decR0_ = lump(m_.R0());  
+      static SpMatrix<double> invE_approx(const Model& m) {
+        SpMatrix<double> decR0_ = lump(m.R0());  
         DiagMatrix<double> invR0_(decR0_.rows());
         invR0_.setZero(); // Imposta tutti gli elementi a zero
         for (int i = 0; i < decR0_.rows(); ++i) {
             double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
             invR0_.diagonal()[i] = 1.0 / diagElement; 
         }    
-        DMatrix<double> Et_ = m_.PsiTD()* m_.Psi()+ m_.lambda_D() * m_.R1().transpose() * m_.invR0() * m_.R1();
+        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * m.invR0() * m.R1();
         //applico FSPAI su Atilde
         int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
         int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
@@ -202,7 +202,7 @@ template <typename Model> class InferenceBase{
         Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
         FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
-        DMatrix<double> invE_ = fspai_E.getInverse();
+        SpMatrix<double> invE_ = fspai_E.getInverse();
         return invE_;  
       }
      

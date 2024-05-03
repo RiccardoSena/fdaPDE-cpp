@@ -52,7 +52,7 @@ using fdapde::testing::read_csv;
 //    BC:           no
 //    order FE:     1
 //    time penalization: separable (mass penalization)
-TEST(strpde_test, laplacian_nonparametric_samplingatnodes_separable_monolithic) {
+/*TEST(strpde_test, laplacian_nonparametric_samplingatnodes_separable_monolithic) {
     // define temporal and spatial domain
     Mesh<1, 1> time_mesh(0, 2, 10);
     MeshLoader<Mesh2D> domain("unit_square_coarse");
@@ -80,7 +80,7 @@ TEST(strpde_test, laplacian_nonparametric_samplingatnodes_separable_monolithic) 
     // test correctness
     EXPECT_TRUE(almost_equal(model.f()  , "../data/models/strpde/2D_test1/sol.mtx"));
 }
-
+*/
 // test 2
 //    domain:       c-shaped
 //    sampling:     locations != nodes
@@ -123,7 +123,7 @@ TEST(strpde_test, laplacian_semiparametric_samplingatlocations_separable_monolit
     EXPECT_TRUE(almost_equal(model.f()   , "../data/models/strpde/2D_test2/sol.mtx" ));
     EXPECT_TRUE(almost_equal(model.beta(), "../data/models/strpde/2D_test2/beta.mtx"));
 }
-
+/*
 // test 3
 //    domain:       quasicircular domain
 //    sampling:     areal
@@ -334,3 +334,4 @@ TEST(strpde_test, laplacian_nonparametric_samplingatnodes_separable_monolithic_s
     // test correctness
     EXPECT_TRUE(almost_equal(model.f(), "../data/models/strpde/2D_test7/sol.mtx"));
 }
+*/

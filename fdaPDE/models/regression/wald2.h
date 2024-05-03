@@ -47,9 +47,9 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
      struct NonExactInverse {
         DMatrix<double> compute(Model m){
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
+            DMatrix<double> Ct_ = - Base::inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
-            DMatrix<double> invE_ = m.invE_approx();
+            SpMatrix<double> invE_ = Base::invE_approx(m); 
             SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * Base::inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             return invMt_;            
         }       
@@ -61,6 +61,7 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
      using Base::m_;
      using Base::V_;
      using Base::beta_;
+     using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
 
