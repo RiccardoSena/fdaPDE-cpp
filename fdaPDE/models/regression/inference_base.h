@@ -187,22 +187,23 @@ template <typename Model> class InferenceBase{
       static SpMatrix<double> invE_approx(const Model& m) {
         SpMatrix<double> decR0_ = lump(m.R0());  
         DiagMatrix<double> invR0_(decR0_.rows());
-        invR0_.setZero(); // Imposta tutti gli elementi a zero
+        invR0_.setZero(); 
         for (int i = 0; i < decR0_.rows(); ++i) {
-            double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
+            double diagElement = decR0_.diagonal()[i]; 
             invR0_.diagonal()[i] = 1.0 / diagElement; 
-        }    
-        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * m.invR0() * m.R1();
-        //applico FSPAI su Atilde
-        int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-        int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        }
+         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
-        //Et_ should be stored as a sparse matrix 
-        Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
-        FSPAI fspai_E(Et_sparse);
-        fspai_E.compute(alpha, beta, epsilon);
-        SpMatrix<double> invE_ = fspai_E.getInverse();
+        //applico FSPAI su Atilde
+            int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+            int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+            double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+
+            //Et_ should be stored as a sparse matrix 
+            Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+            FSPAI fspai_E(Et_sparse);
+            fspai_E.compute(alpha, beta, epsilon);
+            SpMatrix<double> invE_ = fspai_E.getInverse();
         return invE_;  
       }
      
