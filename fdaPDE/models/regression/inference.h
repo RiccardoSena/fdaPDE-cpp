@@ -128,7 +128,14 @@ namespace models {
         return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
     }
 
-    
+
+ // function that returns the exact inverse of a matrix   
+    DMatrix<double> inverse(DMatrix<double> M){
+        Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+        // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
+        // Mdec_ = M.partialPivLu(); 
+        return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
+    }
 
 
 } // closing models namespace

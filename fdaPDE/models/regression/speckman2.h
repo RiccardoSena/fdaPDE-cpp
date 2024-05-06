@@ -41,13 +41,13 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
     private:
       struct ExactInverse{
          DMatrix<double> compute(Model m){
-            return Base::inverse(m.E());       
+            return inverse(m.E());       
          }
       };
 
       struct NonExactInverse{
          DMatrix<double> compute(Model m){
-            return m.invE_approx();
+            return Base::invE_approx(m);
          }
       };
 
@@ -82,7 +82,7 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
         //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
         //WLW_dec.compute(W.transpose()*Lambda_*(W));  
         //betas_ = WLW_dec.solve(W.transpose()*Lambda_*(m_.y()));
-        DMatrix<double> invWtW = Base::inverse(W.transpose() * Lambda_ * (W));      
+        DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));      
         beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());            
      }
 
@@ -91,7 +91,7 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
             Lambda_ = Lambda();
         }
         DMatrix<double> W = m_.X();
-        DMatrix<double> invWtW = Base::inverse(W.transpose() * Lambda_ * (W));
+        DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));
         DVector<double> eps_ = (m_.y() - m_.fitted());
         DVector<double> Res2 = eps_.array() * eps_.array();            
         // resize the variance-covariance matrix

@@ -41,7 +41,7 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
     private: 
      struct ExactInverse {
         DMatrix<double> compute(Model m){
-            return Base::inverse(m.T());
+            return inverse(m.T());
         }
      };
      struct NonExactInverse {
@@ -49,8 +49,8 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
             DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
-            DMatrix<double> invE_ = m.invE_approx();
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * Base::inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            DMatrix<double> invE_ = Base::invE_approx(m);
+            DMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             return invMt_;            
         }       
      };
@@ -83,7 +83,7 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
      }
 
      void V() override{
-        DMatrix<double> invSigma_ = Base::inverse(m_.X().transpose() * m_.X());
+        DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
         DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * m_.X().transpose();
