@@ -51,6 +51,15 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             DMatrix<double> invE_ = Base::invE_approx(m);
             DMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            SpMatrix<double> invE_ = Base::invE_approx(m); 
+            std::cout<<"questa è inversa di E:"<<std::endl;
+            for(int i=0;i<4;i++){
+               for(int j=0;j<4;j++){
+                   std::cout << invE_.coeff(i, j) << "  ";
+               }
+               std::cout<<std::endl;
+            }
+            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             return invMt_;            
         }       
      };
@@ -61,6 +70,7 @@ template <typename Model, typename Strategy> class Wald2: public InferenceBase<M
      using Base::m_;
      using Base::V_;
      using Base::beta_;
+     using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
 

@@ -332,15 +332,14 @@ TEST(inference_test, WaldExact27Sim) {
     DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
     std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
-    //DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
-    //std::cout << "il valore dei pvalue è" << std::endl;
-    //std::cout<< pvalues(0) << std::endl;
+    DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
+    std::cout << "il valore dei pvalue è" << std::endl;
+    std::cout<< pvalues(0) << std::endl;
     //std::cout<< pvalues(1) << std::endl;
     
     //std::cout << "ora inizia il test wald " << std::endl;
     EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
 }
-
 
 
 TEST(inference_test, WaldExact27Oat) {
@@ -608,10 +607,9 @@ TEST(inference_test, SpeckmanExact27oat){
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    //DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
-    //std::cout << "il valore dei pvalue è" << std::endl;
-    //std::cout<< pvalues(0) << std::endl;
-    //std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalues1=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    std::cout<< pvalues1(0) << std::endl;
+    std::cout<< pvalues1(1) << std::endl;
 
     
     std::cout << "ora inizia il test speckman 27" << std::endl;
@@ -872,9 +870,9 @@ DVector<double> solutions(50);
 }
 std::cout<<"il vettore dei pvalues è : "<<solutions<<std::endl;
 }
-*/
 
-/*
+
+
 TEST(inference_test, EigenSignFlip27oat){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -909,12 +907,7 @@ TEST(inference_test, EigenSignFlip27oat){
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     //DMatrix<double> C(1,cols);
     //C.setOnes(); // matrice C ha una sola riga di tutti 1
-    for (int i = 0; i < model.beta().size(); ++i) {
-        for (int j = 0; j < model.beta().size(); ++j) {
-        std::cout << C(i,j) << " ";
-        std::cout<<std::endl;
-        }
-    }
+    
     inferenceESF.setC(C);
 
 
@@ -927,20 +920,20 @@ TEST(inference_test, EigenSignFlip27oat){
     //inference.computeCI(fdapde::models::simultaneous);
     //std::cout << "computed CI: " << inference.computeCI(fdapde::models::simultaneous)<<std::endl;
 
-    DVector<double> pvalues=inferenceESF.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues3=inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout << "il valore dei pvalue è" << std::endl;
-    std::cout<< pvalues(0) << std::endl;
-    std::cout<< pvalues(1) << std::endl;
+    std::cout<< pvalues3(0) << std::endl;
+    std::cout<< pvalues3(1) << std::endl;
     //std::cout << "ora inizia il test wald " << std::endl;
     //DMatrix<double> matrix(1, 1);
     //matrix << 0.00002458211564814289 ;
-    EXPECT_TRUE(almost_equal(pvalues(0), 0.164 , 1e-7));
-    EXPECT_TRUE(almost_equal(pvalues(1), 0.924 , 1e-7));
+   // EXPECT_TRUE(almost_equal(pvalues(0), 0.164 , 1e-7));
+    //EXPECT_TRUE(almost_equal(pvalues(1), 0.924 , 1e-7));
 
 }
-*/
 
-/*
+
+
 TEST(inference_test, WaldNonExact27Sim) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -989,17 +982,86 @@ TEST(inference_test, WaldNonExact27Sim) {
     DMatrix<double> confidence_intervals=inference.computeCI(fdapde::models::simultaneous);
     std::cout << "computed CI: " << confidence_intervals<<std::endl;
 
-    //DVector<double> pvalues=inference.p_value(fdapde::models::simultaneous);
-    //std::cout << "il valore dei pvalue è" << std::endl;
-    //std::cout<< pvalues(0) << std::endl;
-    //std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalues4=inference.p_value(fdapde::models::simultaneous);
+    std::cout << "il valore dei pvalue è" << std::endl;
+    std::cout<< pvalues4(0) << std::endl;
+    std::cout<< pvalues4(1) << std::endl;
     
     //std::cout << "ora inizia il test wald " << std::endl;
-    EXPECT_TRUE(almost_equal(inference.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalues4(0), 0.1261320 , 1e-7));
 }
+
+
+TEST(inference_test, SpeckmanNonExact27oat){
+        // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness SPECKMAN
+    fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
+    //std::cout << "creato elemento inference" << std::endl;
+    //std::cout<<" questi sono i beta del modello "<<model.beta()<<std::endl;
+    inferenceSpeck.betas();
+    std::cout<<std::endl;
+    //std::cout<<" questi sono i beta di speckman "<<inferenceSpeck.betas()<<std::endl;
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    //DMatrix<double> C(1,cols);
+    //C.setOnes(); // matrice C ha una sola riga di tutti 1
+    
+    for (int i = 0; i < model.beta().size(); ++i) {
+        for (int j = 0; j < model.beta().size(); ++j) {
+        std::cout << C(i,j) << " ";
+        std::cout<<std::endl;
+        }
+    }
+
+    inferenceSpeck.setC(C);
+    //std::cout << "set C" << std::endl;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceSpeck.setBeta0(beta0);
+
+    //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+
+    DVector<double> pvalues5=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    std::cout << "il valore dei pvalue è" << std::endl;
+    std::cout<< pvalues5(0) << std::endl;
+    std::cout<< pvalues5(1) << std::endl;
+
+    
+    std::cout << "ora inizia il test speckman 27" << std::endl;
+    //DMatrix<double> matrix(1, 1);
+    //matrix << 0.00002458211564814289 ;
+    EXPECT_TRUE(almost_equal(pvalues5(0), 0.1194335, 1e-7));
+    EXPECT_TRUE(almost_equal(pvalues5(1), 0.0902682, 1e-7));
+} 
+
+
 */
-
-
 TEST(inference_test, inference27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1049,9 +1111,18 @@ TEST(inference_test, inference27) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    //std::cout << "valore pvalue ESF con " << n << "flips: " << std::endl;
-    //std::cout<< pvalues(0) << std::endl;
+
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    std::cout << "valore pvalue wald con " << n << "flips: " << std::endl;
+    std::cout<< pvalueswald(0) << std::endl;
+    std::cout<< pvalueswald(1) << std::endl;
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    std::cout << "valore pvalue speck con " << n << "flips: " << std::endl;
+    std::cout<< pvaluesspeck(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+    std::cout << "valore pvalue ESF con " << n << "flips: " << std::endl;
+    std::cout<< pvaluesesf(0) << std::endl;
     //std::cout<< pvalues(1) << std::endl;
 
     // test correctness Wald
@@ -1156,6 +1227,8 @@ TEST(inference_test, WaldNonExact) {
     inferenceWald.setBeta0(beta0);
 
     std::cout << "p-value non exact: " << inferenceWald.p_value(fdapde::models::simultaneous)(0) << std::endl;
+    std::cout << "p-value non exact: " << inferenceWald.p_value(fdapde::models::simultaneous)(1) << std::endl;
+
 
 }
 
@@ -1211,10 +1284,10 @@ TEST(inference_test, inference37) {
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.3090625, 1e-7));
 
 }
-*/
 
 
-/*
+
+
 TEST(inference_test, inferenceST24) {
     // define temporal and spatial domain
     Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
@@ -1273,10 +1346,161 @@ TEST(inference_test, inferenceST24) {
 
   
 }
+
+
+TEST(inference_test, exact27) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+
+    fdapde::models::EigenSignFlip<SRPDE> inferenceESF(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+    inferenceESF.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+    inferenceESF.setBeta0(beta0);
+
+    int n = 1000;
+    inferenceESF.setNflip(n);
+
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues wald: "<<std::endl;
+    std::cout<< pvalueswald(0) << std::endl;
+    //std::cout<< pvalues(1) << std::endl;
+
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues speckman: "<<std::endl;
+    std::cout<< pvaluesspeck(0) << std::endl;
+    std::cout<< pvaluesspeck(1) << std::endl;
+
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues esf: "<<std::endl;
+    std::cout<< pvaluesesf(0) << std::endl;
+    std::cout<< pvaluesesf(1) << std::endl;
+
+    // test correctness Wald
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
+    
+    // test correctness Speckman
+    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
+    EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.0902682, 1e-7));
+
+    // test correctness ESF
+    //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
+    //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
+
+}
 */
 
+TEST(inference_test, nonexact27) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
 
-TEST(inference_test2, newStruct27) {
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
+
+    //fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+    //inferenceESF.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+    //inferenceESF.setBeta0(beta0);
+
+    //int n = 1000;
+    //inferenceESF.setNflip(n);
+
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues wald: "<<std::endl;
+    std::cout<< pvalueswald(0) << std::endl;
+    std::cout<< pvalueswald(1) << std::endl;
+
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues speckman: "<<std::endl;
+    std::cout<< pvaluesspeck(0) << std::endl;
+    //std::cout<< pvaluesspeck(1) << std::endl;
+
+    //DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+    //std::cout<<"pvalues esf: "<<std::endl;
+    //std::cout<< pvaluesesf(0) << std::endl;
+    //std::cout<< pvaluesesf(1) << std::endl;
+
+    // test correctness Wald
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
+    
+    // test correctness Speckman
+    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
+    //EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.0902682, 1e-7));
+
+    // test correctness ESF
+    //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
+    //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
+
+}
+
+
+TEST(inference_test2, newStructexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -1323,9 +1547,20 @@ TEST(inference_test2, newStruct27) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    //std::cout<< pvalues(0) << std::endl;
-    //std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues wald: "<<std::endl;
+    std::cout<< pvalueswald(0) << std::endl;
+    std::cout<< pvalueswald(1) << std::endl;
+
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues speckman: "<<std::endl;
+    std::cout<< pvaluesspeck(0) << std::endl;
+    std::cout<< pvaluesspeck(1) << std::endl;
+
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues esf: "<<std::endl;
+    std::cout<< pvaluesesf(0) << std::endl;
+    std::cout<< pvaluesesf(1) << std::endl;
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
@@ -1338,11 +1573,11 @@ TEST(inference_test2, newStruct27) {
     //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
-
 }
 
+    
 
-TEST(inference_non_exact_test2, p_values) {
+TEST(inference_test2, newStructnonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
     // import data from files
@@ -1389,21 +1624,31 @@ TEST(inference_non_exact_test2, p_values) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalues = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    //std::cout<< pvalues(0) << std::endl;
-    //std::cout<< pvalues(1) << std::endl;
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues wald: "<<std::endl;
+    std::cout<< pvalueswald(0) << std::endl;
+    std::cout<< pvalueswald(1) << std::endl;
+
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues speckman: "<<std::endl;
+    std::cout<< pvaluesspeck(0) << std::endl;
+    std::cout<< pvaluesspeck(1) << std::endl;
+
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues esf: "<<std::endl;
+    std::cout<< pvaluesesf(0) << std::endl;
+    std::cout<< pvaluesesf(1) << std::endl;
 
     // test correctness Wald
-    std::cout << "Wald non ex sim: " << inferenceWald.p_value(fdapde::models::simultaneous)(0) << std::endl;
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
     
     // test correctness Speckman
-    std::cout << "Speckman non ex oat: " << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
-    std::cout << "Speckman non ex oat: " << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1) << std::endl;
+    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
+    EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.0902682, 1e-7));
 
     // test correctness ESF
     //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
-
 
 }
 

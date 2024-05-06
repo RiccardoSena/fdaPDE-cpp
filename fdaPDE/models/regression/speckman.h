@@ -54,21 +54,23 @@ template <typename Model, typename Strategy> class Speckman {
             // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
             // FSPAI approx
             //creo oggetto FSPAI( vanno controllati tipi di input e output)
-            FSPAI fspai_R0(m.R0());
 
+            SpMatrix<double> decR0_ = lump(m.R0());  
+
+            // fare con 1/R0_ii
+            DiagMatrix<double> invR0_(decR0_.rows());
+            invR0_.setZero(); 
+
+            for (int i = 0; i < decR0_.rows(); ++i) {
+               double diagElement = decR0_.diagonal()[i]; 
+               invR0_.diagonal()[i] = 1.0 / diagElement; 
+            }
             // questi non so come vadano scelti ho messo nuemri a caso ???
-            unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
-            unsigned beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+            unsigned alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
+            unsigned beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
             double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
-            // calcolo inversa di R0
-            fspai_R0.compute(alpha, beta, epsilon);
-            //getter per l'inversa di R0
-            SpMatrix<double> inv_R0 = fspai_R0.getInverse();
 
-            //qui non so se è giusto questo lambda
-            //caclolo la matrice Atilde
-            // Bisogna usare PsiTD()??
-            DMatrix<double> tildeA_ = m.Psi().transpose()* m.Psi()+ m.lambda_D() * m.R1().transpose() * inv_R0 * m.R1();
+            DMatrix<double> tildeA_ = m.Psi().transpose()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
             //applico FSPAI su Atilde
             // tildeA_ should be sparse matrix 

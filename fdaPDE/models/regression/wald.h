@@ -58,49 +58,19 @@ template <typename Model, typename Strategy> class Wald {
       // forse static
          DMatrix<double> compute(Model m){
             // FSPAI approx
-            // E_tilde = Psi^T*\Psi+lambda*\R
-            // making E_tilde sparse
-            // Dalla Sub Woodbury decomposition
-            // bisogna fare prima un'approssimazione dell'inversa di R0, usando FSPAI
+            // E_tilde = Psi^T*\Psi+lambda*\R, making E_tilde sparse
+            // Dalla Sub Woodbury decomposition, bisogna fare prima un'approssimazione dell'inversa di R0, usando FSPAI
             // R0 should be stored as a sparse matrix
-            //FSPAI fspai_R0(m.R0());
-
-            //int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-            //int beta = 5;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-            //double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
-            // calcolo inversa di R0
-            //fspai_R0.compute(alpha, beta, epsilon);
-            //getter per l'inversa di R0
-           
             SpMatrix<double> decR0_ = lump(m.R0());  
 
             // fare con 1/R0_ii
             DiagMatrix<double> invR0_(decR0_.rows());
-            invR0_.setZero(); // Imposta tutti gli elementi a zero
+            invR0_.setZero(); 
 
             for (int i = 0; i < decR0_.rows(); ++i) {
-               double diagElement = decR0_.diagonal()[i]; // Ottieni l'elemento diagonale
+               double diagElement = decR0_.diagonal()[i]; 
                invR0_.diagonal()[i] = 1.0 / diagElement; 
             }
-
-
-            //Eigen::SparseLU<SpMatrix<double>> sol;
-            //sol.analyzePattern(decR0_);
-            //sol.factorize(decR0_);
-            //SpMatrix<double> id(m.R0().rows(), m.R0().cols());
-            //id.setIdentity();
-            //SpMatrix<double> invR0_ = sol.solve(id);
-            
-            //altrimenti calcolo in modo esatto R0^-1 e poi uso il lumping per renderla sparsa:
-            //DMatrix<double> R0inv=inverse(m.R0());
-            //DMatrix<double> invR0_=lump(R0inv);
-            //std::cout<<"questa è invR0 : " <<std::endl;
-            //for (int i = 0; i < 4; ++i) {
-            //    for(int j=0; j<4;++j){
-            //    std::cout << invR0_(i,j)<< " ";
-            //}
-            //}
-            //std::cout << std::endl;
 
             //calcolo la matrice Atilde
             DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
@@ -126,17 +96,9 @@ template <typename Model, typename Strategy> class Wald {
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
 
             SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
-            // m_.Psi().transpose() or m_.PsiTD()
+
             DMatrix<double> S = m.Psi() * invMt_ * m.PsiTD() * m.Q();
-            /*
-            std::cout<<"questa è S : " <<std::endl;
-            std::cout << std::endl;
-               for (int i = 0; i < 4; ++i) {
-                  for(int j=0; j<4;++j){
-                  std::cout << S(i,j)<< " ";
-               }
-            }
-            std::cout << std::endl;*/
+
             return S;
          }
       };
