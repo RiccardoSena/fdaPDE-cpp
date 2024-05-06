@@ -46,8 +46,6 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
       };
 
       struct NonExactInverse{
-         DMatrix<double> compute(Model m){
-
          SpMatrix<double> compute(Model m){
             return Base::invE_approx(m); 
          }

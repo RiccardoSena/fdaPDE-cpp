@@ -184,7 +184,7 @@ template <typename Model> class InferenceBase{
       }
 
       // return the sparse approx of E^{-1}
-      static DMatrix<double> invE_approx(const Model& m){
+      static SpMatrix<double> invE_approx(const Model& m){
         SpMatrix<double> decR0_ = lump(m.R0());  
         DiagMatrix<double> invR0_(decR0_.rows());
         invR0_.setZero(); 
@@ -200,11 +200,11 @@ template <typename Model> class InferenceBase{
             double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
 
             //Et_ should be stored as a sparse matrix 
-            Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+            SpMatrix<double> Et_sparse = Et_.sparseView();
             FSPAI fspai_E(Et_sparse);
             fspai_E.compute(alpha, beta, epsilon);
             SpMatrix<double> invE_ = fspai_E.getInverse();
-            
+
         return invE_;  
       }
 
