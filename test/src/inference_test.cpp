@@ -77,6 +77,7 @@ using fdapde::testing::read_csv;
 
 
 
+
 // This file is part of fdaPDE, a C++ library for physics-informed
 // spatial and functional data analysis.
 //
@@ -1642,6 +1643,7 @@ TEST(inference_test2, newStructnonexact27) {
     std::cout<<"pvalues esf: "<<std::endl;
     std::cout<< pvaluesesf(0) << std::endl;
     std::cout<< pvaluesesf(1) << std::endl;
+
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
