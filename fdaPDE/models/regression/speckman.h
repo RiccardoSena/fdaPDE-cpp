@@ -65,7 +65,7 @@ template <typename Model, typename Strategy> class Speckman {
                double diagElement = decR0_.diagonal()[i]; 
                invR0_.diagonal()[i] = 1.0 / diagElement; 
             }
-            // questi non so come vadano scelti ho messo nuemri a caso ???
+
             unsigned alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
             unsigned beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
             double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità

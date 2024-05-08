@@ -195,10 +195,13 @@ template <typename Model> class InferenceBase{
          DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
-            int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-            int beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+            int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+            int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
             double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
-
+            //questi sono quelli trovati nella libreria vecchia 
+            //std::string tol_Inverse     = "0.005";  oppure 0.05                     // Controls the quality of approximation, default 0.005 
+            //std::string max_Step_Col    = "20";     oppure 10                     // Max number of improvement steps per columns
+            // std::string max_New_Nz      = "20";     oppure 10                     // Max number of new nonzero candidates per step
             //Et_ should be stored as a sparse matrix 
             SpMatrix<double> Et_sparse = Et_.sparseView();
             FSPAI fspai_E(Et_sparse);

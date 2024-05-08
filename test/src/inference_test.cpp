@@ -1427,7 +1427,6 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-*/
 
 TEST(inference_test, nonexact27) {
     // define domain
@@ -1476,12 +1475,12 @@ TEST(inference_test, nonexact27) {
     //int n = 1000;
     //inferenceESF.setNflip(n);
 
-    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues wald: "<<std::endl;
     std::cout<< pvalueswald(0) << std::endl;
     std::cout<< pvalueswald(1) << std::endl;
 
-    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues speckman: "<<std::endl;
     std::cout<< pvaluesspeck(0) << std::endl;
     //std::cout<< pvaluesspeck(1) << std::endl;
@@ -1503,7 +1502,7 @@ TEST(inference_test, nonexact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
+*/
 
 TEST(inference_test2, newStructexact27) {
     // define domain
