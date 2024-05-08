@@ -189,7 +189,7 @@ template <typename Model> class InferenceBase{
         DiagMatrix<double> invR0_(decR0_.rows());
         invR0_.setZero(); 
         for (int i = 0; i < decR0_.rows(); ++i) {
-            double diagElement = decR0_.diagonal()[i]; 
+            double diagElement = decR0_.diagonal()[i];  
             invR0_.diagonal()[i] = 1.0 / diagElement; 
         }
          DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();

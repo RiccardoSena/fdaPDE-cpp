@@ -1075,6 +1075,9 @@ TEST(inference_test, inference27) {
     PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
     // define statistical model
     double lambda = 0.2201047;
+
+    // chrono start
+
     SRPDE model(problem, Sampling::pointwise);
     model.set_lambda_D(lambda);
     model.set_spatial_locations(locs);
@@ -1127,7 +1130,9 @@ TEST(inference_test, inference27) {
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(inferenceWald.p_value(fdapde::models::simultaneous)(0), 0.4119913 , 1e-7));
-    
+
+    // chrono end
+
     // test correctness Speckman
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0), 0.08680236, 1e-7));
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.48107956, 1e-7));
