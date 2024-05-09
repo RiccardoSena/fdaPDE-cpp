@@ -24,45 +24,9 @@
 #include "src/inference_test.cpp"
 //#include "src/inferencetime_test.cpp"
 
-// questa serve per leggere dai file quindi l'ho aggiunta io 
-#include <fstream>
-
 
 int main(int argc, char **argv){
   // start testing
-  testing::InitGoogleTest(&argc, argv);
-
-
-    SpMatrix<double> invE_nonexact;
-    SpMatrix<double> invE_exact;
-
-    // Carica la matrice dal file Matrix Market
-    Eigen::loadMarket(invE_exact, "../build/invE_exact.mtx");
-
-    // Verifica che la matrice sia stata caricata correttamente
-    std::cout << "Numero di righe: " << invE_exact.rows() << std::endl;
-    std::cout << "Numero di colonne: " << invE_exact.cols() << std::endl;
-
-
-    // Carica la matrice dal file Matrix Market
-    Eigen::loadMarket(invE_nonexact, "../build/invE_nonexact.mtx");
-
-    // Verifica che la matrice sia stata caricata correttamente
-    std::cout << "Numero di righe: " << invE_nonexact.rows() << std::endl;
-    std::cout << "Numero di colonne: " << invE_nonexact.cols() << std::endl;
-
-
-    DMatrix<double> invE_nonexact_densa = invE_nonexact;
-    DMatrix<double> invE_exact_densa=invE_exact;
-
-    // Calcolo la differenza tra le due matrici
-    DMatrix<double> differenza = invE_nonexact_densa - invE_exact_densa;
-
-    // Calcolo la norma di Frobenius della differenza
-    double norma_frobenius = differenza.norm();
-    std::cout<<"questa è la frobenius norm della differenza:   "<<norma_frobenius<<std::endl;
-
-
-  
+  testing::InitGoogleTest(&argc, argv);  
   return RUN_ALL_TESTS();
 }

@@ -32,10 +32,6 @@ using fdapde::core::lump;
 #include "inference_base.h"
 #include "inference.h"
 
-//questo serve per includere matrix market per eigen 
-#include <unsupported/Eigen/SparseExtra> 
-
-
 
 namespace fdapde {
 namespace models {
@@ -45,18 +41,13 @@ template <typename Model, typename Strategy> class Speckman2: public InferenceBa
     private:
       struct ExactInverse{
          DMatrix<double> compute(Model m){
-            DMatrix<double> invE_=inverse(m.E());
-            Eigen::saveMarket(invE_, "invE_exact.mtx");
-
-            return invE_;       
+            return inverse(m.E());       
          }
       };
 
       struct NonExactInverse{
          SpMatrix<double> compute(Model m){
-            SpMatrix<double> invE_= Base::invE_approx(m);
-            Eigen::saveMarket(invE_, "invE_nonexact.mtx");
-            return invE_;  
+            return Base::invE_approx(m);  
          }
       };
 
