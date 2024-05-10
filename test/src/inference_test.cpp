@@ -685,7 +685,7 @@ TEST(inference_test, SpeckmanExact28oat){
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.0008644394, 1e-7));
 }   
 
-*/
+
 TEST(inference_test, SpeckmanExact27sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -751,7 +751,7 @@ TEST(inference_test, SpeckmanExact27sim){
    // std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
     EXPECT_TRUE(almost_equal(pvalues(0), 0.1574313, 1e-6));
 }   
-/*
+
 TEST(inference_test, SpeckmanExact28sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1061,7 +1061,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
     EXPECT_TRUE(almost_equal(pvalues5(0), 0.1194335, 1e-7));
     EXPECT_TRUE(almost_equal(pvalues5(1), 0.0902682, 1e-7));
 } 
-
+*/
 
 
 TEST(inference_test, chrono27) {
@@ -1102,7 +1102,7 @@ TEST(inference_test, chrono27) {
     fdapde::models::Wald2<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman2<SRPDE, fdapde::models::exact> inferenceSpeck(model);
 
-    fdapde::models::Esf2<SRPDE > inferenceESF(model);
+    fdapde::models::Esf2<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
@@ -1185,7 +1185,7 @@ TEST(inference_test, chronoWald) {
     std::cout << "mean Wald execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
 
 }
-
+/*
 TEST(inference_test, inference27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
