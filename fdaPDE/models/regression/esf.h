@@ -23,22 +23,35 @@
 
 #include "../model_macros.h"
 #include "../model_traits.h"
+#include "../model_base.h"
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
+#include "stochastic_edf.h"
 #include "inference_base.h"
 #include "inference.h"
 
 #include <algorithm>
 
 
-
 namespace fdapde {
 namespace models {
 
-template <typename Model> class ESF: public InferenceBase<Model>{
+template <typename Model, typename Strategy> class ESF: public InferenceBase<Model>{
 
     private:
+     struct ExactInverse{
+         DMatrix<double> compute(Model m){
+            return inverse(m.E());       
+         }
+      };
+
+      struct NonExactInverse{
+         SpMatrix<double> compute(Model m){
+            return Base::invE_approx(m);  
+         }
+      };
+
      int n_flip = 1; //default value
      DMatrix<double> Lambda_ {};
 
@@ -48,6 +61,8 @@ template <typename Model> class ESF: public InferenceBase<Model>{
      using Base::beta_;  
      using Base::C_;
      using Base::beta0_;
+     using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
+     Solver s_; 
      
      // constructors
      ESF() = default;                   // deafult constructor
@@ -204,9 +219,11 @@ template <typename Model> class ESF: public InferenceBase<Model>{
 
     
      void V() override{
-        DMatrix<double> inverseA_ {};
-        inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
+        // questa è quella modificata per FSPAI
+        //DMatrix<double> inverseA_ {};
+        //inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
+        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
+        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
      }   
 
      inline bool is_Unilaterally_Greater (DVector<double> v, DVector<double> u){

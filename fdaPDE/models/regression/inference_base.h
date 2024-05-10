@@ -31,9 +31,12 @@ using fdapde::core::lump;
 #include "stochastic_edf.h"
 #include "inference.h"
 
-// #include <boost/math/distributions/chi_squared.hpp>
 #include <cmath>
 #include <random>
+
+// per salvare la matrice con savemarket
+#include <unsupported/Eigen/SparseExtra> 
+
 
 
 namespace fdapde {
@@ -204,9 +207,13 @@ template <typename Model> class InferenceBase{
             // std::string max_New_Nz      = "20";     oppure 10                     // Max number of new nonzero candidates per step
             //Et_ should be stored as a sparse matrix 
             SpMatrix<double> Et_sparse = Et_.sparseView();
+            Eigen::saveMarket(Et_sparse, "Etilde_sparse.mtx");
+
             FSPAI fspai_E(Et_sparse);
             fspai_E.compute(alpha, beta, epsilon);
             SpMatrix<double> invE_ = fspai_E.getInverse();
+            Eigen::saveMarket(invE_, "invEnonexact.mtx");
+
 
         return invE_;  
       }

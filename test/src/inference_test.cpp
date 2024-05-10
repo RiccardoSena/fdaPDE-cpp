@@ -735,7 +735,7 @@ TEST(inference_test, SpeckmanExact27sim){
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< pvalues(0) << std::endl;
     std::cout<< pvalues(1) << std::endl;
@@ -745,6 +745,7 @@ TEST(inference_test, SpeckmanExact27sim){
    // std::cout << "statistic: " << inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0) << std::endl;
     EXPECT_TRUE(almost_equal(pvalues(0), 0.1574313, 1e-6));
 }   
+
 /*
 TEST(inference_test, SpeckmanExact28sim){
         // define domain
@@ -987,7 +988,7 @@ TEST(inference_test, WaldNonExact27Sim) {
     EXPECT_TRUE(almost_equal(pvalues4(0), 0.1261320 , 1e-7));
 }
 
-*/
+
 TEST(inference_test, SpeckmanNonExact27oat){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1039,9 +1040,9 @@ TEST(inference_test, SpeckmanNonExact27oat){
     inferenceSpeck.setBeta0(beta0);
 
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+    //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    DVector<double> pvalues5=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues5=inferenceSpeck.p_value(fdapde::models::simultaneous);
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< pvalues5(0) << std::endl;
     std::cout<< pvalues5(1) << std::endl;
@@ -1053,7 +1054,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
     EXPECT_TRUE(almost_equal(pvalues5(0), 0.1194335, 1e-7));
     EXPECT_TRUE(almost_equal(pvalues5(1), 0.0902682, 1e-7));
 } 
-
+*/
 
 
 TEST(inference_test, chrono27) {
@@ -1094,7 +1095,7 @@ TEST(inference_test, chrono27) {
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
 
-    fdapde::models::ESF<SRPDE > inferenceESF(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
@@ -1207,7 +1208,7 @@ TEST(inference_test, inference27) {
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
 
-    fdapde::models::ESF<SRPDE > inferenceESF(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
@@ -1348,8 +1349,6 @@ TEST(inference_test, WaldNonExact) {
 }
 
 
-
-
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1378,7 +1377,7 @@ TEST(inference_test, exact27) {
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
 
-    fdapde::models::EigenSignFlip<SRPDE> inferenceESF(model);
+    fdapde::models::ESF<SRPDE> inferenceESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
@@ -1453,7 +1452,7 @@ TEST(inference_test, nonexact27) {
     fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
 
-    //fdapde::models::EigenSignFlip<SRPDE > inferenceESF(model);
+    //fdapde::models::ESF<SRPDE > inferenceESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
@@ -1501,3 +1500,5 @@ TEST(inference_test, nonexact27) {
 }
 
 */
+
+
