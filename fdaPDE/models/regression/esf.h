@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef __ESF2_H__
-#define __ESF2_H__
+#ifndef __ESF_H__
+#define __ESF_H__
 
 // questi sono da controllare 
 #include <fdaPDE/linear_algebra.h>
@@ -23,20 +23,21 @@
 
 #include "../model_macros.h"
 #include "../model_traits.h"
+#include "../model_base.h"
 #include "srpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
+#include "stochastic_edf.h"
 #include "inference_base.h"
 #include "inference.h"
 
 #include <algorithm>
 
 
-
 namespace fdapde {
 namespace models {
 
-template <typename Model, typename Strategy> class Esf2: public InferenceBase<Model>{
+template <typename Model, typename Strategy> class ESF: public InferenceBase<Model>{
 
     private:
      struct ExactInverse{
@@ -64,8 +65,8 @@ template <typename Model, typename Strategy> class Esf2: public InferenceBase<Mo
      Solver s_; 
      
      // constructors
-     Esf2() = default;                   // deafult constructor
-     Esf2(const Model& m): Base(m) {};     // constructor      
+     ESF() = default;                   // deafult constructor
+     ESF(const Model& m): Base(m) {};     // constructor      
 
      DVector<double> p_value(CIType type) override{
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
@@ -263,4 +264,4 @@ template <typename Model, typename Strategy> class Esf2: public InferenceBase<Mo
 } // namespace models
 } // namespace fdapde
 
-#endif // __ESF2_H__
+#endif // __ESF_H__

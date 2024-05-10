@@ -81,7 +81,7 @@ using fdapde::testing::read_csv;
 
 #include "../../fdaPDE/models/regression/wald.h"
 #include "../../fdaPDE/models/regression/speckman.h"
-#include "../../fdaPDE/models/regression/eigen_sign_flip.h"
+#include "../../fdaPDE/models/regression/esf.h"
 
 
 
