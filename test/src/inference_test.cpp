@@ -741,7 +741,7 @@ TEST(inference_test, SpeckmanExact27sim){
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues=inferenceSpeck.p_value(fdapde::models::simultaneous);
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< pvalues(0) << std::endl;
     std::cout<< pvalues(1) << std::endl;
@@ -993,7 +993,7 @@ TEST(inference_test, WaldNonExact27Sim) {
     EXPECT_TRUE(almost_equal(pvalues4(0), 0.1261320 , 1e-7));
 }
 
-*/
+
 TEST(inference_test, SpeckmanNonExact27oat){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1047,9 +1047,9 @@ TEST(inference_test, SpeckmanNonExact27oat){
     inferenceSpeck.setBeta0(beta0);
 
     //inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
+    //std::cout << "computed CI: " << inferenceSpeck.computeCI(fdapde::models::one_at_the_time)<<std::endl;
 
-    DVector<double> pvalues5=inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvalues5=inferenceSpeck.p_value(fdapde::models::simultaneous);
     std::cout << "il valore dei pvalue è" << std::endl;
     std::cout<< pvalues5(0) << std::endl;
     std::cout<< pvalues5(1) << std::endl;
@@ -1063,7 +1063,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 } 
 
 
-/*
+
 TEST(inference_test, chrono27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1622,7 +1622,7 @@ TEST(inference_test, nonexact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
+*/
 
 TEST(inference_test2, newStructexact27) {
     // define domain
@@ -1777,4 +1777,3 @@ TEST(inference_test2, newStructnonexact27) {
 
 }
 
-*/

@@ -53,7 +53,7 @@ template <typename Model, typename Strategy> class Speckman {
          DMatrix<double> compute(Model m){
             // quali funzioni devo chiamare per far calcolare la inversa alla classe FSPAI solo compute e getInverse
             // FSPAI approx
-            //creo oggetto FSPAI( vanno controllati tipi di input e output)
+            // creo oggetto FSPAI( vanno controllati tipi di input e output)
 
             SpMatrix<double> decR0_ = lump(m.R0());  
 
@@ -66,32 +66,31 @@ template <typename Model, typename Strategy> class Speckman {
                invR0_.diagonal()[i] = 1.0 / diagElement; 
             }
 
-            unsigned alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
-            unsigned beta = 7;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+            unsigned alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A
+            unsigned beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
             double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità
+            
+            DMatrix<double> Et_ = m.PsiTD()* m.Psi() + m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
+            
+            //Et_ should be stored as a sparse matrix 
+            Eigen::SparseMatrix<double> Et_sparse = Et_.sparseView();
+            FSPAI fspai_E(Et_sparse);
+            fspai_E.compute(alpha, beta, epsilon);
+            SpMatrix<double> invE_ = fspai_E.getInverse();
+            /*
+            //prova di inversa di Et_ con lumping 
+            DMatrix<double> decEt_ = lump(Et_);  
 
-            DMatrix<double> tildeA_ = m.Psi().transpose()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
+            // fare con 1/R0_ii
+            DiagMatrix<double> invEt_(decEt_.rows());
+            invEt_.setZero(); 
 
-            //applico FSPAI su Atilde
-            // tildeA_ should be sparse matrix 
-            Eigen::SparseMatrix<double> Asparse_ = tildeA_.sparseView();
-
-            FSPAI fspai_A(Asparse_);
-            fspai_A.compute(alpha, beta, epsilon);
-
-            // inverseA_
-            DMatrix<double> inverseA_ = fspai_A.getInverse();
-            std::cout<<"questa è inversa di A : " <<std::endl;
-               std::cout << std::endl;
-               for (int i = 0; i < 4; ++i) {
-                  for(int j=0; j<4;++j){
-                     std::cout << inverseA_.coeff(i, j) << " ";
-               }
+            for (int i = 0; i < decEt_.rows(); ++i) {
+               double diagElement = decEt_.diagonal()[i]; 
+               invEt_.diagonal()[i] = 1.0 / diagElement; 
             }
-            // Ottenere le dimensioni di A_
-            //std::cout<<"numero di righe di inverseA_: "<<inverseA_.rows()<<std::endl;
-            //std::cout<<"numero di colonne di inverseA_: "<<inverseA_.cols()<<std::endl;
-            return inverseA_;
+            */
+            return invE_;
          }
       };
      
