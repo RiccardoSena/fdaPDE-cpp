@@ -1056,7 +1056,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 } 
 */
 
-
+/*
 TEST(inference_test, chrono27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1122,6 +1122,7 @@ TEST(inference_test, chrono27) {
     std::cout << "mean execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
 
 }
+*/
 
 TEST(inference_test, chronoWald) {
     // define domain
@@ -1169,13 +1170,125 @@ TEST(inference_test, chronoWald) {
     inferenceWald.setC(C);
     inferenceWald.setBeta0(beta0);
 
-    inferenceWald.p_value(fdapde::models::one_at_the_time);
+    inferenceWald.p_value(fdapde::models::simultaneous);
     }
     auto end = high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     // chrono end
 
     std::cout << "mean Wald execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
+
+}
+
+TEST(inference_test, chronoSpeckman) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+
+    // chrono start
+    using namespace std::chrono;
+
+    int n_it = 100;
+
+    auto start = high_resolution_clock::now();
+
+    for(int i = 0; i < n_it; ++i){
+
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeckman(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+    
+    inferenceSpeckman.setC(C);
+    inferenceSpeckman.setBeta0(beta0);
+
+    inferenceSpeckman.p_value(fdapde::models::one_at_the_time);
+    }
+    auto end = high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    // chrono end
+
+    std::cout << "mean Speckman execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
+
+}
+
+TEST(inference_test, chronoESF) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+
+    // chrono start
+    using namespace std::chrono;
+
+    int n_it = 100;
+
+    auto start = high_resolution_clock::now();
+
+    for(int i = 0; i < n_it; ++i){
+
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+
+    int cols = model.beta().size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+    
+    inferenceESF.setC(C);
+    inferenceESF.setBeta0(beta0);
+
+    inferenceESF.p_value(fdapde::models::one_at_the_time);
+    }
+    auto end = high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    // chrono end
+
+    std::cout << "mean ESF execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
 
 }
 
