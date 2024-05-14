@@ -746,7 +746,7 @@ TEST(inference_test, SpeckmanExact27sim){
     EXPECT_TRUE(almost_equal(pvalues(0), 0.1574313, 1e-6));
 }   
 
-/*
+
 TEST(inference_test, SpeckmanExact28sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1141,6 +1141,13 @@ TEST(inference_test, chronoWald) {
     beta0(0)=2;
     beta0(1)=-1;
 
+    int cols = beta0.size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
     // chrono start
     using namespace std::chrono;
 
@@ -1154,18 +1161,12 @@ TEST(inference_test, chronoWald) {
     model.set_lambda_D(lambda);
     model.set_spatial_locations(locs);
     // set model's data
-    BlockFrame<double, int> df;
-    df.insert(OBSERVATIONS_BLK, y);
-    df.insert(DESIGN_MATRIX_BLK, X);
     model.set_data(df);
     // solve smoothing problem
     model.init();
     model.solve();
 
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
-
-    int cols = model.beta().size();
-    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
     
     inferenceWald.setC(C);
     inferenceWald.setBeta0(beta0);
@@ -1198,6 +1199,13 @@ TEST(inference_test, chronoSpeckman) {
     beta0(0)=2;
     beta0(1)=-1;
 
+    int cols = beta0.size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
     // chrono start
     using namespace std::chrono;
 
@@ -1211,18 +1219,12 @@ TEST(inference_test, chronoSpeckman) {
     model.set_lambda_D(lambda);
     model.set_spatial_locations(locs);
     // set model's data
-    BlockFrame<double, int> df;
-    df.insert(OBSERVATIONS_BLK, y);
-    df.insert(DESIGN_MATRIX_BLK, X);
     model.set_data(df);
     // solve smoothing problem
     model.init();
     model.solve();
 
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeckman(model);
-
-    int cols = model.beta().size();
-    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
     
     inferenceSpeckman.setC(C);
     inferenceSpeckman.setBeta0(beta0);
@@ -1254,6 +1256,13 @@ TEST(inference_test, chronoESF) {
     beta0(0)=2;
     beta0(1)=-1;
 
+    int cols = beta0.size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
     // chrono start
     using namespace std::chrono;
 
@@ -1267,18 +1276,12 @@ TEST(inference_test, chronoESF) {
     model.set_lambda_D(lambda);
     model.set_spatial_locations(locs);
     // set model's data
-    BlockFrame<double, int> df;
-    df.insert(OBSERVATIONS_BLK, y);
-    df.insert(DESIGN_MATRIX_BLK, X);
     model.set_data(df);
     // solve smoothing problem
     model.init();
     model.solve();
 
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
-
-    int cols = model.beta().size();
-    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
     
     inferenceESF.setC(C);
     inferenceESF.setBeta0(beta0);
@@ -1295,7 +1298,6 @@ TEST(inference_test, chronoESF) {
 
 
 /*
->>>>>>> b2f4ebc70f5ca3f17d16aa25a28a2715b0eb61bb
 TEST(inference_test, inference27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1372,7 +1374,7 @@ TEST(inference_test, inference27) {
 
 }
 
-/*
+
 TEST(inference_test, inference28) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
