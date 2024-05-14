@@ -746,7 +746,7 @@ TEST(inference_test, SpeckmanExact27sim){
     EXPECT_TRUE(almost_equal(pvalues(0), 0.1574313, 1e-6));
 }   
 
-/*
+
 TEST(inference_test, SpeckmanExact28sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1257,7 +1257,7 @@ TEST(inference_test, chronoESF) {
     // chrono start
     using namespace std::chrono;
 
-    int n_it = 100;
+    int n_it = 10000;
 
     auto start = high_resolution_clock::now();
 
@@ -1372,7 +1372,7 @@ TEST(inference_test, inference27) {
 
 }
 
-/*
+
 TEST(inference_test, inference28) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
