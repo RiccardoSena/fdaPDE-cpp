@@ -680,7 +680,7 @@ TEST(inference_test, SpeckmanExact28oat){
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.0008644394, 1e-7));
 }   
 
-*/
+
 TEST(inference_test, SpeckmanExact27sim){
         // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1180,6 +1180,7 @@ TEST(inference_test, chronoWald) {
 
 }
 
+
 TEST(inference_test, chronoSpeckman) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1292,6 +1293,9 @@ TEST(inference_test, chronoESF) {
 
 }
 
+
+/*
+>>>>>>> b2f4ebc70f5ca3f17d16aa25a28a2715b0eb61bb
 TEST(inference_test, inference27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");

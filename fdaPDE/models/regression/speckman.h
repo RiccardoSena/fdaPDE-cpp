@@ -78,10 +78,8 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         if(is_empty(Lambda_)){
             Lambda_ = Lambda();
         }
+        
         DMatrix<double> W = m_.X();
-        //Eigen::PartialPivLU<DMatrix<double>> WLW_dec; 
-        //WLW_dec.compute(W.transpose()*Lambda_*(W));  
-        //betas_ = WLW_dec.solve(W.transpose()*Lambda_*(m_.y()));
         DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));      
         beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());            
      }
