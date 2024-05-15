@@ -52,12 +52,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             SpMatrix<double> invE_ = Base::invE_approx(m);
-
-
-            //questo serve per fare confronto con la forma esatta 
-            DMatrix<double> invEesatta=inverse(m.E());
-            Eigen::saveMarket(invEesatta, "invEexact.mtx");
- 
+            
             SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             return invMt_;            
         }       

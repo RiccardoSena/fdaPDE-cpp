@@ -208,13 +208,16 @@ template <typename Model> class InferenceBase{
             //Et_ should be stored as a sparse matrix 
             SpMatrix<double> Et_sparse = Et_.sparseView();
             Eigen::saveMarket(Et_sparse, "Etilde_sparse.mtx");
-
+            //questo serve per fare confronto con la forma esatta 
+            DMatrix<double> invEesatta=inverse(Et_sparse);
+            Eigen::saveMarket(invEesatta, "invEexact.mtx");
+ 
             FSPAI fspai_E(Et_sparse);
             fspai_E.compute(alpha, beta, epsilon);
             SpMatrix<double> invE_ = fspai_E.getInverse();
             Eigen::saveMarket(invE_, "invEnonexact.mtx");
 
-
+            
         return invE_;  
       }
 

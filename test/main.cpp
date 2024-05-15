@@ -23,11 +23,13 @@
 
 #include "src/inference_test.cpp"
 //#include "src/inferencetime_test.cpp"
+#include <unsupported/Eigen/SparseExtra> 
 
 
 
 int main(int argc, char **argv){
   // start testing
   testing::InitGoogleTest(&argc, argv);
+  
   return RUN_ALL_TESTS();
 }
