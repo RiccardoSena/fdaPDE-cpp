@@ -1266,7 +1266,7 @@ TEST(inference_test, chronoESF) {
     // chrono start
     using namespace std::chrono;
 
-    int n_it = 10000;
+    int n_it = 100;
 
     auto start = high_resolution_clock::now();
 
@@ -1296,6 +1296,50 @@ TEST(inference_test, chronoESF) {
 
 }
 
+/*
+TEST(inference_test, non_exactESF27) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+
+    int cols = beta0.size();
+    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
+
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::ESF<SRPDE, fdapde::models::nonexact> inferenceESF(model);
+    
+    inferenceESF.setC(C);
+    inferenceESF.setBeta0(beta0);
+
+    std::cout << "ESF non exact: " << inferenceESF.p_value(fdapde::models::simultaneous) << std::endl;
+
+}
+*/
 
 /*
 TEST(inference_test, inference27) {

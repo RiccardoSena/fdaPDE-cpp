@@ -52,7 +52,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
          }
       };
 
-     int n_flip = 1; //default value
+     int n_flip = 1000; //default value
      DMatrix<double> Lambda_ {};
 
     public:
