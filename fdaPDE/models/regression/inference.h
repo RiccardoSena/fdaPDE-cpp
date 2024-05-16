@@ -93,9 +93,9 @@ namespace models {
     // calcolo di quantile di una chiquadro
     double inverseChiSquaredCDF(double alpha, int degreesOfFreedom, double tolerance = 1e-6) {
         double low = 0.0;
-        double high = 1000.0; // Puoi regolare il limite superiore in base alle tue esigenze
+        double high = 1000.0; 
 
-        // Applica la ricerca binaria fino a raggiungere la precisione desiderata
+        // applica la ricerca binaria fino a raggiungere la precisione desiderata
         while (high - low > tolerance) {
             double mid = (low + high) / 2.0;
             double pValue = chi_squared_cdf(mid, degreesOfFreedom);
@@ -124,7 +124,7 @@ namespace models {
     
     // Funzione per calcolare i quantili di una distribuzione normale standard
     double normal_standard_quantile(double percentile) {
-        // Calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
+        // calcola il quantile utilizzando la funzione inversa della distribuzione normale standard
         return std::sqrt(2.0) * inverse_erf(2.0 * percentile - 1.0);     
     }
 
