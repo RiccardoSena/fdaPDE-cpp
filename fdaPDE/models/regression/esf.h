@@ -217,6 +217,83 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return result;
      }   
 
+
+
+
+
+
+
+    /*
+     DMatrix<double> computeCI(CIType type) override{
+        
+            // vector thet will store the pvalues
+            double result;
+
+            DVector<double> Tilder = Tilde_star * partial_res_H0_CI;
+            
+            // Initialize observed statistic and sign_flipped statistic
+            DMatrix<double> stat_temp = TildeX*Tilder;
+            double stat=stat_temp(0);
+            double stat_flip=stat;
+            
+            UInt n_obs = this->inf_car.getN_obs();
+
+  // Estimate the standard error
+  VectorXr eps_hat = (*(this->inf_car.getZp())) - (this->inf_car.getZ_hat());
+  Real SS_res = eps_hat.squaredNorm();
+  Real Sigma_hat = std::sqrt(SS_res/(n_obs-1));
+
+
+
+
+
+// sopra a questo va capito bene cosa sono vettori o matrici 
+    double threshold = 10*Sigma_hat; // This threshold is used to determine how many components will not be flipped: we drop those that show large alpha_hat w.r.t. the expected standar error
+    //int N_Eig_Out=0; // Initialize number of biased components that will be fixed in Enhanced ESF p_value computation
+    
+
+    // Random sign-flips
+    std::random_device rd; 
+    std::default_random_engine eng{rd()};
+    std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+    double count_Up = 0;   // Counter for the number of flipped statistics that are larger the observed statistic
+    double count_Down = 0; // Counter for the number of flipped statistics that are smaller the observed statistic
+        
+    DVector<double> Tilder_perm=Tilder;
+        
+    // get the number of flips
+    int nflip_=n_flip;
+
+    for(int i=0;i<nflip_;i++){
+        //N_Eig_Out=0;
+        for(int j=0;j<TildeX.cols();j++){
+            int flip;
+            //if((this->inf_car.getInfData()->get_enhanced_inference()[this->pos_impl]==true) && (N_Eig_Out<n_obs/2) && (fabs(Tilder_hat(j))>threshold)){ // Enhanced ESF test has been required and component biased
+	            //flip=1; // Fix the biased component
+	        //++N_Eig_Out;
+            //}else{
+	        flip=2*distr(eng)-1;
+        //}
+            Tilder_perm(j)=Tilder(j)*flip;
+        }
+        DMatrix<double> stat_flip_temp = TildeX*Tilder_perm; 
+        stat_flip= stat_flip_temp(0);// Flipped statistic
+        if(stat_flip > stat){ ++count_Up;}
+        else{ 
+            if(stat_flip < stat){ ++count_Down;}  
+        }
+    }
+    
+    double pval_Up = count_Up/n_flip;     
+    double pval_Down = count_Down/n_flip; 
+
+    result = std::min(pval_Up, pval_Down); // Selecting the correct unilateral p_value 
+
+    return result;
+  
+    };
+    */
+
     
      void V() override{
         // questa è quella modificata per FSPAI

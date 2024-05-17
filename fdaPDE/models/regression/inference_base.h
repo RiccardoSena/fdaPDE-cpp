@@ -64,7 +64,7 @@ template <typename Model> class InferenceBase{
       virtual void V() = 0;
 
 
-      DMatrix<double> computeCI(CIType type){ 
+      virtual DMatrix<double> computeCI(CIType type){ 
 
          fdapde_assert(!is_empty(C_));  
 
