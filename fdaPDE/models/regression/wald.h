@@ -63,7 +63,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::V_;
-     using Base::Vf_;
+     //using Base::Vf_;
      using Base::beta_;
      using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
@@ -105,7 +105,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       // belongin to the chosen portion Omega_p
 
       // for now just Psi
-      DMatrix<double> Psi_p = m_.Psi()
+      DMatrix<double> Psi_p = m_.Psi();
       DMatrix<double> Vw = Psi_p * Vf * Psi_p.transpose();
 
       // now do the pseudo inverse with the reduction of the eigenvalues
