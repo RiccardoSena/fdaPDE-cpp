@@ -63,11 +63,12 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::V_;
-     using Base::Vf_;
+     using Base::f_0;
      using Base::beta_;
      using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
+     DMatrix<double> Vf {};
 
      // constructors
      Wald() = default;                   // deafult constructor
@@ -95,22 +96,86 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
      }
 
-     void invVf() {
+     void Vf() {
       // covariance matrice of f^
       // still difference in exact and non exact when computing S
       DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
-      DMatrix<double> Vf = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
+      DMatrix<double> Vff = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
       // belongin to the chosen portion Omega_p
 
       // for now just Psi
       DMatrix<double> Psi_p = m_.Psi()
-      DMatrix<double> Vw = Psi_p * Vf * Psi_p.transpose();
-
-      // now do the pseudo inverse with the reduction of the eigenvalues
-
+      Vf_ = Psi_p * Vf * Psi_p.transpose();
      }
+
+     DMatrix<double> invVf() {
+      if(is_empty(Vf_))
+         Vf();
+      // reduction of matrix
+      // discard eigenvalues that are too small
+      // Vw is a covariance matrix, hence it is symmetric
+      // A = V * D * V^{-1} = V * D * V^T
+      // V is the matrix of eigenvectors and D is the diagonal matrix of the eigenvalues
+
+      // to retrieve eigenvalues and eigenvectors of the Vw matrix
+      Eigen::SelfAdjointEigenSolver<DMatrix<double>> Vw_eigen(Vf_);
+      // eigenvalues
+      DVector<double> eigenvalues = Vw_eigen.eigenvalues();
+
+      // now we need to discard the one really close to 0
+      // the eigenvalues are in increasing oreder and since the covariance matrix is spd
+      // there won't be any negative values
+
+      // fix a threshold
+      double thresh = 1e-7;
+      
+      // we need to get the index for the first eigenvalue greater than the threshold
+      int flag = 0;
+      int it = 0;
+      while(flag == 0 && it < eigenvalues.size()){
+         if(eigenvalues(it) > thresh)
+            flag = 1;
+         ++it;
+      }
+      
+      // rank
+      int r = eigenvalues.size() - it + 1;
+      // consider only the significant eigenvalues and create the diagonal matrix
+      DVector<double> imp_eigval = eigenvalues.tail(r);
+      // consider only the significant eigenvectors
+      DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(r);
+
+      // now we can compute the r-rank pseudoinverse
+      DiagMatrix<double> inv_imp_eigval = imp_eigval.array().inverse().asDiagonal();
+      DMatrix<double> invVf = imp_eigvec * inv_imp_eigval * imp_eigvec.transpose();
+
+      return invVf;
+      
+     }
+
+      DVector<double> f_p_value(){ 
+         if(is_empty(f_0))
+            Base::setf0(DVector<double>::Zero(m_.f().size()));
+
+         // compute the test statistic
+         // should only consider the f of the considered locations!!!!!
+         double stat = (m_.f() - f_0).transpose() * invVf() * (m_.f() - f_0);
+         double p_value = 0;
+         // distributed as a chi squared of r degrees of freedom
+         double pvalue = chi_squared_cdf(stat, r);
+         if(pvalue < 0){
+            pvalue = 1;
+         }
+         if(pvalue > 1){
+            pvalue = 0;
+         }
+         else{
+            pvalue = 1 - pvalue;
+         }
+         return pvalue;
+      }
 
 };
 

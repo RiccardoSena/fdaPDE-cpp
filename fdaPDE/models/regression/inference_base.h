@@ -48,7 +48,6 @@ template <typename Model> class InferenceBase{
 
       Model m_;
       DMatrix<double> V_ {};
-      DMatrix<double> invVf_ {}; 
       DMatrix<double> C_ {};            // inference matrix C (p x q) matrix  
       DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
@@ -64,7 +63,6 @@ template <typename Model> class InferenceBase{
       virtual void beta() {};
 
       virtual void V() = 0;
-
 
       virtual DMatrix<double> computeCI(CIType type){ 
 
