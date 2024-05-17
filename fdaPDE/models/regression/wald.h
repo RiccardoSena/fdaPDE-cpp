@@ -63,6 +63,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::V_;
+     using Base::Vf_;
      using Base::beta_;
      using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
@@ -92,6 +93,23 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * m_.X().transpose();
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
+     }
+
+     void invVf() {
+      // covariance matrice of f^
+      // still difference in exact and non exact when computing S
+      DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
+      DMatrix<double> Vf = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
+
+      // need to create a new Psi: matrix of basis evaluation in the set of observed locations
+      // belongin to the chosen portion Omega_p
+
+      // for now just Psi
+      DMatrix<double> Psi_p = m_.Psi()
+      DMatrix<double> Vw = Psi_p * Vf * Psi_p.transpose();
+
+      // now do the pseudo inverse with the reduction of the eigenvalues
+
      }
 
 };

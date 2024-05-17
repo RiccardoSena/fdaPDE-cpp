@@ -48,9 +48,11 @@ template <typename Model> class InferenceBase{
 
       Model m_;
       DMatrix<double> V_ {};
+      DMatrix<double> invVf_ {}; 
       DMatrix<double> C_ {};            // inference matrix C (p x q) matrix  
       DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
+      DVector<double> f0_ {};          // inference hypothesis H0
       double alpha_ = 0;                // level of the confidence intervals
 
 
@@ -235,9 +237,14 @@ template <typename Model> class InferenceBase{
          }
       }
 
-      // setter per i beta0_
+      // setter for beta0_
       void setBeta0(DVector<double> beta0){
          beta0_ = beta0;
+      }
+
+      // setter for f0_
+      void setf0(DVector<double> f0){
+         f0_ = f0;
       }
 
 };
