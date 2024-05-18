@@ -52,7 +52,8 @@ template <typename Model> class InferenceBase{
       DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
       DVector<double> f0_ {};          // inference hypothesis H0
-      double alpha_ = 0;                // level of the confidence intervals
+      double alpha_ = 0;                // level of the confidence intervals for beta
+      double alpha_f_ = 0;              // level of confidence intervals for f 
 
 
     public: 
@@ -234,6 +235,14 @@ template <typename Model> class InferenceBase{
             alpha_ = alpha;
          }
       }
+
+      // setter for alpha f
+      void setAlpha_f(double alpha){
+         fdapde_assert(0 <= alpha&& alpha <= 1);      // throw an exception if condition is not met  
+         if( 0 <= alpha && alpha <= 1) {
+            alpha_f_ = alpha;
+         }
+      }      
 
       // setter for beta0_
       void setBeta0(DVector<double> beta0){

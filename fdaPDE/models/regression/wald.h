@@ -63,12 +63,15 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::V_;
-     using Base::f_0;
+     using Base::f0_;
+     using Base::alpha_f_;
      using Base::beta_;
      using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
-     DMatrix<double> Vf {};
+     DMatrix<double> Vf_ {};
+     DMatrix<double> Psi_p_ {};
+     DVector<double> f_p_ {};
 
      // constructors
      Wald() = default;                   // deafult constructor
@@ -96,21 +99,30 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
      }
 
-     void Vf() {
+     void Psi_p(){
+     }
+
+     void f_p(){
+      if(is_empty(Psi_p_))
+         Psi_p();
+      f_p_ = Psi_p_ * m_.f(); 
+     }
+
+     void Vf(){
       // covariance matrice of f^
       // still difference in exact and non exact when computing S
       DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
       DMatrix<double> Vff = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
-      // belongin to the chosen portion Omega_p
+      // belonging to the chosen portion Omega_p
 
       // for now just Psi
-      DMatrix<double> Psi_p = m_.Psi()
-      Vf_ = Psi_p * Vf * Psi_p.transpose();
+      Psi_p_ = m_.Psi();
+      Vf_ = Psi_p_ * Vff * Psi_p_.transpose();
      }
 
-     DMatrix<double> invVf() {
+     DMatrix<double> invVf(){
       if(is_empty(Vf_))
          Vf();
       // reduction of matrix
@@ -148,34 +160,66 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(r);
 
       // now we can compute the r-rank pseudoinverse
-      DiagMatrix<double> inv_imp_eigval = imp_eigval.array().inverse().asDiagonal();
+      DVector<double> temp = imp_eigval.array().inverse();
+      DiagMatrix<double> inv_imp_eigval = temp.asDiagonal();
       DMatrix<double> invVf = imp_eigvec * inv_imp_eigval * imp_eigvec.transpose();
 
-      return invVf;
-      
+      return invVf;      
      }
 
-      DVector<double> f_p_value(){ 
-         if(is_empty(f_0))
+      double f_p_value(){ 
+         if(is_empty(Vf_))
+            Vf();
+         if(is_empty(f0_))
             Base::setf0(DVector<double>::Zero(m_.f().size()));
-
+         if(is_empty(f_p_))
+            f_p();
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
-         double stat = (m_.f() - f_0).transpose() * invVf() * (m_.f() - f_0);
-         double p_value = 0;
+         double stat = (f_p_ - f0_).transpose() * invVf() * (f_p_ - f0_);
+         double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
-         double pvalue = chi_squared_cdf(stat, r);
-         if(pvalue < 0){
+         double p = chi_squared_cdf(stat, Vf_.rows());
+         if(p < 0){
             pvalue = 1;
          }
-         if(pvalue > 1){
+         if(p > 1){
             pvalue = 0;
          }
          else{
-            pvalue = 1 - pvalue;
+            pvalue = 1 - p;
          }
          return pvalue;
       }
+
+      DMatrix<double> f_CI(){
+
+         if(is_empty(Vf_))
+            Vf();
+         
+         if(alpha_f_ == 0)
+            Base::setAlpha_f(0.05);
+
+         if(is_empty(f_p_))
+            f_p();
+
+         // Psi_p_ should be p x n, where n is the number of basis and 
+         // p the locations in which you want inference
+         int p = Vf_.rows();
+         DVector<double> diagon = Vf_.diagonal();
+         DVector<double> lowerBound(p);
+         DVector<double> upperBound(p);
+         double quantile = normal_standard_quantile(1 - alpha_f_/2);            
+         lowerBound = f_p_.array() - quantile * (diagon.array()).sqrt();
+         upperBound = f_p_.array() + quantile * (diagon.array()).sqrt();
+
+         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
+         CIMatrix.col(0) = lowerBound;
+         CIMatrix.col(1) = upperBound;
+         return CIMatrix;
+      }
+
+
 
 };
 

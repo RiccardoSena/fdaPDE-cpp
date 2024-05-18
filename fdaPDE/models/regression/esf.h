@@ -368,7 +368,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // extract the CI significance (1-confidence)
         double alpha=0.05;
 
-        //******************************** DA SISTEMARE************************************************
+        ******************************** DA SISTEMARE************************************************
         //if(type =="one-at-the-time"){
         //    alpha=0.5*(this->inf_car.getInfData()->get_inference_alpha()(this->pos_impl));
         //}else{
