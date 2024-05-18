@@ -224,7 +224,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-    /*
+    
 
 
 
@@ -233,23 +233,23 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         if(is_empty(Lambda_)){
             V();
         }
-        // errore per FSPAI che non riesce a calcolare Lambda in modo corretto 
-    //if(!is_Lambda_computed){
-      //Rprintf("error: failed FSPAI inversion in confidence intervals computation, discarding inference");
-      //DMatrix<double> result;
-      //DMatrix<double> C = this->inf_car.getInfData()->get_coeff_inference();
-      //for(int i=0; i<C.rows(); ++i){
-	//result(i).resize(3);
+        // error is FSPAI failed for the inversion of the Lambda matrix  
+        //if(!is_Lambda_computed){
+            //Rprintf("error: failed FSPAI inversion in confidence intervals computation, discarding inference");
+        //DMatrix<double> result;
+        //fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
-	//Central element
-	//result(i)(1)=10e20;
+        //for(int i=0; i<C_.rows(); ++i){
+            //result.resize(i, 2);
 
-	// compute the limits of the interval
-	//result(i)(0) = 10e20;
-	//result(i)(2) = 10e20; 	
-      //}
-      //return result;}}
-      
+            // compute the limits of the interval
+            //result(i,0) = 10e20;
+            //result(i,2) = 10e20; 	
+        //}
+
+        //return result;
+        //}
+        
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
@@ -257,34 +257,30 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
         int p = C_.rows(); 
 
-       // DVector<double> result;     // declare the vector that will store the p-valu
-
-        DVector<int> beta_in_test; // In this vector are stored the respective positions of the beta we are testing in the actual test
+        DVector<int> beta_in_test; // In this vector are stored the respective positions of the beta we are testing in the actual test (ie le posizioni dei beta che vengono testate perchè in C abbiamo un 1 nella corrispondente posizione)
         beta_in_test.resize(p);
         for(int i=0; i<p; i++){
             for(int j=0; j<C_.cols(); j++){
-                if(C_(i,j)>0){beta_in_test[i]=j;}
+                if(C_(i,j)>0){
+                    beta_in_test[i]=j;
+                }
             }
         }
 
         // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
 
         DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
         DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
 
         DMatrix<double> eigenvalues = eigenvalues_complex.real();
         DMatrix<double> eigenvectors = eigenvectors_complex.real();
-        
-        // extract covariates matrices
-        //m_.X();
-        
+
         // declare the matrix that will store the intervals
         DMatrix<double> result;
-        result.resize(p, 3);
-        //result.resize(1,p);
+        result.resize(p, 2);
 
-        // compute the initial ranges from speckman's CI (initial guess for ) 
+        // compute the initial ranges from speckman's CI (initial guess for CI) 
         if(!is_speckman_aux_computed){
             Compute_speckman_aux();
         }
@@ -304,18 +300,17 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-        // speckman intervals initialization
+        // ESF initialization with Speckman intervals as initial guess 
         for(int i=0; i<p; ++i){
-            //result(i).resize(3);
             double half_range = Speckman_aux_ranges(i);
 
             // compute the limits of the interval
             result(i,0) = beta_hat(beta_in_test[i]) - half_range;
             LU(i)=result(i,0)+0.5*half_range;
             LL(i)=result(i,0)-0.5*half_range;
-            result(i,2) = beta_hat(beta_in_test[i]) + half_range;
-            UU(i)=result(i,2) +0.5*half_range;
-            UL(i)=result(i,2) -0.5*half_range; 	
+            result(i,1) = beta_hat(beta_in_test[i]) + half_range;
+            UU(i)=result(i,1) +0.5*half_range;
+            UL(i)=result(i,1) -0.5*half_range; 	
         }
 
 
@@ -339,27 +334,27 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // fill the p_values matrix
         for (int i=0; i<p; i++){
-            DMatrix<double> TildeX_loc= TildeX.row(beta_in_test[i]);
+            DMatrix<double> TildeX_loc = TildeX.row(beta_in_test[i]);
             beta_hat_mod = beta_hat;
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=UU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
-            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UU[i](in test))
+            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UU[i](in test))
             local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=UL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
-            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UL[i](in test))
+            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UL[i](in test))
             local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=LU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
-            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*LU[i](in test))
+            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LU[i](in test))
             local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=LL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
-            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*LL[i](in test))
+            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LL[i](in test))
             local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
         }
@@ -368,7 +363,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // extract the CI significance (1-confidence)
         double alpha=0.05;
 
-        ******************************** DA SISTEMARE************************************************
+       // ******************************** DA SISTEMARE************************************************
         //if(type =="one-at-the-time"){
         //    alpha=0.5*(this->inf_car.getInfData()->get_inference_alpha()(this->pos_impl));
         //}else{
