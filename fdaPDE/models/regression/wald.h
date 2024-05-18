@@ -58,6 +58,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         }       
      };
 
+     DMatrix<double> Vf_ {};
+     DMatrix<double> Psi_p_ {};
+     DVector<double> f_p_ {};
+     int p_l_;
 
     public: 
      using Base = InferenceBase<Model>;
@@ -69,9 +73,6 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base::invE_approx;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
-     DMatrix<double> Vf_ {};
-     DMatrix<double> Psi_p_ {};
-     DVector<double> f_p_ {};
 
      // constructors
      Wald() = default;                   // deafult constructor

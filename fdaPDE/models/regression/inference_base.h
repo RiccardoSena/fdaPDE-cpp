@@ -54,6 +54,7 @@ template <typename Model> class InferenceBase{
       DVector<double> f0_ {};          // inference hypothesis H0
       double alpha_ = 0;                // level of the confidence intervals for beta
       double alpha_f_ = 0;              // level of confidence intervals for f 
+      // DMatrix<double> Psi_p_ {};        // Psi only in the locations required for inference of f
 
 
     public: 
