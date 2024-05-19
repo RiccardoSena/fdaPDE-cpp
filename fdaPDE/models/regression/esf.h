@@ -766,9 +766,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> X = m_.X();
         DMatrix<double> Xp;
         Xp.resize(m, X.cols());
-        for(std::size_t j = 0; j < m; ++j) {
+        for(int j = 0; j < m; ++j) {
           int row = locations_f_[j];
-          Xp.row(i) = X.row(row);
+          Xp.row(j) = X.row(row);
         }
         return Xp;
       }
