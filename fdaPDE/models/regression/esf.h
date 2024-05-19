@@ -61,13 +61,15 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      DMatrix<double> Qp_ {};
      int p_l_ = 0;   // number of locations for inference on f
      DVector<double> f0_ {};   // f0_ null hp on the locations considered
-     DMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
+     SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
+
      
     public:
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::beta_;  
      using Base::C_;
+     using Base::locations_f_;
      using Base::beta0_;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;
@@ -639,23 +641,22 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
     double f_p_value(){
-
-        if(is_empty(f0_))
-            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
-        if(is_empty(f_p_))
-            f_p();
         if(is_empty(Psi_p_))
             Psi_p();
         // compute the Q only on the locations in which you want inference
         if(is_empty(Qp_))
            Qp();
+
+        if(is_empty(f0_))
+            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
         
         // Q * (y - epislon) = Q * r
         // Eigen sign flig implementation
         Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
 
         // matrix V is the matrix n x (n-q) of the nonzero eigenvectors of Q
-        DMatrix<double> V = Q_eigen.eigenvectors().rightCols(n_loc - q);
+        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
+        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
 
         // test statistic when Pi = Id
         DVector<double> VQr = V.transpose() * Qp_ * (yp() - f0_);
@@ -678,7 +679,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 	         int flip = 2 * distr(eng)-1;
 	         tp_vqr(j) = VQr(j) * flip;
             }
-            Tp = Pis_p_.transpose() * V * tp_vqr;
+            Tp = Psi_p_.transpose() * V * tp_vqr;
             // flipped statistics
             double Tp_rank = Tp.array().square().sum();
       
@@ -692,15 +693,50 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     }
 
     void Psi_p(){
-
+        // for now
+      // case in which the locations are extracted from the observed ones
+      if(is_empty(locations_f_)){
+         Psi_p_ = m_.Psi();
+      }
+      else{
+      int m = locations_f_.size();
+      SpMatrix<double> Psi = m_.Psi();
+      Psi_p_.resize(m, Psi.cols());
+      for(int j = 0; j < m; ++j) {
+         int row = locations_f_[j];
+         for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+            Psi_p_.insert(j, it.col()) = it.value();
+         }
+      }
+      }
+      Psi_p_.makeCompressed();
     }
 
     DVector<double> yp(){
-        return m_.y().head(p_l_);
+        if(is_empty(Psi_p_))
+           Psi_p();
+        DVector<double> yp = Psi_p_ * m_.y();
+        return yp;
     }
 
     DMatrix<double> Xp(){
-        return m_.X().topRows(p_l_);
+        // for now
+      // case in which the locations are extracted from the observed ones
+      if(is_empty(locations_f_)){
+        return m_.X();
+      }
+      else{
+        int m = locations_f_.size();
+        DMatrix<double> X = m_.X();
+        DMatrix<double> Xp;
+        Xp.resize(m, X.cols());
+        for(std::size_t j = 0; j < m; ++j) {
+          int row = locations_f_[j];
+          Xp.row(i) = X.row(row);
+        }
+        return Xp;
+      }
+
     }
 
     DMatrix<double> Wp(){
@@ -718,15 +754,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             return;
         }            
         DMatrix<double> v = Xp().transpose() * Wp();   // X^\top*W
-        DMatrix<double> z = m_.invXtWX_.solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare 
+        DMatrix<double> z = m_.invXtWX().solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare 
         // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         Qp_ =  Wp() * DMatrix<double>::Identity(p_l_, p_l_) - Wp() * Xp() * z;
     }
 
-    void setf0(DVector<double> f0){
-        f0_ = f0;
-    }
     
      void V() override{
         // questa è quella modificata per FSPAI

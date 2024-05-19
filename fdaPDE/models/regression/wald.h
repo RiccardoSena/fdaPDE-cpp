@@ -58,9 +58,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         }       
      };
 
-     DMatrix<double> Vf_ {};
-     DMatrix<double> Psi_p_ {};
-     DVector<double> f_p_ {};
+     DMatrix<double> Vf_ {};            // variance matrix of f
+     SpMatrix<double> Psi_p_ {};         // Psi reductued only in the locations needed for inference
+     DVector<double> f_p_ {};           // f in the locations of inference
      int p_l_;
 
     public: 
@@ -68,6 +68,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base::m_;
      using Base::V_;
      using Base::f0_;
+     using Base::locations_f_;
      using Base::alpha_f_;
      using Base::beta_;
      using Base::invE_approx;
@@ -101,6 +102,22 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      }
 
      void Psi_p(){
+      // case in which the locations are extracted from the observed ones
+      if(is_empty(locations_f_)){
+         Psi_p_ = m_.Psi();
+      }
+      else{
+      int m = locations_f_.size();
+      SpMatrix<double> Psi = m_.Psi();
+      Psi_p_.resize(m, Psi.cols());
+      for(int j = 0; j < m; ++j) {
+         int row = locations_f_[j];
+         for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+            Psi_p_.insert(j, it.col()) = it.value();
+         }
+      }
+      }
+      Psi_p_.makeCompressed();
      }
 
      void f_p(){
@@ -119,7 +136,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       // belonging to the chosen portion Omega_p
 
       // for now just Psi
-      Psi_p_ = m_.Psi();
+      if(is_empty(Psi_p_))
+         Psi_p();
       Vf_ = Psi_p_ * Vff * Psi_p_.transpose();
      }
 
@@ -171,10 +189,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       double f_p_value(){ 
          if(is_empty(Vf_))
             Vf();
-         if(is_empty(f0_))
-            Base::setf0(DVector<double>::Zero(m_.f().size()));
          if(is_empty(f_p_))
             f_p();
+         if(is_empty(f0_))
+            Base::setf0(DVector<double>::Zero(f_p_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
          double stat = (f_p_ - f0_).transpose() * invVf() * (f_p_ - f0_);
@@ -198,7 +216,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          if(is_empty(Vf_))
             Vf();
          
-         if(alpha_f_ == 0)
+         if(alpha_f_ == 0.)
             Base::setAlpha_f(0.05);
 
          if(is_empty(f_p_))
