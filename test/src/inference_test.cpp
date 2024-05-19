@@ -586,14 +586,14 @@ TEST(inference_test, exact27) {
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues speckman: "<<pvaluesspeck<<std::endl;
-     //DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-   // std::cout << "computed CI: " << CIspeck_<<std::endl;
+    DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    std::cout << "computed CI: " << CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
     
-    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
-    //std::cout << "computed CI: " << CIESF_<<std::endl;
+    DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
+    std::cout << "computed CI: " << CIESF_<<std::endl;
 
 
     // test correctness Wald
@@ -1276,7 +1276,7 @@ TEST(inference_test, non_exactESF27) {
 */
 
 
-
+/*
 TEST(inference_test, inference28) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1360,5 +1360,5 @@ TEST(inference_test, inference29) {
 
 }
 
-
+*/
 

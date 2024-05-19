@@ -57,7 +57,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      
      // variabili aggiunte per confidence intervals 
      bool is_speckman_aux_computed = false;
-     DVector<double> Speckman_aux_ranges;                         //!< Speckman auxiliary CI ranges needed for CI method initialization (for beta)
+     DVector<double> Speckman_aux_ranges;                         //Speckman auxiliary CI ranges needed for CI method initialization (for beta)
+     // vairabili aggiunte per inferenza su f 
      DMatrix<double> Qp_ {};
      int p_l_ = 0;   // number of locations for inference on f
      DVector<double> f0_ {};   // f0_ null hp on the locations considered
@@ -73,7 +74,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      using Base::beta0_;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;
-     
+     // aggiunta per CI 
+     using Base::V_;
+
      // constructors
      ESF() = default;                   // deafult constructor
      ESF(const Model& m): Base(m) {};     // constructor      
@@ -233,7 +236,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     
 
 
-/*
+
      DMatrix<double> computeCI(CIType type) override{
         // compute Lambda
         if(is_empty(Lambda_)){
@@ -292,7 +295,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
         // this vector will store the tolerance for each interval upper/lower limit
-        DVector<double> ESF_bisection_tolerances = 0.2*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
+        // QUI NON SO SE 0.1 O 0.2 PER LA TOLLERANZA MASSIMA 
+        DVector<double> ESF_bisection_tolerances = 0.1*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
+        
 
         // define storage structures for bisection algorithms
         DVector<double> UU; // Upper limit for Upper bound
@@ -311,6 +316,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             double half_range = Speckman_aux_ranges(i);
 
             // compute the limits of the interval
+            // QUI NON SO SE DEVO CONSIDERARE COME LIMITI 1/2 O 3/2 DEL HALF_RANGE
             result(i,0) = beta_hat(beta_in_test[i]) - half_range;
             LU(i)=result(i,0)+0.5*half_range;
             LL(i)=result(i,0)-0.5*half_range;
@@ -320,7 +326,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
 
-        // define booleans used to unserstand which CI need to be computed forward on
+        // ARRIVATA QUA CON IL CONTROLLO 
+
+
+        // define booleans used to understand which CI need to be computed forward on
         std::vector<bool> converged_up(p,false);
         std::vector<bool> converged_low(p,false);
         bool all_betas_converged=false;
@@ -365,23 +374,15 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         }
 
-
         // extract the CI significance (1-confidence)
         double alpha=0.05;
 
-       // ******************************** DA SISTEMARE************************************************
-        //if(type =="one-at-the-time"){
-        //    alpha=0.5*(this->inf_car.getInfData()->get_inference_alpha()(this->pos_impl));
-        //}else{
-          //  alpha=0.5/p * (this->inf_car.getInfData()->get_inference_alpha()(this->pos_impl));
-        //}
         if(type == one_at_the_time){
             alpha=0.5*alpha;
         }else{
             alpha=0.5/p*alpha;
         }
     
-
         int Max_Iter=50;
         int Count_Iter=0;
         while((!all_betas_converged) & (Count_Iter<Max_Iter)){
@@ -432,7 +433,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     }
                 }
             }
-
 
             if(!converged_low[i]){
 	            if(local_p_values(2,i)<alpha){ // Lower-Upper bound excessively tight
@@ -489,8 +489,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         result.resize(p,3);
         // for each row of C matrix
         for(int i=0; i<p; ++i){
-            
-            
+                 
             if(Count_Iter < Max_Iter){ // No discrepancy between beta_hat(i) and ESF, bisection converged
                 // Central element
                 result(i,1)=beta_hat(beta_in_test[i]);
@@ -514,18 +513,14 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-
+/*
     void Compute_speckman_aux(void){
         //check if Lambda has been computed
         if(is_empty(Lambda_)){
             V();
         }
 
-        // extract W and W^T
-        //m_.X()
-        //W_t = W->transpose();
-  
-        // Decomposition of [W^t * Lambda^2 * W] 
+        // Decomposition of [X^t * Lambda^2 * X] 
         Eigen::PartialPivLU<DMatrix<double>> XLX_dec; 
         XLX_dec.compute((m_.X().transpose())*(Lambda_*Lambda_)*(m_.X()));
   
@@ -539,13 +534,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> V;
         V.resize(q,q);
   
-  
         DMatrix<double> diag = Res2.asDiagonal();
   
-        V = (XLX_dec).solve((m_.X().transpose())*(Lambda_*Lambda_)*Res2.asDiagonal()*(Lambda_*Lambda_)*(m_.X())*(XLX_dec).solve(DMatrix<double>::Identity(q,q))); // V = [(W*Lambda2*W)^-1 * Res2 * (W*Lambda2*W)^-1]
+        V = (XLX_dec).solve((m_.X().transpose())*(Lambda_*Lambda_)*Res2.asDiagonal()*(Lambda_*Lambda_)*(m_.X())*(XLX_dec).solve(DMatrix<double>::Identity(q,q))); // V = [(X*Lambda2*X)^-1 * Res2 * (X*Lambda2*X)^-1]
 
-        // Extract the quantile needed for the computation of upper and lower bounds ************************* DA SISTEMARE ************************
-        double quant = normal_standard_quantile(1 - 0.05/2); 
+        // Extract the quantile needed for the computation of upper and lower bounds 
+        double quant = normal_standard_quantile(1 - alpha_/2);            
+
 
         // extract matrix C 
         fdapde_assert(!is_empty(C_));           
@@ -553,8 +548,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         
         Speckman_aux_ranges.resize(p);
         
+
+
+
+        
         // for each row of C matrix
         for(int i=0; i<p; ++i){
+            
             DVector<double> col = C_.row(i);
             
             // compute the standard deviation of the linear combination and half range of the interval
@@ -562,12 +562,48 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             double half_range=sd_comb*quant;
             
             // save the half range
-            Speckman_aux_ranges(i)=half_range;  	
+            Speckman_aux_ranges(i)=half_range; 
+            
+
         }
+        
+
         
         is_speckman_aux_computed = true; 
         return;
     }
+    */
+
+    void Compute_speckman_aux(void){
+        // questo è il calcolo di Speckman intervals per initial guess per CI di ESF 
+        // COSTRUITA ESATTAMENTE COME LA NOSTRA 
+        fdapde_assert(!is_empty(C_));  
+
+        double alpha_=0.05;
+         if(is_empty(V_)){
+            V();
+         }
+
+         
+         int p = C_.rows();
+         int size = std::min(C_.rows(), V_.rows());
+         DVector<double> diagon(size);
+         for (int i = 0; i < C_.rows(); ++i) {
+            DVector<double> ci = C_.row(i);
+            diagon[i] = ci.transpose() * V_ * ci;
+         }
+
+         // ONE AT THE TIME
+         double quantile = normal_standard_quantile(1 - alpha_/2);            
+         
+         Speckman_aux_ranges.resize(p);
+         Speckman_aux_ranges=quantile * (diagon.array()).sqrt();
+
+        is_speckman_aux_computed = true; 
+        return;
+    
+    }
+
         
 
 
@@ -635,11 +671,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return result;
         
     };
-*/
 
 
 
 
+    /*
     double f_p_value(){
         if(is_empty(Psi_p_))
             Psi_p();
@@ -760,13 +796,24 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Qp_ =  Wp() * DMatrix<double>::Identity(p_l_, p_l_) - Wp() * Xp() * z;
     }
 
-    
+    */
      void V() override{
         // questa è quella modificata per FSPAI
         //DMatrix<double> inverseA_ {};
         //inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
         //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+
+        //aggiunto per CI 
+        DMatrix<double> W = m_.X();
+        DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));
+        DVector<double> eps_ = (m_.y() - m_.fitted());
+        DVector<double> Res2 = eps_.array() * eps_.array();            
+        // resize the variance-covariance matrix
+        V_.resize(m_.q(), m_.q());                   
+        DMatrix<double> W_t = W.transpose();           
+        DMatrix<double> diag = Res2.asDiagonal();
+        V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;
      }   
 
      inline bool is_Unilaterally_Greater (DVector<double> v, DVector<double> u){
