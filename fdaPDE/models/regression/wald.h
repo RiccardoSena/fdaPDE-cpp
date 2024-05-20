@@ -23,6 +23,7 @@ using fdapde::core::FSPAI;
 using fdapde::core::lump;
 
 #include "../model_macros.h"
+#include "../sampling_design.h"
 #include "../model_traits.h"
 #include "../model_base.h"
 #include "srpde.h"
@@ -60,8 +61,11 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      DMatrix<double> Vf_ {};            // variance matrix of f
      SpMatrix<double> Psi_p_ {};         // Psi reductued only in the locations needed for inference
-     DVector<double> f_p_ {};           // f in the locations of inference
+     DVector<double> fp_ {};           // f in the locations of inference
      int p_l_;
+     int rank;       // need to save this, since it's the degrees of freedom of the chi
+     DVector<double> new_locations {};   // vector of new locations for inference in f (only Wald)
+     int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the mesh nodes
 
     public: 
      using Base = InferenceBase<Model>;
@@ -103,10 +107,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void Psi_p(){
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_)){
+      if(is_empty(locations_f_) && is_empty(new_locations)){
          Psi_p_ = m_.Psi();
       }
-      else{
+      else if (loc_subset == 1){
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
       Psi_p_.resize(m, Psi.cols());
@@ -117,13 +121,19 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          }
       }
       }
+      else{
+      SamplingBase<Model> new_sample = SamplingBase<Model>(pointwise);
+      new_sample.set_spatial_locations(new_locations);
+      new_sample.init_sampling();
+      Psi_p_ = new_sample.Psi(not_nan());
+      }
       Psi_p_.makeCompressed();
      }
 
-     void f_p(){
+     void fp(){
       if(is_empty(Psi_p_))
          Psi_p();
-      f_p_ = Psi_p_ * m_.f(); 
+      fp_ = Psi_p_ * m_.f(); 
      }
 
      void Vf(){
@@ -135,10 +145,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
       // belonging to the chosen portion Omega_p
 
-      // for now just Psi
       if(is_empty(Psi_p_))
          Psi_p();
       Vf_ = Psi_p_ * Vff * Psi_p_.transpose();
+
      }
 
      DMatrix<double> invVf(){
@@ -172,11 +182,11 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       }
       
       // rank
-      int r = eigenvalues.size() - it + 1;
+      rank = eigenvalues.size() - it + 1;
       // consider only the significant eigenvalues and create the diagonal matrix
-      DVector<double> imp_eigval = eigenvalues.tail(r);
+      DVector<double> imp_eigval = eigenvalues.tail(rank);
       // consider only the significant eigenvectors
-      DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(r);
+      DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(rank);
 
       // now we can compute the r-rank pseudoinverse
       DVector<double> temp = imp_eigval.array().inverse();
@@ -189,16 +199,17 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       double f_p_value(){ 
          if(is_empty(Vf_))
             Vf();
-         if(is_empty(f_p_))
-            f_p();
+         if(is_empty(fp_))
+            fp();
          if(is_empty(f0_))
-            Base::setf0(DVector<double>::Zero(f_p_.size()));
+            Base::setf0(DVector<double>::Zero(fp_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
-         double stat = (f_p_ - f0_).transpose() * invVf() * (f_p_ - f0_);
+         double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
-         double p = chi_squared_cdf(stat, Vf_.rows());
+         // the rank gets cmoputed when invVf() is called
+         double p = chi_squared_cdf(stat, rank);
          if(p < 0){
             pvalue = 1;
          }
@@ -219,8 +230,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          if(alpha_f_ == 0.)
             Base::setAlpha_f(0.05);
 
-         if(is_empty(f_p_))
-            f_p();
+         if(is_empty(fp_))
+            fp();
 
          // Psi_p_ should be p x n, where n is the number of basis and 
          // p the locations in which you want inference
@@ -229,13 +240,18 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          DVector<double> lowerBound(p);
          DVector<double> upperBound(p);
          double quantile = normal_standard_quantile(1 - alpha_f_/2);            
-         lowerBound = f_p_.array() - quantile * (diagon.array()).sqrt();
-         upperBound = f_p_.array() + quantile * (diagon.array()).sqrt();
+         lowerBound = fp_.array() - quantile * (diagon.array()).sqrt();
+         upperBound = fp_.array() + quantile * (diagon.array()).sqrt();
 
          DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;
          return CIMatrix;
+      }
+
+      void setNewLocations_f(DVector<double> loc){
+         loc_subset = 0;
+         new_locations = loc;
       }
 
 

@@ -255,7 +255,7 @@ template <typename Model> class InferenceBase{
          f0_ = f0;
       }
 
-      void setLocations_f(DVector<double> loc){
+      void setLocations_f(DVector<int> loc){
          locations_f_ = loc;
       }
 

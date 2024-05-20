@@ -1324,7 +1324,7 @@ TEST(inference_test, inference28) {
     EXPECT_TRUE(almost_equal(inferenceSpeck.p_value(fdapde::models::one_at_the_time)(1), 0.0008644394, 1e-7));
 
 }
-
+*/
 
 
 TEST(inference_test, inference29) {
@@ -1360,5 +1360,5 @@ TEST(inference_test, inference29) {
 
 }
 
-*/
+
 

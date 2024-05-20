@@ -231,7 +231,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      }   
 
 
-
+/*
      DMatrix<double> computeCI(CIType type) override{
         // compute Lambda
         if(is_empty(Lambda_)){
@@ -565,11 +565,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return result;
         
     };
+*/
 
 
 
-
-    /*
     double f_p_value(){
         if(is_empty(Psi_p_))
             Psi_p();
@@ -626,71 +625,88 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // for now
       // case in which the locations are extracted from the observed ones
       if(is_empty(locations_f_)){
-         Psi_p_ = m_.Psi();
+        Psi_p_ = m_.Psi();
+        return;
       }
-      else{
+
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
       Psi_p_.resize(m, Psi.cols());
       for(int j = 0; j < m; ++j) {
-         int row = locations_f_[j];
-         for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+        int row = locations_f_[j];
+        for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
             Psi_p_.insert(j, it.col()) = it.value();
-         }
-      }
+        }
       }
       Psi_p_.makeCompressed();
     }
 
     DVector<double> yp(){
-        if(is_empty(Psi_p_))
-           Psi_p();
-        DVector<double> yp = Psi_p_ * m_.y();
-        return yp;
+      if(is_empty(locations_f_))
+        return m_.y();
+      int m = locations_f_.size();
+      DVector<double> y = m_.y();
+      DVector<double> yp;
+      yp.resize(m);
+      for(int j = 0; j < m; ++j) {
+        int row = locations_f_[j];
+        yp.row(j) = y.row(row);
+      }
+      return yp;
     }
 
     DMatrix<double> Xp(){
-        // for now
       // case in which the locations are extracted from the observed ones
       if(is_empty(locations_f_)){
         return m_.X();
       }
-      else{
-        int m = locations_f_.size();
-        DMatrix<double> X = m_.X();
-        DMatrix<double> Xp;
-        Xp.resize(m, X.cols());
-        for(int j = 0; j < m; ++j) {
-          int row = locations_f_[j];
-          Xp.row(j) = X.row(row);
-        }
-        return Xp;
+      if(!m_.has_covariates())
+        return m_.X();
+      int m = locations_f_.size();
+      DMatrix<double> X = m_.X();
+      DMatrix<double> Xp;
+      Xp.resize(m, X.cols());
+      for(int j = 0; j < m; ++j) {
+        int row = locations_f_[j];
+        Xp.row(j) = X.row(row);
       }
-
+      return Xp;
     }
 
     DMatrix<double> Wp(){
         // how to deal with this
+        // for now set it as a identity matrix
+        if(is_empty(Psi_p_)){
+            Psi_p();
+        }   
+        if(p_l_ == 0)
+           p_l_ = Psi_p_.rows(); 
+
         DMatrix<double> id = DMatrix<double>::Identity(p_l_, p_l_);
         return id;
     }
 
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     void Qp() {
+        if(is_empty(Psi_p_)){
+            Psi_p();
+        }
         if(p_l_ == 0)
-           p_l_ = m_.X().rows();
+           p_l_ = Psi_p_.rows();
+
         if (!m_.has_covariates()){
-            Qp_ = DMatrix<double>::Identity(p_l_, p_l_);
+            Qp_ = Wp() * DMatrix<double>::Identity(p_l_, p_l_);
             return;
-        }            
-        DMatrix<double> v = Xp().transpose() * Wp();   // X^\top*W
-        DMatrix<double> z = m_.invXtWX().solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare 
+        }   
+        DMatrix<double> Xp_ = Xp();    
+        DMatrix<double> Wp_ = Wp();     
+        DMatrix<double> XptWp = Xp_.transpose() * Wp_;   // X^\top*W
+        DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);           
         // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
-        Qp_ =  Wp() * DMatrix<double>::Identity(p_l_, p_l_) - Wp() * Xp() * z;
+        Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
     }
 
-    */
      void V() override{
         // questa è quella modificata per FSPAI
         //DMatrix<double> inverseA_ {};
