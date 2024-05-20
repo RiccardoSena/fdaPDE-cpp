@@ -232,33 +232,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-
-    
-
-
-
      DMatrix<double> computeCI(CIType type) override{
         // compute Lambda
         if(is_empty(Lambda_)){
             V();
         }
-        // error is FSPAI failed for the inversion of the Lambda matrix  
-        //if(!is_Lambda_computed){
-            //Rprintf("error: failed FSPAI inversion in confidence intervals computation, discarding inference");
-        //DMatrix<double> result;
-        //fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
-        //for(int i=0; i<C_.rows(); ++i){
-            //result.resize(i, 2);
-
-            // compute the limits of the interval
-            //result(i,0) = 10e20;
-            //result(i,2) = 10e20; 	
-        //}
-
-        //return result;
-        //}
-        
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
@@ -324,9 +303,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             UU(i)=result(i,1) +0.5*half_range;
             UL(i)=result(i,1) -0.5*half_range; 	
         }
-
-
-        // ARRIVATA QUA CON IL CONTROLLO 
 
 
         // define booleans used to understand which CI need to be computed forward on
@@ -511,93 +487,29 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         
     };
 
-
-
-/*
-    void Compute_speckman_aux(void){
-        //check if Lambda has been computed
-        if(is_empty(Lambda_)){
-            V();
-        }
-
-        // Decomposition of [X^t * Lambda^2 * X] 
-        Eigen::PartialPivLU<DMatrix<double>> XLX_dec; 
-        XLX_dec.compute((m_.X().transpose())*(Lambda_*Lambda_)*(m_.X()));
-  
-        // get the residuals needed
-        DVector<double> eps_hat = (m_.y() - m_.X()*m_.beta());
-        // build squared residuals
-        DVector<double> Res2=eps_hat.array()*eps_hat.array();
-  
-        // resize the variance-covariance matrix
-        int q = m_.X().cols();
-        DMatrix<double> V;
-        V.resize(q,q);
-  
-        DMatrix<double> diag = Res2.asDiagonal();
-  
-        V = (XLX_dec).solve((m_.X().transpose())*(Lambda_*Lambda_)*Res2.asDiagonal()*(Lambda_*Lambda_)*(m_.X())*(XLX_dec).solve(DMatrix<double>::Identity(q,q))); // V = [(X*Lambda2*X)^-1 * Res2 * (X*Lambda2*X)^-1]
-
-        // Extract the quantile needed for the computation of upper and lower bounds 
-        double quant = normal_standard_quantile(1 - alpha_/2);            
-
-
-        // extract matrix C 
-        fdapde_assert(!is_empty(C_));           
-        int p = C_.rows(); 
-        
-        Speckman_aux_ranges.resize(p);
-        
-
-
-
-        
-        // for each row of C matrix
-        for(int i=0; i<p; ++i){
-            
-            DVector<double> col = C_.row(i);
-            
-            // compute the standard deviation of the linear combination and half range of the interval
-            double sd_comb = std::sqrt(col.adjoint()*V*col);
-            double half_range=sd_comb*quant;
-            
-            // save the half range
-            Speckman_aux_ranges(i)=half_range; 
-            
-
-        }
-        
-
-        
-        is_speckman_aux_computed = true; 
-        return;
-    }
-    */
-
     void Compute_speckman_aux(void){
         // questo è il calcolo di Speckman intervals per initial guess per CI di ESF 
         // COSTRUITA ESATTAMENTE COME LA NOSTRA 
         fdapde_assert(!is_empty(C_));  
 
         double alpha_=0.05;
-         if(is_empty(V_)){
-            V();
-         }
+        if(is_empty(V_)){
+           V();
+        }
 
-         
-         int p = C_.rows();
-         int size = std::min(C_.rows(), V_.rows());
-         DVector<double> diagon(size);
-         for (int i = 0; i < C_.rows(); ++i) {
-            DVector<double> ci = C_.row(i);
-            diagon[i] = ci.transpose() * V_ * ci;
-         }
+        int p = C_.rows();
+        int size = std::min(C_.rows(), V_.rows());
+        DVector<double> diagon(size);
+        for (int i = 0; i < C_.rows(); ++i) {
+           DVector<double> ci = C_.row(i);
+           diagon[i] = ci.transpose() * V_ * ci;
+        }
 
-         // ONE AT THE TIME
-         double quantile = normal_standard_quantile(1 - alpha_/2);            
+        // ONE AT THE TIME
+        double quantile = normal_standard_quantile(1 - alpha_/2);            
          
-         Speckman_aux_ranges.resize(p);
-         Speckman_aux_ranges=quantile * (diagon.array()).sqrt();
+        Speckman_aux_ranges.resize(p);
+        Speckman_aux_ranges=quantile * (diagon.array()).sqrt();
 
         is_speckman_aux_computed = true; 
         return;
@@ -609,7 +521,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
     double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
-  
         // declare the vector that will store the p-values
         double result;
     
@@ -620,17 +531,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> stat_temp = TildeX*Tilder;
         double stat=stat_temp(0);
         double stat_flip=stat;
-
-        //int n_obs = m_.n_obs();
-
-        // Estimate the standard error
-        //DVector<double> eps_hat = (m_.y()-m_.X()*m_.beta());
-        //double SS_res = eps_hat.squaredNorm();
-        //double Sigma_hat = std::sqrt(SS_res/(n_obs-1));
-
-        //double threshold = 10*Sigma_hat; // This threshold is used to determine how many components will not be flipped: we drop those that show large alpha_hat w.r.t. the expected standar error
-        //int N_Eig_Out=0; // Initialize number of biased components that will be fixed in Enhanced ESF p_value computation
-            
 
         // Random sign-flips
         std::random_device rd; 
@@ -645,15 +545,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         int nflip=n_flip;
 
         for(int i=0;i<nflip;i++){
-            //N_Eig_Out=0;
             for(int j=0;j<TildeX.cols();j++){
                 int flip;
-                //if((this->inf_car.getInfData()->get_enhanced_inference()[this->pos_impl]==true) && (N_Eig_Out<n_obs/2) && (fabs(Tilder_hat(j))>threshold)){ // Enhanced ESF test has been required and component biased
-                //flip=1; // Fix the biased component
-                //++N_Eig_Out;
-                //}else{
                 flip=2*distr(eng)-1;
-                //}
                 Tilder_perm(j)=Tilder(j)*flip;
             }
                 DMatrix<double> stat_flip_temp = TildeX*Tilder_perm; 
@@ -666,7 +560,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         double pval_Up = count_Up/n_flip;     
         double pval_Down = count_Down/n_flip; 
 
-        result = std::min(pval_Up, pval_Down); // Selecting the correct unilateral p_value 
+        result = std::min(pval_Up, pval_Down); // select the correct unilateral p_value 
 
         return result;
         
