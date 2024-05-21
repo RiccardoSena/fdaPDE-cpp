@@ -592,8 +592,8 @@ TEST(inference_test, exact27) {
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
     
-    DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << CIESF_<<std::endl;
+    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << CIESF_<<std::endl;
 
 
     // test correctness Wald
@@ -1352,10 +1352,10 @@ TEST(inference_test, inference29) {
     model.init();
     model.solve();
 
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    //fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
-    std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
+    //std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
 }
