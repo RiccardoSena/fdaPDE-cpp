@@ -64,7 +64,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      DVector<double> fp_ {};           // f in the locations of inference
      int p_l_;
      int rank;       // need to save this, since it's the degrees of freedom of the chi
-     DVector<double> new_locations {};   // vector of new locations for inference in f (only Wald)
+     DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
      int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the mesh nodes
 
     public: 
@@ -113,7 +113,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       else if (loc_subset == 1){
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
-      Psi_p_.resize(m, Psi.cols());
+      Psi_p_.resize(m, Psi.cols()); 
       for(int j = 0; j < m; ++j) {
          int row = locations_f_[j];
          for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
@@ -122,6 +122,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       }
       }
       else{
+      //auto basis_evaluation = model().pde().eval_basis(Base::sampling(), new_locations);
+      //Psi_ = basis_evaluation->Psi;
+
       SamplingBase<Model> new_sample = SamplingBase<Model>(pointwise);
       new_sample.set_spatial_locations(new_locations);
       new_sample.init_sampling();
@@ -205,6 +208,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             Base::setf0(DVector<double>::Zero(fp_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
+         std::cout << "fp size: " << fp_.size() << " f0 size: " << f0_.size() << std::endl;
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
@@ -249,7 +253,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          return CIMatrix;
       }
 
-      void setNewLocations_f(DVector<double> loc){
+      void setNewLocations_f(DMatrix<double> loc){
          loc_subset = 0;
          new_locations = loc;
       }
