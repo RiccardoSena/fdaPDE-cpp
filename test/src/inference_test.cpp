@@ -597,7 +597,6 @@ TEST(inference_test, exact27) {
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << CIESF_<<std::endl;
 
-
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-8));
     
@@ -613,7 +612,7 @@ TEST(inference_test, exact27) {
 
 
 
-/*
+
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -669,6 +668,46 @@ TEST(inference_test, nonexact27) {
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
+
+
+
+
+    
+    SpMatrix<double> invE_nonexact;
+    SpMatrix<double> invE_exact;
+    SpMatrix<double> precond;
+
+    // Carica la matrice dal file Matrix Market
+    Eigen::loadMarket(invE_exact, "../build/invEexact.mtx");
+
+    // Carica la matrice dal file Matrix Market
+    Eigen::loadMarket(invE_nonexact, "../build/invEnonexact.mtx");
+
+    Eigen::loadMarket(precond, "../build/precond.mtx");
+
+    DMatrix<double> invE_nonexact_densa = invE_nonexact;
+
+    DMatrix<double> invE_exact_densa=invE_exact;
+
+    DMatrix<double> risultato_FSPAI=precond*precond.transpose();
+    std::cout<<"numero righe FSPAI: "<<risultato_FSPAI.rows()<<std::endl;
+    std::cout<<"numero righe inversa: "<<invE_exact_densa.rows()<<std::endl;
+    std::cout<<"numero righe inversa non esatta: "<<invE_nonexact_densa.rows()<<std::endl;
+
+    SpMatrix<double> risultato = risultato_FSPAI.sparseView();
+    Eigen::saveMarket(risultato, "risultatoFSPAI.mtx");
+
+    // Calcolo la differenza tra le due matrici
+    DMatrix<double> differenza_nostra = invE_nonexact_densa - invE_exact_densa;
+    DMatrix<double> differenza_FSPAI = risultato_FSPAI - invE_exact_densa;
+
+    // Calcolo la norma di Frobenius della differenza
+    double norma_frobenius_nostra = differenza_nostra.norm();
+    double norma_frobenius_FSPAI = differenza_FSPAI.norm();
+    std::cout<<"questa è la frobenius norm della differenza nostra:   "<<norma_frobenius_nostra<<std::endl;
+    std::cout<<"questa è la frobenius norm della differenza FSPAI:   "<<norma_frobenius_FSPAI<<std::endl;
+
+
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
     
@@ -682,7 +721,7 @@ TEST(inference_test, nonexact27) {
 
 }
 
-*/
+
 
 
 
