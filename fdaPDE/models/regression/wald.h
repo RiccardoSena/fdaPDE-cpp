@@ -208,8 +208,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             Base::setf0(DVector<double>::Zero(fp_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
-         std::cout << "fp size: " << fp_.size() << " f0 size: " << f0_.size() << std::endl;
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
+         std::cout << "Test statistic: " << stat << std::endl;
+         std::cout << "Rank of chi: " << rank << std::endl;
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
          // the rank gets cmoputed when invVf() is called
