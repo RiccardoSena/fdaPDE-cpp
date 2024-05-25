@@ -124,13 +124,18 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       else{
       //auto basis_evaluation = model().pde().eval_basis(Base::sampling(), new_locations);
       //Psi_ = basis_evaluation->Psi;
-
-      SamplingBase<Model> new_sample = SamplingBase<Model>(pointwise);
+      SamplingBase<Model> new_sample = SamplingBase<Model>(Sampling::pointwise);
+      std::cout << "Object created" << std::endl;
       new_sample.set_spatial_locations(new_locations);
-      new_sample.init_sampling();
+      std::cout << "Locations set" << std::endl;
+      std::cout << "Sampling used: " << new_sample.sampling() << std::endl;
+      new_sample.init_sampling(true);
+      std::cout << "psi computed" << std::endl;
       Psi_p_ = new_sample.Psi(not_nan());
+      std::cout << "Psi alright" << std::endl;
       }
       Psi_p_.makeCompressed();
+      std::cout << "Psi p created correctly" << std::endl;
      }
 
      void fp(){

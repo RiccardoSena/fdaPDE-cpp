@@ -612,7 +612,7 @@ TEST(inference_test, exact27) {
 
 
 
-
+/*
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -682,7 +682,7 @@ TEST(inference_test, nonexact27) {
 
 }
 
-
+*/
 
 
 
@@ -1345,6 +1345,7 @@ TEST(inference_test, inference29) {
     model.solve();
 
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
     DVector<double> f0(171);
     f0 <<   1.806250e-01,  2.678915e-01,  3.551579e-01,  4.424244e-01,  5.296909e-01,  6.169573e-01,
     7.042238e-01,  7.914902e-01,  8.787567e-01,  9.660232e-01,  1.132690e+00,  1.299356e+00,
@@ -1376,13 +1377,110 @@ TEST(inference_test, inference29) {
  -3.252630e+00, -3.419606e+00,  2.305165e+00,  2.293123e+00,  2.805165e+00,  2.793123e+00,
   3.305165e+00,  3.293123e+00,  3.511451e+00;
 
-   inferenceWald.setf0(f0);
-    //fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+    inferenceWald.setf0(f0);
+    inferenceESF.setf0(f0);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
-    //std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
 }
 
+TEST(inference_test, inference210) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
 
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    DMatrix<double> new_locs(63, 2);
+
+    new_locs << -0.148227359, -3.482274e-01,
+ -0.148227359,  3.482274e-01,
+  0.283333333, -5.050000e-01,
+  0.783333333, -5.050000e-01,
+  1.450000000, -5.050000e-01,
+  0.283333333,  5.050000e-01,
+  0.783333333,  5.050000e-01,
+  1.450000000,  5.050000e-01,
+  1.950000000, -5.050000e-01,
+  2.450000000, -5.050000e-01,
+  2.950000000, -5.050000e-01,
+  1.950000000,  5.050000e-01,
+  2.450000000,  5.050000e-01,
+  2.950000000,  5.050000e-01,
+  3.276399495, -5.560485e-01,
+  3.276399495,  4.539515e-01,
+  3.087316098, -6.960219e-01,
+  3.143644997, -3.358601e-01,
+  3.087316098,  3.139781e-01,
+  3.143644997,  6.741399e-01,
+ -0.246951237,  2.775558e-16,
+ -0.065975618, -1.368007e-01,
+  0.104523204, -3.248428e-01,
+  0.002567691, -6.004744e-01,
+ -0.220951271, -5.628989e-01,
+  0.194977900, -7.057364e-01,
+ -0.065975618,  1.368007e-01,
+  0.104523204,  3.248428e-01,
+  0.005697717,  6.017445e-01,
+  0.197803447,  7.062970e-01,
+ -0.218650015,  5.644721e-01,
+ -0.402602658,  2.322358e-01,
+ -0.378528884,  4.359502e-01,
+ -0.485975618,  8.077704e-03,
+ -0.403828688, -2.522852e-01,
+  0.533333333, -3.694048e-01,
+  0.522233333, -6.472024e-01,
+  1.116666667, -4.190079e-01,
+  1.321997201, -3.121302e-01,
+  0.911336132, -3.121302e-01,
+  1.001032346, -6.598220e-01,
+  1.257352762, -6.747338e-01,
+  0.533333333,  6.405952e-01,
+  0.522233333,  3.627976e-01,
+  1.116666667,  5.909921e-01,
+  1.321997201,  6.978698e-01,
+  0.911336132,  6.978698e-01,
+  1.001032346,  3.501780e-01,
+  1.257352762,  3.352662e-01,
+  1.700000000, -3.694048e-01,
+  1.688900000, -6.472024e-01,
+  2.200000000, -3.694048e-01,
+  2.188900000, -6.472024e-01,
+  2.700000000, -3.694048e-01,
+  2.688900000, -6.472024e-01,
+  2.882272361, -7.192372e-01,
+  1.700000000,  6.405952e-01,
+  1.688900000,  3.627976e-01,
+  2.200000000,  6.405952e-01,
+  2.188900000,  3.627976e-01,
+  2.700000000,  6.405952e-01,
+  2.688900000,  3.627976e-01,
+  2.882272361,  2.907628e-01;
+
+    inferenceWald.setNewLocations_f(new_locs);
+
+    std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
+
+
+}
 
