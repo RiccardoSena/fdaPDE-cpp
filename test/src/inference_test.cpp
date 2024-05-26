@@ -1381,6 +1381,7 @@ TEST(inference_test, inference29) {
     inferenceESF.setf0(f0);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
+    std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
 }
