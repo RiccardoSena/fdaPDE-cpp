@@ -122,8 +122,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       }
       }
       else{
-      //auto basis_evaluation = model().pde().eval_basis(Base::sampling(), new_locations);
-      //Psi_ = basis_evaluation->Psi;
+      auto basis_evaluation = m_.pde().eval_basis(core::eval::pointwise, new_locations);
+      Psi_p_ = basis_evaluation->Psi;
+      /*
       SamplingBase<Model> new_sample = SamplingBase<Model>(Sampling::pointwise);
       std::cout << "Object created" << std::endl;
       new_sample.set_spatial_locations(new_locations);
@@ -133,9 +134,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       std::cout << "psi computed" << std::endl;
       Psi_p_ = new_sample.Psi(not_nan());
       std::cout << "Psi alright" << std::endl;
+      */
       }
-      Psi_p_.makeCompressed();
-      std::cout << "Psi p created correctly" << std::endl;
+      //Psi_p_.makeCompressed();
      }
 
      void fp(){
@@ -178,7 +179,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       // there won't be any negative values
 
       // fix a threshold
-      double thresh = 1e-7;
+      double thresh = 0.0001;
       
       // we need to get the index for the first eigenvalue greater than the threshold
       int flag = 0;
@@ -205,8 +206,6 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      }
 
       double f_p_value(){ 
-         if(is_empty(Vf_))
-            Vf();
          if(is_empty(fp_))
             fp();
          if(is_empty(f0_))
@@ -214,8 +213,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
-         std::cout << "Test statistic: " << stat << std::endl;
-         std::cout << "Rank of chi: " << rank << std::endl;
+         std::cout << "fp - f0: " << std::endl;
+         std::cout << fp_ - f0_ << std::endl;;
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
          // the rank gets cmoputed when invVf() is called
@@ -227,7 +226,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             pvalue = 0;
          }
          else{
-            pvalue = 1 - p;
+            pvalue = 1 - p
+            //pvalue = p;
          }
          return pvalue;
       }

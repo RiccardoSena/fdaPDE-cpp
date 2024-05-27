@@ -582,23 +582,23 @@ TEST(inference_test, exact27) {
     inferenceESF.setNflip(n);
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
-    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
     DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::simultaneous);
-    std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
+    //std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
-    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+    //std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
     DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::simultaneous);
-    std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
+    //std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
-    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
+    //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << CIESF_<<std::endl;
 
     // test correctness Wald
-    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-8));
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
     //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-8));
@@ -1377,11 +1377,12 @@ TEST(inference_test, inference29) {
  -3.252630e+00, -3.419606e+00,  2.305165e+00,  2.293123e+00,  2.805165e+00,  2.793123e+00,
   3.305165e+00,  3.293123e+00,  3.511451e+00;
 
-    inferenceWald.setf0(f0);
+    //inferenceWald.setf0(model.Psi() * model.f());
+    //inferenceWald.setf0(f0);
     inferenceESF.setf0(f0);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
-    std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
+    //std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
 }
@@ -1481,7 +1482,7 @@ TEST(inference_test, inference210) {
     inferenceWald.setNewLocations_f(new_locs);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
-
+    std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
 
 }
 

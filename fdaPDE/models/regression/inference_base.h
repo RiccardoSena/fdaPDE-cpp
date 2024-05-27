@@ -145,7 +145,7 @@ template <typename Model> class InferenceBase{
             double stat = diff.adjoint() * Sigmadec_ * diff;            
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
-            if(pvalue < 0){
+            if(pvalue < 0){ 
                statistics(0) = 1;
             }
             if(pvalue > 1){
