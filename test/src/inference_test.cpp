@@ -612,7 +612,7 @@ TEST(inference_test, exact27) {
 
 
 
-/*
+
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -682,7 +682,7 @@ TEST(inference_test, nonexact27) {
 
 }
 
-*/
+
 
 
 
