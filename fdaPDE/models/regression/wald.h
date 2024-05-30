@@ -192,6 +192,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       
       // rank
       rank = eigenvalues.size() - it + 1;
+      std::cout << "Rank: " << rank << std::endl;
       // consider only the significant eigenvalues and create the diagonal matrix
       DVector<double> imp_eigval = eigenvalues.tail(rank);
       // consider only the significant eigenvectors
@@ -226,7 +227,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             pvalue = 0;
          }
          else{
-            pvalue = 1 - p
+            pvalue = 1 - p;
             //pvalue = p;
          }
          return pvalue;
