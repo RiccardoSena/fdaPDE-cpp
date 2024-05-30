@@ -55,10 +55,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      int n_flip = 1000; //default value
      DMatrix<double> Lambda_ {};
      
-     // variabili aggiunte per confidence intervals 
      bool is_speckman_aux_computed = false;
-     DVector<double> Speckman_aux_ranges;                         //Speckman auxiliary CI ranges needed for CI method initialization (for beta)
-     // vairabili aggiunte per inferenza su f 
+     DVector<double> Speckman_aux_ranges;                       
+
      DMatrix<double> Qp_ {};
      int p_l_ = 0;   // number of locations for inference on f
      SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
@@ -74,7 +73,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      using Base::beta0_;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;
-     // aggiunta per CI 
+
      using Base::V_;
 
      // constructors
@@ -121,16 +120,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 }
             }
             
-            // partial residuals
+
             DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod; 
-            // W^t * V * D
+
             DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
             DVector<double> stat = Xt * Tilder;
             DVector<double> stat_flip = stat;
-            //std::cout<<"questo è stat observed: "<<stat<<std::endl;
+
             //Random sign-flips
             std::random_device rd; 
             std::default_random_engine eng{rd()};
@@ -146,27 +145,23 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     Tilder_perm(j) = Tilder(j) * flip;
                 }
                 stat_flip = Xt * Tilder_perm; // Flipped statistic
-                //std::cout<<"questo è stat flip: "<<stat_flip<<std::endl;
 
                 if(is_Unilaterally_Greater(stat_flip, stat)){ 
                     up = up + 1;
-                    //std::cout<<"count up è: "<<up<<std::endl;
                 }
                 else{ 
                 if(is_Unilaterally_Smaller(stat_flip, stat)){ 
                     down = down + 1;
-                    //std::cout<<"count down è: "<<dwon<<std::endl;
                     }                    
                 }
             }
             
             double pval_up = static_cast<double>(up) / n_flip;
             double pval_down = static_cast<double>(down) / n_flip;
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
 
-            result.resize(p); // Allocate more space so that R receives a well defined object (different implementations may require higher number of pvalues)
-            result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
+
+            result.resize(p); 
+            result(0) = 2 * std::min(pval_up, pval_down); 
             for(int k = 1; k < p; k++){
             result(k) = 0.0;
             }
@@ -175,7 +170,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             // ONE AT THE TIME   
             DMatrix<double> res_H0(Lambda_.cols(), p);
             for(int i = 0; i < p; ++i){
-            // Extract the current beta in test
+
             beta_hat_mod = beta_hat;
 
             for(int j = 0; j < C_.cols(); ++j){
@@ -222,8 +217,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> pval_up = up.array() / static_cast<double>(n_flip);
             DVector<double> pval_down = down.array() / static_cast<double>(n_flip);
 
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
             result.resize(p);
             result = 2 * min(pval_up, pval_down); // Obtain the blateral p_value starting from the unilateral
         } 
@@ -231,7 +224,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      }   
 
 
-/*
+
      DMatrix<double> computeCI(CIType type) override{
         // compute Lambda
         if(is_empty(Lambda_)){
@@ -565,7 +558,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return result;
         
     };
-*/
 
 
 
@@ -580,8 +572,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
         }
         
-        // Q * (y - epislon) = Q * r
-        // Eigen sign flig implementation
         Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
 
         // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
@@ -626,7 +616,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     }
 
     void Psi_p(){
-        // for now
+
       // case in which the locations are extracted from the observed ones
       if(is_empty(locations_f_)){
         Psi_p_ = m_.Psi();
@@ -704,19 +694,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> Wp_ = Wp();     
         DMatrix<double> XptWp = Xp_.transpose() * Wp_;   // X^\top*W,   q x p_l_ 
         DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);    // q x q       
-        // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
-        // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
+       // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
     }
 
      void V() override{
-        // questa è quella modificata per FSPAI
-        //DMatrix<double> inverseA_ {};
-        //inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
 
-        //aggiunto per CI 
         DMatrix<double> W = m_.X();
         DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));
         DVector<double> eps_ = (m_.y() - m_.fitted());

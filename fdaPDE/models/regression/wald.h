@@ -87,9 +87,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         beta_ = m_.beta();
      }
 
-     // si potrebbe fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia
      double sigma_sq() {
-        double sigma_sq_ = 0;             // sigma^2 
+        double sigma_sq_ = 0;            
         DMatrix<double> epsilon = m_.y() - m_.fitted();
         ExactEDF strat;
         strat.set_model(m_);
@@ -124,19 +123,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       else{
       auto basis_evaluation = m_.pde().eval_basis(core::eval::pointwise, new_locations);
       Psi_p_ = basis_evaluation->Psi;
-      /*
-      SamplingBase<Model> new_sample = SamplingBase<Model>(Sampling::pointwise);
-      std::cout << "Object created" << std::endl;
-      new_sample.set_spatial_locations(new_locations);
-      std::cout << "Locations set" << std::endl;
-      std::cout << "Sampling used: " << new_sample.sampling() << std::endl;
-      new_sample.init_sampling(true);
-      std::cout << "psi computed" << std::endl;
-      Psi_p_ = new_sample.Psi(not_nan());
-      std::cout << "Psi alright" << std::endl;
-      */
       }
-      //Psi_p_.makeCompressed();
      }
 
      void fp(){
@@ -147,8 +134,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void Vf(){
       // covariance matrice of f^
-      // still difference in exact and non exact when computing S
-      DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
+      DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); 
       DMatrix<double> Vff = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
@@ -163,25 +149,16 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      DMatrix<double> invVf(){
       if(is_empty(Vf_))
          Vf();
-      // reduction of matrix
-      // discard eigenvalues that are too small
-      // Vw is a covariance matrix, hence it is symmetric
-      // A = V * D * V^{-1} = V * D * V^T
-      // V is the matrix of eigenvectors and D is the diagonal matrix of the eigenvalues
+
 
       // to retrieve eigenvalues and eigenvectors of the Vw matrix
       Eigen::SelfAdjointEigenSolver<DMatrix<double>> Vw_eigen(Vf_);
-      // eigenvalues
       DVector<double> eigenvalues = Vw_eigen.eigenvalues();
 
       // now we need to discard the one really close to 0
-      // the eigenvalues are in increasing oreder and since the covariance matrix is spd
-      // there won't be any negative values
 
-      // fix a threshold
       double thresh = 0.0001;
       
-      // we need to get the index for the first eigenvalue greater than the threshold
       int flag = 0;
       int it = 0;
       while(flag == 0 && it < eigenvalues.size()){
@@ -210,14 +187,12 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             fp();
          if(is_empty(f0_))
             Base::setf0(DVector<double>::Zero(fp_.size()));
-         // compute the test statistic
-         // should only consider the f of the considered locations!!!!!
+
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          std::cout << "fp - f0: " << std::endl;
          std::cout << fp_ - f0_ << std::endl;;
          double pvalue = 0;
-         // distributed as a chi squared of r degrees of freedom
-         // the rank gets cmoputed when invVf() is called
+
          double p = chi_squared_cdf(stat, rank);
          if(p < 0){
             pvalue = 1;
@@ -226,8 +201,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             pvalue = 0;
          }
          else{
-            pvalue = 1 - p
-            //pvalue = p;
+            pvalue = 1 - p;
          }
          return pvalue;
       }
@@ -243,8 +217,6 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          if(is_empty(fp_))
             fp();
 
-         // Psi_p_ should be p x n, where n is the number of basis and 
-         // p the locations in which you want inference
          int p = Vf_.rows();
          DVector<double> diagon = Vf_.diagonal();
          DVector<double> lowerBound(p);
@@ -253,7 +225,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          lowerBound = fp_.array() - quantile * (diagon.array()).sqrt();
          upperBound = fp_.array() + quantile * (diagon.array()).sqrt();
 
-         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
+         DMatrix<double> CIMatrix(p, 2);      
          CIMatrix.col(0) = lowerBound;
          CIMatrix.col(1) = upperBound;
          return CIMatrix;

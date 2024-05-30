@@ -69,7 +69,6 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
      // return Lambda_^2
      DMatrix<double> Lambda() {
         DMatrix<double> Lambda = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD()*DMatrix<double>::Identity(m_.n_obs(), m_.n_obs())-m_.Psi() * s_.compute(m_) * m_.PsiTD();
         DMatrix<double> Lambda_squared = Lambda * Lambda;
         return Lambda_squared;
      }

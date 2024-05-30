@@ -110,7 +110,6 @@ template <typename Model> class InferenceBase{
             upperBound = (C_ * beta_).array() + quantile * (diagon.array()).sqrt();
          }
          else{
-            // inserire errore: nome intervallo non valido
             return DMatrix<double>::Zero(1, 1);
          }
 
@@ -183,7 +182,6 @@ template <typename Model> class InferenceBase{
             return statistics;
          }
          else{
-            //inserire messaggio di errore 
             return DVector<double>::Zero(1);
          }
       }
@@ -199,26 +197,16 @@ template <typename Model> class InferenceBase{
         }
          DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
-        //applico FSPAI su Atilde
-            int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-            int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-            double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
-            //questi sono quelli trovati nella libreria vecchia 
-            //std::string tol_Inverse     = "0.005";  oppure 0.05                     // Controls the quality of approximation, default 0.005 
-            //std::string max_Step_Col    = "20";     oppure 10                     // Max number of improvement steps per columns
-            // std::string max_New_Nz      = "20";     oppure 10                     // Max number of new nonzero candidates per step
-            //Et_ should be stored as a sparse matrix 
+
+            int alpha = 10;    
+            int beta = 10;      
+            double epsilon = 0.05; 
             SpMatrix<double> Et_sparse = Et_.sparseView();
-            Eigen::saveMarket(Et_sparse, "Etilde_sparse.mtx");
             
-            //questo serve per fare confronto con la forma esatta 
-            DMatrix<double> invEesatta=inverse(Et_sparse);
-            Eigen::saveMarket(invEesatta, "invEexact.mtx");
  
             FSPAI fspai_E(Et_sparse);
             fspai_E.compute(alpha, beta, epsilon);
             SpMatrix<double> invE_ = fspai_E.getInverse();
-            Eigen::saveMarket(invE_, "invEnonexact.mtx");
 
             
         return invE_;  
