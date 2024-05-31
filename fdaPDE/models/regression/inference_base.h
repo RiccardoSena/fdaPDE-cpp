@@ -34,8 +34,8 @@ using fdapde::core::lump;
 #include <cmath>
 #include <random>
 
-// per salvare la matrice con savemarket
-#include <unsupported/Eigen/SparseExtra> 
+
+
 
 
 
@@ -197,49 +197,24 @@ template <typename Model> class InferenceBase{
             double diagElement = decR0_.diagonal()[i];  
             invR0_.diagonal()[i] = 1.0 / diagElement; 
         }
-         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
+        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
-            int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-            int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-            double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+        int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
             //questi sono quelli trovati nella libreria vecchia 
             //std::string tol_Inverse     = "0.005";  oppure 0.05                     // Controls the quality of approximation, default 0.005 
             //std::string max_Step_Col    = "20";     oppure 10                     // Max number of improvement steps per columns
             // std::string max_New_Nz      = "20";     oppure 10                     // Max number of new nonzero candidates per step
             //Et_ should be stored as a sparse matrix 
-            SpMatrix<double> Et_sparse = Et_.sparseView();
-            Eigen::saveMarket(Et_sparse, "Etilde_sparse.mtx");
             
-            //questo serve per fare confronto con la forma esatta 
-            DMatrix<double> invEesatta=inverse(Et_sparse);
-            Eigen::saveMarket(invEesatta, "invEexact.mtx");
- 
-            FSPAI fspai_E(Et_sparse);
-            fspai_E.compute(alpha, beta, epsilon);
-            SpMatrix<double> invE_ = fspai_E.getInverse();
-            Eigen::saveMarket(invE_, "invEnonexact.mtx");
+        SpMatrix<double> Et_sparse = Et_.sparseView();
 
+        FSPAI fspai_E(Et_sparse);
+        fspai_E.compute(alpha, beta, epsilon);
+        SpMatrix<double> invE_ = fspai_E.getInverse();
 
-
-
-
-            /*
-            // QUESTA PARTE SERVE PER VEDERE COME FUNZIONA FSPAI 
-            DMatrix<double> A = DMatrix<double>::Zero(5, 5);            
-            A(0,0)=1;
-            A(1,1)=2;
-            A(2,2)=3;
-            A(3,3)=4;
-            A(4,4)=5;
-            SpMatrix<double> A_sparse = A.sparseView();
-            FSPAI fspai_A(A_sparse);
-            fspai_A.compute(alpha, beta, epsilon);
-            SpMatrix<double> inversaA = fspai_A.getInverse();
-            std::cout<<"la matrice inversa di A è: "<<inversaA<<std::endl;
-            Eigen::saveMarket(inversaA, "inversaA.mtx");
-            */
-            
         return invE_;  
       }
 

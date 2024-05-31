@@ -99,10 +99,12 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void V() override{
         DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
+        std::cout<<"qui è corretta"<<std::endl;
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
         DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * m_.X().transpose();
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
+        std::cout<<"V corretta"<<std::endl;
      }
 
      void Psi_p(){

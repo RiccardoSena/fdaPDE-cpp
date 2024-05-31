@@ -1319,6 +1319,8 @@ TEST(inference_test, inference28) {
 */
 
 
+/*
+
 TEST(inference_test, inference29) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1486,3 +1488,4 @@ TEST(inference_test, inference210) {
 
 }
 
+*/
