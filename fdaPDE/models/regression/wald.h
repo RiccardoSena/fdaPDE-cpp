@@ -214,7 +214,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          // should only consider the f of the considered locations!!!!!
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          std::cout << "fp - f0: " << std::endl;
-         std::cout << fp_ - f0_ << std::endl;;
+         std::cout << fp_ - f0_ << std::endl;
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
          // the rank gets cmoputed when invVf() is called
@@ -226,7 +226,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             pvalue = 0;
          }
          else{
-            pvalue = 1 - p
+            pvalue = 1 - p;
             //pvalue = p;
          }
          return pvalue;

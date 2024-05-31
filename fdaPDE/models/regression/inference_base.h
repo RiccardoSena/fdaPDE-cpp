@@ -220,6 +220,25 @@ template <typename Model> class InferenceBase{
             SpMatrix<double> invE_ = fspai_E.getInverse();
             Eigen::saveMarket(invE_, "invEnonexact.mtx");
 
+
+
+
+
+            /*
+            // QUESTA PARTE SERVE PER VEDERE COME FUNZIONA FSPAI 
+            DMatrix<double> A = DMatrix<double>::Zero(5, 5);            
+            A(0,0)=1;
+            A(1,1)=2;
+            A(2,2)=3;
+            A(3,3)=4;
+            A(4,4)=5;
+            SpMatrix<double> A_sparse = A.sparseView();
+            FSPAI fspai_A(A_sparse);
+            fspai_A.compute(alpha, beta, epsilon);
+            SpMatrix<double> inversaA = fspai_A.getInverse();
+            std::cout<<"la matrice inversa di A è: "<<inversaA<<std::endl;
+            Eigen::saveMarket(inversaA, "inversaA.mtx");
+            */
             
         return invE_;  
       }
