@@ -34,8 +34,8 @@ using fdapde::core::lump;
 #include <cmath>
 #include <random>
 
-
-
+//serve per salvare le matrici 
+#include <unsupported/Eigen/SparseExtra> 
 
 
 
@@ -200,9 +200,9 @@ template <typename Model> class InferenceBase{
         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
         //applico FSPAI su Atilde
-        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-        int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.05; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
+        int alpha = 20;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
+        int beta = 20;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
+        double epsilon = 0.005; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
             //questi sono quelli trovati nella libreria vecchia 
             //std::string tol_Inverse     = "0.005";  oppure 0.05                     // Controls the quality of approximation, default 0.005 
             //std::string max_Step_Col    = "20";     oppure 10                     // Max number of improvement steps per columns
@@ -214,6 +214,36 @@ template <typename Model> class InferenceBase{
         FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
+        Eigen::saveMarket(invE_, "inversaE2.mtx");  
+        // aggiunta per fspai
+        DMatrix<double> A=DMatrix<double>::Identity(4,4);
+        A(0,0)=1.0;
+        A(0,3)=2.0;
+        A(1,1)=4.0;
+        A(1,2)=4.0;
+        A(2,1)=4.0;
+        A(2,2)=3.0;
+        A(3,0)=2.0;
+        A(3,3)=1.0;
+        SpMatrix<double> A_sparse=A.sparseView();
+
+        FSPAI fspai_A(A_sparse);
+        fspai_A.compute(alpha, beta, epsilon);
+        SpMatrix<double> invA = fspai_A.getInverse();
+        Eigen::saveMarket(invA, "inversaA2.mtx");
+
+        // per creare una matrice di sparsità come la nostra da dare a fspai.1-1
+        DMatrix<double> sparsita=DMatrix<double>::Identity(264,264);
+
+      for (int i = 0; i < 263; ++i) {
+        sparsita(i, i) = i; // Assegna i+1 alla diagonale
+    }
+    SpMatrix<double> sparsita_sparse=sparsita.sparseView();
+            Eigen::saveMarket(sparsita_sparse, "sparsita.mtx");
+
+
+
+
 
         return invE_;  
       }
