@@ -36,6 +36,7 @@ using fdapde::core::lump;
 
 //serve per salvare le matrici 
 #include <unsupported/Eigen/SparseExtra> 
+#include <fstream>
 
 
 
@@ -215,35 +216,6 @@ template <typename Model> class InferenceBase{
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
         Eigen::saveMarket(invE_, "inversaE2.mtx");  
-        // aggiunta per fspai
-        DMatrix<double> A=DMatrix<double>::Identity(4,4);
-        A(0,0)=1.0;
-        A(0,3)=2.0;
-        A(1,1)=4.0;
-        A(1,2)=4.0;
-        A(2,1)=4.0;
-        A(2,2)=3.0;
-        A(3,0)=2.0;
-        A(3,3)=1.0;
-        SpMatrix<double> A_sparse=A.sparseView();
-
-        FSPAI fspai_A(A_sparse);
-        fspai_A.compute(alpha, beta, epsilon);
-        SpMatrix<double> invA = fspai_A.getInverse();
-        Eigen::saveMarket(invA, "inversaA2.mtx");
-
-        // per creare una matrice di sparsità come la nostra da dare a fspai.1-1
-        DMatrix<double> sparsita=DMatrix<double>::Identity(264,264);
-
-      for (int i = 0; i < 263; ++i) {
-        sparsita(i, i) = i; // Assegna i+1 alla diagonale
-    }
-    SpMatrix<double> sparsita_sparse=sparsita.sparseView();
-            Eigen::saveMarket(sparsita_sparse, "sparsita.mtx");
-
-
-
-
 
         return invE_;  
       }
