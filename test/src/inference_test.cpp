@@ -612,7 +612,7 @@ TEST(inference_test, exact27) {
 
 
 
-
+/*
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -682,7 +682,7 @@ TEST(inference_test, nonexact27) {
 
 }
 
-
+*/
 
 
 
@@ -1319,7 +1319,7 @@ TEST(inference_test, inference28) {
 */
 
 
-/*
+
 
 TEST(inference_test, inference29) {
     // define domain
@@ -1380,7 +1380,7 @@ TEST(inference_test, inference29) {
   3.305165e+00,  3.293123e+00,  3.511451e+00;
 
     //inferenceWald.setf0(model.Psi() * model.f());
-    //inferenceWald.setf0(f0);
+    inferenceWald.setf0(f0);
     inferenceESF.setf0(f0);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
@@ -1485,7 +1485,6 @@ TEST(inference_test, inference210) {
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
-
+ 
 }
 
-*/

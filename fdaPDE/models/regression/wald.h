@@ -175,6 +175,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       Eigen::SelfAdjointEigenSolver<DMatrix<double>> Vw_eigen(Vf_);
       // eigenvalues
       DVector<double> eigenvalues = Vw_eigen.eigenvalues();
+      //DMatrix<double> eigenvalues = Vw_eigen.eigenvalues().asDiagonal();
 
       // now we need to discard the one really close to 0
       // the eigenvalues are in increasing oreder and since the covariance matrix is spd
@@ -187,6 +188,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       int flag = 0;
       int it = 0;
       while(flag == 0 && it < eigenvalues.size()){
+         //if(eigenvalues(it, it) > thresh)
          if(eigenvalues(it) > thresh)
             flag = 1;
          ++it;
@@ -194,15 +196,19 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       
       // rank
       rank = eigenvalues.size() - it + 1;
-      std::cout << "Rank: " << rank << std::endl;
+      //rank = eigenvalues.cols() - it + 1;
       // consider only the significant eigenvalues and create the diagonal matrix
       DVector<double> imp_eigval = eigenvalues.tail(rank);
+      //DMatrix<double> imp_eigval = eigenvalues.bottomRightCorner(rank, rank);
+
       // consider only the significant eigenvectors
       DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(rank);
 
       // now we can compute the r-rank pseudoinverse
       DVector<double> temp = imp_eigval.array().inverse();
       DiagMatrix<double> inv_imp_eigval = temp.asDiagonal();
+      //DMatrix<double> inv_imp_eigval = imp_eigval;
+      //inv_imp_eigval.diagonal() = imp_eigval.diagonal().array().inverse();
       DMatrix<double> invVf = imp_eigvec * inv_imp_eigval * imp_eigvec.transpose();
 
       return invVf;      
@@ -215,12 +221,14 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             Base::setf0(DVector<double>::Zero(fp_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
-         double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          std::cout << "fp - f0: " << std::endl;
          std::cout << fp_ - f0_ << std::endl;
+         double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
          // the rank gets cmoputed when invVf() is called
+         std::cout << "Test statistic: " << stat << std::endl;
+         std::cout << "Rank: " << rank << std::endl;
          double p = chi_squared_cdf(stat, rank);
          if(p < 0){
             pvalue = 1;

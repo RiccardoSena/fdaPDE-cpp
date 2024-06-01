@@ -52,9 +52,9 @@ template <typename Model> class InferenceBase{
       DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
       DVector<double> f0_ {};          // inference hypothesis H0
-      DVector<int> locations_f_ {};   // vector of indexes of locations for which we want inference
       double alpha_ = 0;                // level of the confidence intervals for beta
       double alpha_f_ = 0;              // level of confidence intervals for f 
+      DVector<double> locations_f_ {};   // indexes of the subset of locations if locations are exctracted from existing ones
 
 
     public: 
@@ -280,9 +280,10 @@ template <typename Model> class InferenceBase{
          f0_ = f0;
       }
 
-      void setLocations_f(DVector<int> loc){
-         locations_f_ = loc;
+      void setLocationsF(DVector<double> locs){
+         locations_f_ = locs;
       }
+
 
 };
 
