@@ -575,9 +575,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Psi_p_ = m_.Psi();
         if(p_l_ == 0)
            p_l_ = Psi_p_.rows();
-        return;
       }
-
+      else{
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
       Psi_p_.resize(m, Psi.cols());
@@ -587,6 +586,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             Psi_p_.insert(j, it.col()) = it.value();
         }
       }
+      }
       Psi_p_.makeCompressed();
       if(p_l_ == 0)
         p_l_ = Psi_p_.rows();
@@ -595,6 +595,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     DVector<double> yp(){
       if(is_empty(locations_f_))
         return m_.y();
+        
       int m = locations_f_.size();
       DVector<double> y = m_.y();
       DVector<double> yp;
@@ -768,7 +769,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
          
         DMatrix<double> Wald_CI = Wald_.f_CI();
-        int size = Wald_CI.cols();
+        int size = Wald_CI.rows();
         DVector<double> ranges {};
         ranges.resize(size);
 
@@ -790,10 +791,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DVector<double> fp = Psi_p_ * m_.f();
         int nloc = fp.size();
 
+        std::cout << "nloc: " << nloc << std::endl;
+
         DMatrix<double> CI;
-        CI.resize(2, nloc);
+        CI.resize(nloc, 2);
 
         DVector<double> Wald_ranges_ = Wald_range();
+        std::cout << "Wald range  size: " << Wald_ranges_.size() << std::endl;
 
         // bisection tolerance
         DVector<double> bis_tol = 0.2 * Wald_ranges_;
@@ -819,8 +823,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
         // vector of booleans to check which inetrvals have converged
-        std::vector<bool> converged_up(nloc,false);
-        std::vector<bool> converged_low(nloc,false);
+        std::vector<bool> converged_up(nloc, false);
+        std::vector<bool> converged_low(nloc, false);
         bool converged = false;
         
         // we need p-values ofr UU, UL, LU, LL
@@ -832,6 +836,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         if(is_empty(locations_f_)){
             locations_f_ = DVector<int>::LinSpaced(nloc, 0, nloc-1);
         }
+
+        std::cout << "Check 2" << std::endl;
 
         for(int i = 0; i < nloc; ++i){
             DVector<double> fp_UU = fp;
@@ -850,9 +856,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         }
 
+        std::cout << "Check 3" << std::endl;
+
 
         // one at the time confidence intervals
-        int max_it = 50;
+        int max_it = 5;
         int count = 0;
         double ppval = 0;
 
@@ -945,6 +953,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             count++;
                
         }
+        std::cout << "Check 4" << std::endl;
         if(!converged){
             std::cout << "Not all ESF CI converged" << std::endl;
         }

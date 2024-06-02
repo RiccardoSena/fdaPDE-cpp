@@ -221,8 +221,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             Base::setf0(DVector<double>::Zero(fp_.size()));
          // compute the test statistic
          // should only consider the f of the considered locations!!!!!
-         std::cout << "fp - f0: " << std::endl;
-         std::cout << fp_ - f0_ << std::endl;
+         //std::cout << "fp - f0: " << std::endl;
+         //std::cout << fp_ - f0_ << std::endl;
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
