@@ -54,8 +54,8 @@ template <typename Model> class InferenceBase{
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
       DVector<double> f0_ {};          // inference hypothesis H0
       double alpha_ = 0;                // level of the confidence intervals for beta
-      double alpha_f_ = 0;              // level of confidence intervals for f 
-      DVector<double> locations_f_ {};   // indexes of the subset of locations if locations are exctracted from existing ones
+      double alpha_f_ = 0.05;              // level of confidence intervals for f 
+      DVector<int> locations_f_ {};   // indexes of the subset of locations if locations are exctracted from existing ones
 
 
     public: 
@@ -248,11 +248,11 @@ template <typename Model> class InferenceBase{
       }
 
       // setter for f0_
-      void setf0(DVector<double> f0){
+      void setf0(DVector<double> f0){ 
          f0_ = f0;
       }
 
-      void setLocationsF(DVector<double> locs){
+      void setLocationsF(DVector<int> locs){
          locations_f_ = locs;
       }
 

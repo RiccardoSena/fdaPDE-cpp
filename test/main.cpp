@@ -31,6 +31,11 @@
 int main(int argc, char **argv){
   // start testing
   testing::InitGoogleTest(&argc, argv);
+
+
+/* 
+
+
   SpMatrix<double> invE_nonexact;
     SpMatrix<double> invE_exact;
     SpMatrix<double> precond;
@@ -65,6 +70,9 @@ int main(int argc, char **argv){
     std::cout<<"questa è la frobenius norm della differenza nostra:   "<<norma_frobenius_nostra<<std::endl;
     std::cout<<"questa è la frobenius norm della differenza FSPAI:   "<<norma_frobenius_FSPAI<<std::endl;
 
+
+    
+*/
 
   return RUN_ALL_TESTS();
 }

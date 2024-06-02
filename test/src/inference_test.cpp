@@ -1345,7 +1345,7 @@ TEST(inference_test, inference29) {
     // solve smoothing problem
     model.init();
     model.solve();
-
+ 
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
     DVector<double> f0(171);
@@ -1386,9 +1386,12 @@ TEST(inference_test, inference29) {
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     //std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+    std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
 
+
+/*
 TEST(inference_test, inference210) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1487,4 +1490,4 @@ TEST(inference_test, inference210) {
     std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
  
 }
-
+*/

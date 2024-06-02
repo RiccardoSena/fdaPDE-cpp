@@ -71,6 +71,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      using Base::f0_;
      using Base::C_;
      using Base::locations_f_;
+     using Base::alpha_f_;
      using Base::beta0_;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;
@@ -568,65 +569,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 */
 
 
-
-    double f_p_value(){
-        if(is_empty(Psi_p_))
-            Psi_p();
-        // compute the Q only on the locations in which you want inference
-        if(is_empty(Qp_))
-           Qp();
-
-        if(is_empty(f0_)){
-            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
-        }
-        
-        // Q * (y - epislon) = Q * r
-        // Eigen sign flig implementation
-        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
-
-        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
-        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
-        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
-
-
-        // test statistic when Pi = Id
-        DVector<double> VQr = V.transpose() * Qp_ * (yp() - f0_);
-        DVector<double> Ti = Psi_p_.transpose() * V * VQr;
-
-
-       // save the rank of Ti
-       double Ti_rank = Ti.array().square().sum();
-
-        // random sign-flips
-        // Bernoulli dist (-1, 1) with p = 0.5
-       std::random_device rd; 
-       std::default_random_engine eng{rd()};
-       std::uniform_int_distribution<> distr{0,1};
-       int count = 0;
-       DVector<double> tp_vqr = VQr; 
-       DVector<double> Tp = Ti;
-
-       for(int i = 0; i < n_flip; ++i){
-            for(int j = 0; j < VQr.size(); ++j){
-	         int flip = 2 * distr(eng)-1;
-	         tp_vqr(j) = VQr(j) * flip;
-            }
-            Tp = Psi_p_.transpose() * V * tp_vqr;
-            // flipped statistics
-            double Tp_rank = Tp.array().square().sum();
-      
-            if(Tp_rank >= Ti_rank){
-             ++count;
-            } 
-        }
-        std::cout << "Count: " << count << std::endl;
-        double p_value = count/n_flip;
-
-        return p_value;
-    }
-
     void Psi_p(){
-        // for now
       // case in which the locations are extracted from the observed ones
       if(is_empty(locations_f_)){
         Psi_p_ = m_.Psi();
@@ -708,6 +651,322 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
     }
+
+
+
+    double f_p_value(){
+        if(is_empty(Psi_p_))
+            Psi_p();
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+        if(is_empty(f0_)){
+            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+        }
+        
+        // Q * (y - epislon) = Q * r
+        // Eigen sign flig implementation
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
+
+        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
+        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
+        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
+
+
+        // test statistic when Pi = Id
+        DVector<double> VQr = V.transpose() * Qp_ * (yp() - f0_);
+        DVector<double> Ti = Psi_p_.transpose() * V * VQr;
+
+
+       // save the rank of Ti
+       double Ti_rank = Ti.array().square().sum();
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+       std::random_device rd; 
+       std::default_random_engine eng{rd()};
+       std::uniform_int_distribution<> distr{0,1};
+       int count = 0;
+       DVector<double> tp_vqr = VQr; 
+       DVector<double> Tp = Ti;
+
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < VQr.size(); ++j){
+	         int flip = 2 * distr(eng)-1;
+	         tp_vqr(j) = VQr(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * V * tp_vqr;
+            // flipped statistics
+            double Tp_rank = Tp.array().square().sum();
+      
+            if(Tp_rank >= Ti_rank){
+             ++count;
+            } 
+        }
+        double p_value = count/n_flip;
+
+        return p_value;
+    }
+
+    
+
+    double f_CI_p_val(const DVector<double> res, const int curr_index){
+        if(is_empty(Psi_p_))
+            Psi_p();
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+
+        // Q * (y - epislon) = Q * r
+        // Eigen sign flig implementation
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
+
+        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
+        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
+        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
+
+        DVector<double> Vres = V.transpose() * res;
+
+        DVector<double> Ti = Psi_p_.transpose() * V * Vres;
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+       std::random_device rd; 
+       std::default_random_engine eng{rd()};
+       std::uniform_int_distribution<> distr{0,1};
+       int up = 0;
+       int down = 0;
+       DVector<double> Tp = Ti;
+       DVector<double> perm_res = Vres;
+
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < Vres.size(); ++j){
+                int flip = 2 * distr(eng) - 1;
+                perm_res(j) = Vres(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * V * perm_res;
+
+            if(Tp(curr_index) > Ti(curr_index)){
+                ++up;
+            }
+            else if (Tp(curr_index) < Ti(curr_index)){
+                ++down;
+            }
+       }
+
+       return std::min(up, down);
+
+    }
+
+
+
+    DVector<double> Wald_range(){
+        // create Wald object
+        Wald<Model, Strategy> Wald_(m_);
+        if(!is_empty(locations_f_)){
+            Wald_.setLocationsF(locations_f_);
+        }
+         
+        DMatrix<double> Wald_CI = Wald_.f_CI();
+        int size = Wald_CI.cols();
+        DVector<double> ranges {};
+        ranges.resize(size);
+
+        for(int i = 0; i < size; ++i){
+            ranges(i) = 0.5 * (Wald_CI(i, 1) - Wald_CI(i, 0));
+        }
+
+        return ranges;
+
+    }
+    
+    DMatrix<double> f_CI(){
+        if(is_empty(Psi_p_))
+            Psi_p();
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+        
+        DVector<double> fp = Psi_p_ * m_.f();
+        int nloc = fp.size();
+
+        DMatrix<double> CI;
+        CI.resize(2, nloc);
+
+        DVector<double> Wald_ranges_ = Wald_range();
+
+        // bisection tolerance
+        DVector<double> bis_tol = 0.2 * Wald_ranges_;
+
+        DVector<double> UU; // Upper limit for Upper bound
+        UU.resize(nloc);
+        DVector<double> UL; // Lower limit for Upper bound
+        UL.resize(nloc);
+        DVector<double> LU; // Upper limit for Lower bound
+        LU.resize(nloc);
+        DVector<double> LL; // Lower limit for Lower bound
+        LL.resize(nloc);
+
+        // initialize the intervals with a Wald estimate
+        for(int i = 0; i < nloc; ++i){
+            double range = Wald_ranges_(i);
+            CI(i, 0) = fp(i) - range; 
+            CI(i, 1) = fp(i) + range;
+            UU(i) = CI(i, 1) + 0.5 * range;
+            UL(i) = CI(i, 1) - 0.5 * range;
+            LU(i) = CI(i, 0) + 0.5 * range;
+            LL(i) = CI(i, 0) - 0.5 * range;
+        }
+
+        // vector of booleans to check which inetrvals have converged
+        std::vector<bool> converged_up(nloc,false);
+        std::vector<bool> converged_low(nloc,false);
+        bool converged = false;
+        
+        // we need p-values ofr UU, UL, LU, LL
+        DMatrix<double> p_values(4, nloc);
+        // need this to compute the p-values
+        DVector<double> res(nloc);
+
+        // for getting the current index
+        if(is_empty(locations_f_)){
+            locations_f_ = DVector<int>::LinSpaced(nloc, 0, nloc-1);
+        }
+
+        for(int i = 0; i < nloc; ++i){
+            DVector<double> fp_UU = fp;
+            DVector<double> fp_UL = fp;
+            DVector<double> fp_LU = fp;
+            DVector<double> fp_LL = fp;
+
+            res = Qp_ * (yp() - fp_UU); 
+            p_values(0,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_UL); 
+            p_values(1,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_LU); 
+            p_values(2,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_LL); 
+            p_values(3,i) = f_CI_p_val(res, locations_f_[i]);
+
+        }
+
+
+        // one at the time confidence intervals
+        int max_it = 50;
+        int count = 0;
+        double ppval = 0;
+
+        while(!converged && count < max_it){
+
+            // compute p-values needed
+            for(int i = 0; i < nloc; ++i){
+                DVector<double> fp_UU = fp;
+                DVector<double> fp_UL = fp;
+                DVector<double> fp_LU = fp;
+                DVector<double> fp_LL = fp;
+
+                if(!converged_up[i]){
+                   // check upper upper
+                    if(p_values(0, i) > 0.5 * alpha_f_){
+	                    UU(i) = UU(i) + 0.5 * (UU(i) - UL(i));
+                        res = Qp_ * (yp() - fp_UU); 
+                        p_values(0,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else if(p_values(1, i) < 0.5 * alpha_f_){
+                        UL(i) = fp(i) + 0.5 * (UL(i) - fp(i));
+                        res = Qp_ * (yp() - fp_UL); 
+                        p_values(1,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else{
+                        if((UU(i) - UL(i)) < bis_tol(i)){
+                            converged_up[i] = true;
+                        }
+                        else{
+                            double proposal = 0.5 * (UU(i) + UL(i));
+                            DVector<double> fpp = fp;
+                            res = Qp_ * (yp() - fpp);
+                            ppval = f_CI_p_val(res, locations_f_[i]);
+                            if(ppval <= 0.5 * alpha_f_){
+                                UU(i) = proposal;
+                                p_values(0, i) = ppval;
+                            }
+                            else{
+                                UL(i) = proposal;
+                                p_values(1, i) = ppval;
+                            }
+                        }
+                    }
+                }
+
+                if(!converged_low[i]){
+                   // check lower upper
+                    if(p_values(2, i) < 0.5 * alpha_f_){
+	                    LU(i) = fp(i) - 0.5 * (fp(i) - LU(i));
+                        res = Qp_ * (yp() - fp_LU); 
+                        p_values(2,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else if(p_values(3, i) > 0.5 * alpha_f_){
+                        LL(i) = LL(i) + 0.5 * (LU(i) - LL(i));
+                        res = Qp_ * (yp() - fp_LL); 
+                        p_values(3,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else{
+                        if((LU(i) - LL(i)) < bis_tol(i)){
+                            converged_low[i] = true;
+                        }
+                        else{
+                            double proposal = 0.5 * (LU(i) + LL(i));
+                            DVector<double> fpp = fp;
+                            res = Qp_ * (yp() - fpp);
+                            ppval = f_CI_p_val(res, locations_f_[i]);
+                            if(ppval <= 0.5 * alpha_f_){
+                                LL(i) = proposal;
+                                p_values(3, i) = ppval;
+                            }
+                            else{
+                                LU(i) = proposal;
+                                p_values(2, i) = ppval;
+                            }
+                        }
+                    }
+
+                }
+
+            }
+
+            converged = true;
+
+            for(int j = 0; j < nloc; ++j){
+                if(!converged_up[j] || !converged_low[j]){
+                    converged = false;
+                }
+            }
+
+            count++;
+               
+        }
+        if(!converged){
+            std::cout << "Not all ESF CI converged" << std::endl;
+        }
+
+        for(int k = 0; k < nloc; ++k){
+            if(!converged_up[k] || !converged_low[k]){
+                // set a unfeasible number if the interval has not converged
+                CI(k, 0) = 10e20;
+                CI(k, 1) = 10e20;
+            }    
+            else{
+                CI(k, 0) = 0.5 * (LU(k) + LL(k));
+                CI(k, 1) = 0.5 * (UU(k) + UL(k));
+            }        
+        }
+
+        return CI;
+       
+    }
+
+
+
 
      void V() override{
         // questa è quella modificata per FSPAI
