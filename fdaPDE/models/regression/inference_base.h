@@ -216,6 +216,11 @@ template <typename Model> class InferenceBase{
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
         Eigen::saveMarket(invE_, "inversaE2.mtx");  
+        
+        SpMatrix<double> risultatoFSPAI;
+        Eigen::loadMarket(risultatoFSPAI, "risultatoFSPAI.mtx");
+        std::cout<<"righe di fspai"<<risultatoFSPAI.rows()<<std::endl;
+        //return risultatoFSPAI;
 
         return invE_;  
       }

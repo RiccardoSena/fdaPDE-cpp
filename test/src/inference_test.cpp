@@ -612,7 +612,7 @@ TEST(inference_test, exact27) {
 
 
 
-/*
+
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -659,13 +659,13 @@ TEST(inference_test, nonexact27) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues wald: "<< pvalueswald <<std::endl;
 
-    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues speckman: "<<pvaluesspeck<<std::endl;
 
-    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
 
@@ -682,7 +682,7 @@ TEST(inference_test, nonexact27) {
 
 }
 
-*/
+
 
 
 
@@ -1491,3 +1491,6 @@ TEST(inference_test, inference210) {
  
 }
 */
+
+
+
