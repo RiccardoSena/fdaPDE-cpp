@@ -582,17 +582,17 @@ TEST(inference_test, exact27) {
     inferenceESF.setNflip(n);
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
-    //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
     DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::simultaneous);
-    //std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
+    std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
-    //std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
     DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::simultaneous);
-    //std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
+    std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
-    //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
+    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     //std::cout << "computed CI: " << CIESF_<<std::endl;
@@ -611,7 +611,7 @@ TEST(inference_test, exact27) {
 }
 
 
-/*
+
 
 TEST(inference_test, nonexact27) {
     // define domain
@@ -659,21 +659,27 @@ TEST(inference_test, nonexact27) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
-    std::cout<<"pvalues wald: "<< pvalueswald <<std::endl;
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::simultaneous);
+    std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
-    std::cout<<"pvalues speckman: "<<pvaluesspeck<<std::endl;
+    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+    DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::simultaneous);
+    std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
+    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << CIESF_<<std::endl;
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
     
     // test correctness Speckman
-    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
+    //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
     //EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.0902682, 1e-7));
 
     // test correctness ESF
@@ -683,7 +689,8 @@ TEST(inference_test, nonexact27) {
 }
 
 
-*/
+
+
 
 
 
