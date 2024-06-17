@@ -232,7 +232,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      }   
 
 
-/*
+
      DMatrix<double> computeCI(CIType type) override{
         // compute Lambda
         if(is_empty(Lambda_)){
@@ -463,24 +463,18 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Count_Iter++;
 
         }
-        result.resize(p,3);
+        result.resize(p,2);
         // for each row of C matrix
         for(int i=0; i<p; ++i){
                  
             if(Count_Iter < Max_Iter){ // No discrepancy between beta_hat(i) and ESF, bisection converged
-                // Central element
-                result(i,1)=beta_hat(beta_in_test[i]);
-                
                 // Limits of the interval
                 result(i,0) = 0.5*(LU(i)+LL(i));
-                result(i,2) = 0.5*(UU(i)+UL(i)); 
+                result(i,1) = 0.5*(UU(i)+UL(i)); 
                 }else{ // Not converged in time, give a warning in R
-                // Central element
-                result(i,1)=10e20;
-                
                 // Limits of the interval
                 result(i,0) = 10e20;
-                result(i,2) = 10e20; 
+                result(i,1) = 10e20; 
             }
         }
         
@@ -566,7 +560,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return result;
         
     };
-*/
+
 
 
     void Psi_p(){
