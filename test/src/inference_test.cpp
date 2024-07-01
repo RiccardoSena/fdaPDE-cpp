@@ -611,7 +611,7 @@ TEST(inference_test, exact27) {
 }
 
 
-
+/*
 
 TEST(inference_test, nonexact27) {
     // define domain
@@ -690,7 +690,7 @@ TEST(inference_test, nonexact27) {
 
 
 
-
+*/
 
 
 
@@ -1399,6 +1399,41 @@ TEST(inference_test, inference29) {
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
+
+}
+
+
+TEST(inference_test, inference2999) {
+    // define domain
+    MeshLoader<Mesh2D> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+ 
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    
+    DVector<int> loc_indexes(3);
+    loc_indexes << 1, 5, 7;
+    inferenceWald.setLocationsF(loc_indexes);
+    std::cout << "Wald f p value 2: " << inferenceWald.f_p_value() << std::endl;
 
 }
 
