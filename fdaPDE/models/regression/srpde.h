@@ -50,7 +50,36 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     static constexpr int n_lambda = 1;
     // constructor
     SRPDE() = default;
-    SRPDE(const Base::PDE& pde, Sampling s) : Base(pde, s) {};
+
+    template <typename PDEType>
+    SRPDE(PDETtype&& pde, Sampling s) : Base(pde, s) {};
+
+    template <typename PDEType>
+    void init_psi_esf(PDEType&& pde) {
+        SpMatrix<double> PsiESF;
+        PsiESF.resize(pde.n_dofs(), Base::n_locs());
+
+        std::vector<Eigen::Triplet<double>> triplet_list;
+
+        for(int i = 0; i < n_nodes(); ++i) {
+            auto patch = pde.domain().node_patch(i);
+            std::set<int> s;
+            s.insert(i);
+            for (auto e : patch) {
+                for(int j : e.nodes()) {
+                    s.insert(j);
+                }
+            }
+            for(int j : s) {
+                triplet_list.emplace_back(i, j, 1.0);
+            }
+        }
+        PsiESF.setFromTriplets(triplet_list.begin(), triplet_list.end());
+        PsiESF.makeCompressed();
+
+        // save PsiESF in private member
+
+    }
 
     void init_model() {
         if (runtime().query(runtime_status::is_lambda_changed)) {
