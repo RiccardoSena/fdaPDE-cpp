@@ -50,7 +50,10 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     static constexpr int n_lambda = 1;
     // constructor
     SRPDE() = default;
+    SRPDE(const Base::PDE& pde, Sampling s) : Base(pde, s) {};
 
+
+/*
     template <typename PDEType>
     SRPDE(PDETtype&& pde, Sampling s) : Base(pde, s) {};
 
@@ -80,6 +83,9 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
         // save PsiESF in private member
 
     }
+
+*/
+
 
     void init_model() {
         if (runtime().query(runtime_status::is_lambda_changed)) {

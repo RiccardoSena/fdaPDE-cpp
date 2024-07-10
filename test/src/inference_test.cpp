@@ -534,6 +534,8 @@ TEST(inference_test, SpeckmanNonExact27oat){
 */
 
 
+/*
+
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 TEST(inference_test, exact27) {
     // define domain
@@ -610,8 +612,9 @@ TEST(inference_test, exact27) {
 
 }
 
+*/
 
-/*
+
 
 TEST(inference_test, nonexact27) {
     // define domain
@@ -641,7 +644,7 @@ TEST(inference_test, nonexact27) {
     fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
     fdapde::models::ESF<SRPDE,fdapde::models::nonexact > inferenceESF(model);
-
+ 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     
@@ -689,8 +692,6 @@ TEST(inference_test, nonexact27) {
 }
 
 
-
-*/
 
 
 
@@ -1326,7 +1327,7 @@ TEST(inference_test, inference28) {
 */
 
 
-
+/*
 
 TEST(inference_test, inference29) {
     // define domain
@@ -1438,7 +1439,7 @@ TEST(inference_test, inference2999) {
 }
 
 
-/*
+
 TEST(inference_test, inference210) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1537,7 +1538,9 @@ TEST(inference_test, inference210) {
     std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
  
 }
-*/
+
+*/ 
+
 
 
 

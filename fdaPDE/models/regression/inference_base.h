@@ -191,7 +191,7 @@ template <typename Model> class InferenceBase{
 
       // return the sparse approx of E^{-1}
       static SpMatrix<double> invE_approx(const Model& m){
-        SpMatrix<double> decR0_ = lump(m.R0());  
+        SpMatrix<double> decR0_ = lump(m.R0()); 
         DiagMatrix<double> invR0_(decR0_.rows());
         invR0_.setZero(); 
         for (int i = 0; i < decR0_.rows(); ++i) {
@@ -215,11 +215,11 @@ template <typename Model> class InferenceBase{
         FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
-        Eigen::saveMarket(invE_, "inversaE2.mtx");  
+        //Eigen::saveMarket(invE_, "inversaE2.mtx");  
         
-        SpMatrix<double> risultatoFSPAI;
-        Eigen::loadMarket(risultatoFSPAI, "risultatoFSPAI.mtx");
-        std::cout<<"righe di fspai"<<risultatoFSPAI.rows()<<std::endl;
+        //SpMatrix<double> risultatoFSPAI;
+        //Eigen::loadMarket(risultatoFSPAI, "risultatoFSPAI.mtx");
+        //std::cout<<"righe di fspai"<<risultatoFSPAI.rows()<<std::endl;
         //return risultatoFSPAI;
 
         return invE_;  
