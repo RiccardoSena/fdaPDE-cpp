@@ -247,7 +247,7 @@ template <typename Model> class InferenceBase{
          }
       }      
 
-      // setter for beta0_
+      // setter for beta0_ 
       void setBeta0(DVector<double> beta0){
          beta0_ = beta0;
       }

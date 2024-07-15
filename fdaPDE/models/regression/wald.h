@@ -65,7 +65,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      int p_l_;
      int rank;       // need to save this, since it's the degrees of freedom of the chi
      DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
-     int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the mesh nodes
+     int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the locations
 
     public: 
      using Base = InferenceBase<Model>;
@@ -139,6 +139,11 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       */
       }
       //Psi_p_.makeCompressed();
+     }
+
+     // setter needed for ESF f CI
+     void set_Psi_p(SpMatrix<double> Psi){
+      Psi_p_ = Psi;
      }
 
      void fp(){

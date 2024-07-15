@@ -33,6 +33,9 @@
 
 #include <algorithm>
 
+// for parallelization
+#include <omp.h>
+
 
 namespace fdapde {
 namespace models {
@@ -62,6 +65,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      DMatrix<double> Qp_ {};
      int p_l_ = 0;   // number of locations for inference on f
      SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
+     DMatrix<double> Qp_dec_ {}; // Decomposition of Qp matrix
+     DVector<double> mesh_nodes_ {};  // if inference is performed on a subset of mesh nodes
 
      
     public:
@@ -86,7 +91,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
 
-        if(is_empty(beta0_)){
+        if(is_empty(beta0_)){ 
             Base::setBeta0(DVector<double>::Zero(m_.beta().size()));
         }
 
@@ -292,7 +297,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
         // ESF initialization with Speckman intervals as initial guess 
-        for(int i=0; i<p; ++i){
+        for(int i = 0; i < p; ++i){
             double half_range = Speckman_aux_ranges(i);
 
             // compute the limits of the interval
@@ -363,13 +368,20 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         int Max_Iter=50;
         int Count_Iter=0;
         while((!all_betas_converged) & (Count_Iter<Max_Iter)){
+
+            omp_set_nested(1);
         
             // Compute all p_values (only those needed)
+            #pragma omp parallel for
             for (int i=0; i<p; i++){
 
             DMatrix<double> TildeX_loc= TildeX.row(beta_in_test[i]);
             beta_hat_mod = beta_hat;
-        
+
+            #pragma omp parallel sections
+            {
+            #pragma omp section
+            {
             if(!converged_up[i]){
                 if(local_p_values(0,i)>alpha){ // Upper-Upper bound excessively tight
 
@@ -409,8 +421,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                         }
                     }
                 }
-            }
+            }  // end if
+            } // end omp section
 
+            #pragma omp section
+            {
             if(!converged_low[i]){
 	            if(local_p_values(2,i)<alpha){ // Lower-Upper bound excessively tight
 
@@ -450,8 +465,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                         }
                     }
                 }
-            }
-        }
+            }  // end if
+            } // end omp section
+            } // end omp sections
+        }  // end for
         all_betas_converged =true;
         for(int j=0; j<p; j++){
 
@@ -565,12 +582,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
     void Psi_p(){
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_)){
+      if(is_empty(locations_f_) && is_empty(mesh_nodes_)){
         Psi_p_ = m_.Psi();
         if(p_l_ == 0)
            p_l_ = Psi_p_.rows();
       }
-      else{
+      else if(is_empty(mesh_nodes_)){
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
       Psi_p_.resize(m, Psi.cols());
@@ -581,9 +598,25 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
       }
       }
+      /*
+      else {
+      // pay attention that this has the opposite dimensions of the other Psi
+      int m = mesh_nodes_.size();
+      m_.init_psi_esf();
+      SpMatrix<double> Psi = m_.PsiESF();
+      Psi_p_.resize(m, Psi.cols());
+      for(int j = 0; j < m; ++j) {
+        int col = mesh_nodes_[j];
+        for(SpMatrix<double>::InnerIterator it(Psi, col); it; ++it) {
+            Psi_p_.insert(it.row(), j) = it.value();
+        }       
+      }
+      }
+      */
       Psi_p_.makeCompressed();
       if(p_l_ == 0)
         p_l_ = Psi_p_.rows();
+
     }
 
     DVector<double> yp(){
@@ -616,6 +649,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         int row = locations_f_[j];
         Xp.row(j) = X.row(row);
       }
+
       return Xp;
     }
 
@@ -631,9 +665,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     void Qp() {
-        if(is_empty(Psi_p_)){
-            Psi_p();
-        }
         if (!m_.has_covariates()){
             Qp_ = Wp() * DMatrix<double>::Identity(p_l_, p_l_);
             return;
@@ -645,33 +676,38 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
         // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
         Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
+
+    }
+
+    void Qp_dec(){
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+
+        // Q * (y - epislon) = Q * r
+        // Eigen sign flip implementation
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
+
+        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
+        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
+        Qp_dec_ = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
     }
 
 
 
     double f_p_value(){
         if(is_empty(Psi_p_))
-            Psi_p();
-        // compute the Q only on the locations in which you want inference
-        if(is_empty(Qp_))
-           Qp();
+           Psi_p();
         if(is_empty(f0_)){
-            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+           Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
         }
-        
-        // Q * (y - epislon) = Q * r
-        // Eigen sign flig implementation
-        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
-
-        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
-        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
-        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
-
+        if(is_empty(Qp_dec_))
+           Qp_dec();
 
         // test statistic when Pi = Id
-        DVector<double> VQr = V.transpose() * Qp_ * (yp() - f0_);
-        DVector<double> Ti = Psi_p_.transpose() * V * VQr;
+        DVector<double> VQr = Qp_dec_.transpose() * Qp_ * (yp() - f0_);
 
+        DVector<double> Ti = Psi_p_.transpose() * Qp_dec_ * VQr;
 
        // save the rank of Ti
        double Ti_rank = Ti.array().square().sum();
@@ -690,7 +726,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 	         int flip = 2 * distr(eng)-1;
 	         tp_vqr(j) = VQr(j) * flip;
             }
-            Tp = Psi_p_.transpose() * V * tp_vqr;
+            Tp = Psi_p_.transpose() * Qp_dec_ * tp_vqr;
             // flipped statistics
             double Tp_rank = Tp.array().square().sum();
       
@@ -706,23 +742,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     
 
     double f_CI_p_val(const DVector<double> res, const int curr_index){
-        if(is_empty(Psi_p_))
-            Psi_p();
-        // compute the Q only on the locations in which you want inference
-        if(is_empty(Qp_))
-           Qp();
+        if(is_empty(Qp_dec_))
+           Qp_dec();
 
-        // Q * (y - epislon) = Q * r
-        // Eigen sign flig implementation
-        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
+        DVector<double> Vres = Qp_dec_.transpose() * res;
 
-        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
-        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
-        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
-
-        DVector<double> Vres = V.transpose() * res;
-
-        DVector<double> Ti = Psi_p_.transpose() * V * Vres;
+        DVector<double> Ti = Psi_p_.transpose() * Qp_dec_ * Vres;
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
@@ -739,7 +764,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 int flip = 2 * distr(eng) - 1;
                 perm_res(j) = Vres(j) * flip;
             }
-            Tp = Psi_p_.transpose() * V * perm_res;
+            Tp = Psi_p_.transpose() * Qp_dec_ * perm_res;
 
             if(Tp(curr_index) > Ti(curr_index)){
                 ++up;
@@ -758,9 +783,24 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     DVector<double> Wald_range(){
         // create Wald object
         Wald<Model, Strategy> Wald_(m_);
-        if(!is_empty(locations_f_)){
-            Wald_.setLocationsF(locations_f_);
+
+        DMatrix<double> id = DMatrix<double>::Identity(m_.Psi().cols(), m_.Psi().cols());
+
+        /*
+
+        if(is_empty(mesh_nodes_)){
+            std::cout<< "Mesh subset missing" << std::endl;
+            Wald_set_Psi_p(id);
         }
+        else{
+            DMatrix<double> Psi_sub(mesh_nodes_.size(), id.cols());
+            for (int i = 0; i < mesh_nodes_.size(); ++i) {
+               Psi_sub.row(i) = id.row(mesh_nodes_(i));
+            }
+            Wald_set_Psi_p(Psi_sub);
+        }
+
+        */
          
         DMatrix<double> Wald_CI = Wald_.f_CI();
         int size = Wald_CI.rows();
@@ -776,8 +816,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     }
     
     DMatrix<double> f_CI(){
-        if(is_empty(Psi_p_))
-            Psi_p();
+        // only if the locations are a subset of the mesh
         // compute the Q only on the locations in which you want inference
         if(is_empty(Qp_))
            Qp();
@@ -785,13 +824,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DVector<double> fp = Psi_p_ * m_.f();
         int nloc = fp.size();
 
-        std::cout << "nloc: " << nloc << std::endl;
+        //std::cout << "nloc: " << nloc << std::endl;
 
         DMatrix<double> CI;
         CI.resize(nloc, 2);
 
         DVector<double> Wald_ranges_ = Wald_range();
-        std::cout << "Wald range  size: " << Wald_ranges_.size() << std::endl;
+        //std::cout << "Wald range  size: " << Wald_ranges_.size() << std::endl;
 
         // bisection tolerance
         DVector<double> bis_tol = 0.2 * Wald_ranges_;
@@ -831,7 +870,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             locations_f_ = DVector<int>::LinSpaced(nloc, 0, nloc-1);
         }
 
-        std::cout << "Check 2" << std::endl;
+        //std::cout << "Check 2" << std::endl;
 
         for(int i = 0; i < nloc; ++i){
             DVector<double> fp_UU = fp;
@@ -850,7 +889,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         }
 
-        std::cout << "Check 3" << std::endl;
+        //std::cout << "Check 3" << std::endl;
 
 
         // one at the time confidence intervals
@@ -860,13 +899,21 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         while(!converged && count < max_it){
 
+            omp_set_nested(1);
+
             // compute p-values needed
+            #pragma omp parallel for
             for(int i = 0; i < nloc; ++i){
                 DVector<double> fp_UU = fp;
                 DVector<double> fp_UL = fp;
                 DVector<double> fp_LU = fp;
                 DVector<double> fp_LL = fp;
 
+
+                #pragma omp parallel sections
+                {
+                #pragma omp section
+                {
                 if(!converged_up[i]){
                    // check upper upper
                     if(p_values(0, i) > 0.5 * alpha_f_){
@@ -898,8 +945,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                             }
                         }
                     }
-                }
+                } // end if
+                } // end pragma section
 
+                #pragma omp section
+                {
                 if(!converged_low[i]){
                    // check lower upper
                     if(p_values(2, i) < 0.5 * alpha_f_){
@@ -932,9 +982,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                         }
                     }
 
-                }
+                } // end if
+                } // end pragma section
+                } // end pragma sections
 
-            }
+            } // for end
 
             converged = true;
 
@@ -947,7 +999,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             count++;
                
         }
-        std::cout << "Check 4" << std::endl;
+        //std::cout << "Check 4" << std::endl;
         if(!converged){
             std::cout << "Not all ESF CI converged" << std::endl;
         }
@@ -967,7 +1019,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         return CI;
        
     }
-
 
 
 
@@ -1022,6 +1073,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      void setNflip(int m){
         n_flip = m;
      };
+           
+     void setMesh_loc(DVector<double> m_nodes){
+        mesh_nodes_ = m_nodes;
+     }
 
 };
 

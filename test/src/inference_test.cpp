@@ -27,38 +27,31 @@
 #include <cstddef>
 #include <chrono>
 
-using fdapde::core::fem_order;
-using fdapde::core::FEM;
-using fdapde::core::Newton;
-using fdapde::core::laplacian;
-using fdapde::core::PDE;
+#include <cstddef>
+#include <gtest/gtest.h>   // testing framework
+
+#include <fdaPDE/core.h>
 using fdapde::core::advection;
 using fdapde::core::diffusion;
-using fdapde::core::dt;
-using fdapde::core::SPLINE;
-using fdapde::core::bilaplacian;
-using fdapde::core::Mesh;
-using fdapde::core::spline_order;
+using fdapde::core::FEM;
+using fdapde::core::fem_order;
+using fdapde::core::laplacian;
+using fdapde::core::DiscretizedMatrixField;
+using fdapde::core::PDE;
+using fdapde::core::DiscretizedVectorField;
+using fdapde::core::Triangulation;
 
 #include "../../fdaPDE/models/regression/srpde.h"
-#include "../../fdaPDE/models/regression/gcv.h"
 #include "../../fdaPDE/models/sampling_design.h"
-#include "../../fdaPDE/models/regression/regression_type_erasure.h"
 using fdapde::models::SRPDE;
-using fdapde::models::ExactEDF;
-using fdapde::models::GCV;
-using fdapde::models::StochasticEDF;
-using fdapde::models::Sampling;
-using fdapde::models::RegressionView;
-#include "../../fdaPDE/calibration/gcv.h"
-
-#include "../../fdaPDE/models/regression/strpde.h"
-#include "../../fdaPDE/models/sampling_design.h"
-using fdapde::models::STRPDE;
-using fdapde::models::SpaceTimeSeparable;
-using fdapde::models::SpaceTimeParabolic;
 using fdapde::models::Sampling;
 
+#include "utils/constants.h"
+#include "utils/mesh_loader.h"
+#include "utils/utils.h"
+using fdapde::testing::almost_equal;
+using fdapde::testing::MeshLoader;
+using fdapde::testing::read_csv;
 #include "utils/constants.h"
 #include "utils/mesh_loader.h"
 #include "utils/utils.h"
@@ -534,19 +527,19 @@ TEST(inference_test, SpeckmanNonExact27oat){
 */
 
 
-/*
+
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 TEST(inference_test, exact27) {
     // define domain
-    MeshLoader<Mesh2D> domain("c_shaped");
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     // import data from files
     DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
     DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
     // define regularizing PDE
     auto L = -laplacian<FEM>();
-    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
     PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
     // define statistical model
     double lambda = 0.2201047;
@@ -612,10 +605,10 @@ TEST(inference_test, exact27) {
 
 }
 
-*/
 
 
 
+/*
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -692,7 +685,7 @@ TEST(inference_test, nonexact27) {
 }
 
 
-
+*/
 
 
 
@@ -1440,6 +1433,7 @@ TEST(inference_test, inference2999) {
 
 
 
+
 TEST(inference_test, inference210) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1470,7 +1464,7 @@ TEST(inference_test, inference210) {
 
     new_locs << -0.148227359, -3.482274e-01,
  -0.148227359,  3.482274e-01,
-  0.283333333, -5.050000e-01,
+  0.283333333, -5.050000e-01, 
   0.783333333, -5.050000e-01,
   1.450000000, -5.050000e-01,
   0.283333333,  5.050000e-01,
@@ -1539,8 +1533,51 @@ TEST(inference_test, inference210) {
  
 }
 
-*/ 
+
+*/
 
 
 
 
+
+TEST(inference_test, inference_f_) {
+    // define domain
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+ 
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+
+    DVector<int> loc_indexes(3);
+    loc_indexes << 1, 5, 7;
+    inferenceWald.setLocationsF(loc_indexes);
+    inferenceESF.setLocationsF(loc_indexes);
+    inferenceESF.setNflip(100);
+
+    std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
+    std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
+    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+
+    //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
+
+}

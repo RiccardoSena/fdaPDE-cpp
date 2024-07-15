@@ -40,6 +40,7 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     SparseBlockMatrix<double, 2, 2> A_ {};         // system matrix of non-parametric problem (2N x 2N matrix)
     fdapde::SparseLU<SpMatrix<double>> invA_ {};   // factorization of matrix A
     DVector<double> b_ {};                         // right hand side of problem's linear system (1 x 2N vector)
+    SpMatrix<double> PsiESF_ {};
    public:
     IMPORT_REGRESSION_SYMBOLS
     using Base::lambda_D;   // smoothing parameter in space
@@ -53,14 +54,15 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     SRPDE(const Base::PDE& pde, Sampling s) : Base(pde, s) {};
 
 
+
+    // template <typename PDEType>
+    // SRPDE(PDETtype&& pde, Sampling s) : Base(pde, s) {};
+
 /*
     template <typename PDEType>
-    SRPDE(PDETtype&& pde, Sampling s) : Base(pde, s) {};
-
-    template <typename PDEType>
     void init_psi_esf(PDEType&& pde) {
-        SpMatrix<double> PsiESF;
-        PsiESF.resize(pde.n_dofs(), Base::n_locs());
+
+        PsiESF_.resize(pde.n_dofs(), Base::n_locs()); // ???
 
         std::vector<Eigen::Triplet<double>> triplet_list;
 
@@ -77,15 +79,17 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
                 triplet_list.emplace_back(i, j, 1.0);
             }
         }
-        PsiESF.setFromTriplets(triplet_list.begin(), triplet_list.end());
-        PsiESF.makeCompressed();
+        PsiESF_.setFromTriplets(triplet_list.begin(), triplet_list.end());
+        PsiESF_.makeCompressed();
 
         // save PsiESF in private member
 
     }
 
-*/
+    // getter for PsiESF (needed for inference)
+    const SpMatrix<double>& PsiESF() const{return PsiESF_;}
 
+*/
 
     void init_model() {
         if (runtime().query(runtime_status::is_lambda_changed)) {
