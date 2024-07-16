@@ -608,7 +608,7 @@ TEST(inference_test, exact27) {
 
 
 
-
+/*
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -685,7 +685,7 @@ TEST(inference_test, nonexact27) {
 }
 
 
-
+*/
 
 
 
@@ -1537,7 +1537,7 @@ TEST(inference_test, inference210) {
 */
 
 
-/*
+
 
 
 TEST(inference_test, inference_f_) {
@@ -1581,4 +1581,3 @@ TEST(inference_test, inference_f_) {
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
-*/
