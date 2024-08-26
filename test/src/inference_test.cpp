@@ -578,19 +578,19 @@ TEST(inference_test, exact27) {
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
-    DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
+   // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
+   // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
-    DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
+   // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+   // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
-    DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << CIESF_<<std::endl;
+    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
+   // std::cout << "computed CI: " << CIESF_<<std::endl;
 
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
@@ -605,39 +605,26 @@ TEST(inference_test, exact27) {
 
 }
 
-
-
-
 /*
-TEST(inference_test, nonexact27) {
-    // define domain
-    MeshLoader<Mesh2D> domain("c_shaped");
-    // import data from files
-    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+TEST(inference_test, exact27) {
+    // define problem specifics
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
-    // define regularizing PDE
-    auto L = -laplacian<FEM>();
-    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
-    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
-    // define statistical model
+    ...
+    //define model
     double lambda = 0.2201047;
     SRPDE model(problem, Sampling::pointwise);
-    model.set_lambda_D(lambda);
-    model.set_spatial_locations(locs);
-    // set model's data
-    BlockFrame<double, int> df;
-    df.insert(OBSERVATIONS_BLK, y);
-    df.insert(DESIGN_MATRIX_BLK, X);
-    model.set_data(df);
+    ...
     // solve smoothing problem
     model.init();
     model.solve();
 
-    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
-    fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
-    fdapde::models::ESF<SRPDE,fdapde::models::nonexact > inferenceESF(model);
- 
+    // define inference objects
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    fdapde::models::ESF<SRPDE,fdapde::models::exact> inferenceESF(model);
+
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     
@@ -655,24 +642,84 @@ TEST(inference_test, nonexact27) {
     int n = 1000;
     inferenceESF.setNflip(n);
 
-    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::one_at_the_time);
-    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
-    DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
+    inferenceWald.p_value(fdapde::models::one_at_the_time);
+    inferenceWald.computeCI(fdapde::models::one_at_the_time);
 
-    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
-    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
-    DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
+    inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << CIESF_<<std::endl;
+*/
+
+
+TEST(inference_test, nonexact27) {
+    // define domain
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceWald(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
+    //fdapde::models::ESF<SRPDE,fdapde::models::nonexact > inferenceESF(model);
+ 
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    
+    inferenceWald.setC(C);
+    inferenceSpeck.setC(C);
+    //inferenceESF.setC(C);
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+    inferenceWald.setBeta0(beta0);
+    inferenceSpeck.setBeta0(beta0);
+    //inferenceESF.setBeta0(beta0);
+
+   // int n = 1000;
+    //inferenceESF.setNflip(n);
+
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+   // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
+
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::simultaneous);
+   std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+   // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
+
+    //DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
+   //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
+
+    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << CIESF_<<std::endl;
 
     // test correctness Wald
-    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2266538 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.2368866 , 1e-7));
     
     // test correctness Speckman
     //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.1194335, 1e-7));
@@ -685,7 +732,7 @@ TEST(inference_test, nonexact27) {
 }
 
 
-*/
+
 
 
 
@@ -1539,7 +1586,7 @@ TEST(inference_test, inference210) {
 
 
 
-
+/*
 TEST(inference_test, inference_f_) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -1581,3 +1628,4 @@ TEST(inference_test, inference_f_) {
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
+*/
