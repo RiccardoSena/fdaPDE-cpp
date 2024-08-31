@@ -53,21 +53,23 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
         }
         if (count >= 10) break; // Interrompi se hai stampato 10 elementi
-    }*/
+    }*/         
             return inverse(m.T());
         }
      };
      struct NonExactInverse {
         SpMatrix<double> compute(Model m){
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
-            DMatrix<double> Ct_ =  - inverse(m.X().transpose() * m.X());
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             SpMatrix<double> invE_ = Base::invE_approx(m);
 
-            // nella vecchia libreria:             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
+             // nella vecchia libreria:             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
 
+            
             SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
 
+            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
             // Ciclo per stampare i primi dieci elementi di invE_
            /* std::cout << "First ten elements of invE_:\n";
             int count = 0;
@@ -89,6 +91,8 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
                }
                if (count >= 10) break; // Interrompi se hai stampato 10 elementi
             }*/
+
+
             return invMt_;            
         }       
      };
@@ -133,7 +137,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void V() override{
         DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
-        std::cout<<"qui è corretta"<<std::endl;
+        std::cout<<"qui è corretta"<<std::endl; 
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
         DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * m_.X().transpose();
