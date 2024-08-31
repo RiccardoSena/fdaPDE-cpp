@@ -44,17 +44,51 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
     private: 
      struct ExactInverse {
         DMatrix<double> compute(Model m){
+    // Ciclo per stampare i primi dieci elementi di invMt_
+    /*std::cout << "First ten elements of invT_:\n";
+    int count = 0;
+    for (int k = 0; k < invT.outerSize(); ++k) {
+        for ( DMatrix<double>::InnerIterator it(inverse(m.T()), k); it; ++it) {
+            std::cout << "(" << it.row() << ", " << it.col() << "): " << it.value() << "\n";
+            if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
+        }
+        if (count >= 10) break; // Interrompi se hai stampato 10 elementi
+    }*/
             return inverse(m.T());
         }
      };
      struct NonExactInverse {
         SpMatrix<double> compute(Model m){
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
+            DMatrix<double> Ct_ =  - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             SpMatrix<double> invE_ = Base::invE_approx(m);
-            
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+
+            // nella vecchia libreria:             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
+
+            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
+
+            // Ciclo per stampare i primi dieci elementi di invE_
+           /* std::cout << "First ten elements of invE_:\n";
+            int count = 0;
+            for (int k = 0; k < invE_.outerSize(); ++k) {
+               for (SpMatrix<double>::InnerIterator it(invE_, k); it; ++it) {
+                     std::cout << "(" << it.row() << ", " << it.col() << "): " << it.value() << "\n";
+                     if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
+               }
+               if (count >= 10) break; // Interrompi se hai stampato 10 elementi
+            }
+
+            // Ciclo per stampare i primi dieci elementi di invMt_
+            std::cout << "First ten elements of invMt_:\n";
+            count = 0;
+            for (int k = 0; k < invMt_.outerSize(); ++k) {
+               for (SpMatrix<double>::InnerIterator it(invMt_, k); it; ++it) {
+                     std::cout << "(" << it.row() << ", " << it.col() << "): " << it.value() << "\n";
+                     if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
+               }
+               if (count >= 10) break; // Interrompi se hai stampato 10 elementi
+            }*/
             return invMt_;            
         }       
      };
