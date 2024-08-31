@@ -209,6 +209,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             
             DMatrix<double> Tilder_perm = Tilder;
             
+            #pragma omp parallel for
             for(int i = 0; i < n_flip; ++i){
                 for(int j = 0; j < Xt.cols(); ++j){
                     int flip = 2 * distr(eng) - 1;
@@ -235,6 +236,157 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         } 
         return result;
      }   
+
+
+     DVector<double> p_value_serial(CIType type){
+        // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
+        fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+
+        if(is_empty(beta0_)){ 
+            Base::setBeta0(DVector<double>::Zero(m_.beta().size()));
+        }
+
+        int p = C_.rows(); 
+
+        DVector<double> result;     // declare the vector that will store the p-values
+        
+        // compute Lambda
+        if(is_empty(Lambda_)){
+            V();
+        }
+
+        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+
+        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
+        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
+
+        DMatrix<double> eigenvalues = eigenvalues_complex.real();
+        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+
+        // Store beta_hat
+        DVector<double> beta_hat = m_.beta();
+        DVector<double> beta_hat_mod = beta_hat;
+        
+        if(type == simultaneous){  
+            // SIMULTANEOUS   
+            // extract the current betas in test
+            for(int i = 0; i < p; ++i){
+                for(int j = 0; j < C_.cols(); j++){
+                    if(C_(i,j) > 0){
+                        beta_hat_mod[j] = beta0_[j];
+                    }
+                }
+            }
+            
+            // partial residuals
+            DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod; 
+            // W^t * V * D
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   
+            DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
+
+            // Initialize observed statistic and sign-flipped statistic
+            DVector<double> stat = Xt * Tilder;
+            DVector<double> stat_flip = stat;
+            //std::cout<<"questo è stat observed: "<<stat<<std::endl;
+            //Random sign-flips
+            std::random_device rd; 
+            std::default_random_engine eng{rd()};
+            std::uniform_int_distribution<> distr{0,1}; 
+            int up = 0;
+            int down = 0;
+
+            DVector<double> Tilder_perm = Tilder;
+            
+            for(int i = 0; i < n_flip; i++){
+                for(int j = 0; j < Xt.cols(); ++j){
+                    int flip = 2 * distr(eng) - 1;
+                    Tilder_perm(j) = Tilder(j) * flip;
+                }
+                stat_flip = Xt * Tilder_perm; // Flipped statistic
+                //std::cout<<"questo è stat flip: "<<stat_flip<<std::endl;
+
+                if(is_Unilaterally_Greater(stat_flip, stat)){ 
+                    up = up + 1;
+                    //std::cout<<"count up è: "<<up<<std::endl;
+                }
+                else{ 
+                if(is_Unilaterally_Smaller(stat_flip, stat)){ 
+                    down = down + 1;
+                    //std::cout<<"count down è: "<<dwon<<std::endl;
+                    }                    
+                }
+            }
+            
+            double pval_up = static_cast<double>(up) / n_flip;
+            double pval_down = static_cast<double>(down) / n_flip;
+            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
+            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
+
+            result.resize(p); // Allocate more space so that R receives a well defined object (different implementations may require higher number of pvalues)
+            result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
+            for(int k = 1; k < p; k++){
+            result(k) = 0.0;
+            }
+        }
+        else{
+            // ONE AT THE TIME   
+            DMatrix<double> res_H0(Lambda_.cols(), p);
+            for(int i = 0; i < p; ++i){
+            // Extract the current beta in test
+            beta_hat_mod = beta_hat;
+
+            for(int j = 0; j < C_.cols(); ++j){
+                if(C_(i,j)>0){
+                    beta_hat_mod[j] = beta0_[j];
+                }
+            }
+            // compute the partial residuals
+            res_H0.col(i) = m_.y() - m_.X()* beta_hat_mod;
+            }
+            // compute the vectors needed for the statistic
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+            DMatrix<double> Tilder = eigenvectors.transpose() * res_H0;   			        		// V^t * partial_res_H0
+
+            // Observed statistic
+            DMatrix<double> stat = Xt * Tilder;
+            DMatrix<double> stat_flip = stat;
+
+            // Random sign-flips
+            std::random_device rd; 
+            std::default_random_engine eng{rd()};
+            std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            DVector<double> up = DVector<double>::Zero(p);
+            DVector<double> down = DVector<double>::Zero(p);
+            
+            DMatrix<double> Tilder_perm = Tilder;
+            
+            for(int i = 0; i < n_flip; ++i){
+                for(int j = 0; j < Xt.cols(); ++j){
+                    int flip = 2 * distr(eng) - 1;
+                    Tilder_perm.row(j) = Tilder.row(j) * flip;
+                 }
+                stat_flip = Xt * Tilder_perm; // Flipped statistic
+            
+                for(int k = 0; k < p; ++k){
+                    if(stat_flip(k, k) > stat(k, k)){
+                        ++up(k);
+                    }else{
+                        ++down(k);
+                    }
+                } 
+            }
+            
+            DVector<double> pval_up = up.array() / static_cast<double>(n_flip);
+            DVector<double> pval_down = down.array() / static_cast<double>(n_flip);
+
+            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
+            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
+            result.resize(p);
+            result = 2 * min(pval_up, pval_down); // Obtain the blateral p_value starting from the unilateral
+        } 
+        return result;
+     }   
+
 
 
 
@@ -378,10 +530,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DMatrix<double> TildeX_loc= TildeX.row(beta_in_test[i]);
             beta_hat_mod = beta_hat;
 
-            #pragma omp parallel sections
-            {
-            #pragma omp section
-            {
+            //#pragma omp parallel sections
+            //{
+            //#pragma omp section
+            //{
             if(!converged_up[i]){
                 if(local_p_values(0,i)>alpha){ // Upper-Upper bound excessively tight
 
@@ -422,10 +574,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     }
                 }
             }  // end if
-            } // end omp section
+            //} // end omp section
 
-            #pragma omp section
-            {
+            //#pragma omp section
+            //{
             if(!converged_low[i]){
 	            if(local_p_values(2,i)<alpha){ // Lower-Upper bound excessively tight
 
@@ -466,8 +618,262 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     }
                 }
             }  // end if
-            } // end omp section
-            } // end omp sections
+            //} // end omp section
+            //} // end omp sections
+        }  // end for
+        all_betas_converged =true;
+        for(int j=0; j<p; j++){
+
+            if(!converged_up[j] || !converged_low[j]){
+	            all_betas_converged=false;
+            }
+        }
+
+        Count_Iter++;
+
+        }
+        result.resize(p,2);
+        // for each row of C matrix
+        for(int i=0; i<p; ++i){
+                 
+            if(Count_Iter < Max_Iter){ // No discrepancy between beta_hat(i) and ESF, bisection converged
+                // Limits of the interval
+                result(i,0) = 0.5*(LU(i)+LL(i));
+                result(i,1) = 0.5*(UU(i)+UL(i)); 
+                }else{ // Not converged in time, give a warning in R
+                // Limits of the interval
+                result(i,0) = 10e20;
+                result(i,1) = 10e20; 
+            }
+        }
+        
+        return result;
+        
+    };
+
+
+
+
+     DMatrix<double> computeCI_serial(CIType type){
+        // compute Lambda
+        if(is_empty(Lambda_)){
+            V();
+        }
+
+        // Store beta_hat
+        DVector<double> beta_hat = m_.beta();
+        DVector<double> beta_hat_mod = beta_hat;
+        
+        fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+        int p = C_.rows(); 
+
+        DVector<int> beta_in_test; // In this vector are stored the respective positions of the beta we are testing in the actual test (ie le posizioni dei beta che vengono testate perchè in C abbiamo un 1 nella corrispondente posizione)
+        beta_in_test.resize(p);
+        for(int i=0; i<p; i++){
+            for(int j=0; j<C_.cols(); j++){
+                if(C_(i,j)>0){
+                    beta_in_test[i]=j;
+                }
+            }
+        }
+
+        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
+
+        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
+        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
+
+        DMatrix<double> eigenvalues = eigenvalues_complex.real();
+        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+
+        // declare the matrix that will store the intervals
+        DMatrix<double> result;
+        result.resize(p, 2);
+
+        // compute the initial ranges from speckman's CI (initial guess for CI) 
+        if(!is_speckman_aux_computed){
+            Compute_speckman_aux();
+        }
+
+        // this vector will store the tolerance for each interval upper/lower limit
+        // QUI NON SO SE 0.1 O 0.2 PER LA TOLLERANZA MASSIMA 
+        DVector<double> ESF_bisection_tolerances = 0.1*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
+        
+
+        // define storage structures for bisection algorithms
+        DVector<double> UU; // Upper limit for Upper bound
+        UU.resize(p);
+        DVector<double> UL; // Lower limit for Upper bound
+        UL.resize(p);
+        DVector<double> LU; // Upper limit for Lower bound
+        LU.resize(p);
+        DVector<double> LL; // Lower limit for Lower bound
+        LL.resize(p);
+
+
+
+        // ESF initialization with Speckman intervals as initial guess 
+        for(int i = 0; i < p; ++i){
+            double half_range = Speckman_aux_ranges(i);
+
+            // compute the limits of the interval
+            // QUI NON SO SE DEVO CONSIDERARE COME LIMITI 1/2 O 3/2 DEL HALF_RANGE
+            result(i,0) = beta_hat(beta_in_test[i]) - half_range;
+            LU(i)=result(i,0)+0.5*half_range;
+            LL(i)=result(i,0)-0.5*half_range;
+            result(i,1) = beta_hat(beta_in_test[i]) + half_range;
+            UU(i)=result(i,1) +0.5*half_range;
+            UL(i)=result(i,1) -0.5*half_range; 	
+        }
+
+
+        // define booleans used to understand which CI need to be computed forward on
+        std::vector<bool> converged_up(p,false);
+        std::vector<bool> converged_low(p,false);
+        bool all_betas_converged=false;
+
+        // matrix that stores p_values of the bounds at actual step
+        DMatrix<double> local_p_values;
+        local_p_values.resize(4,p);
+        
+        // compute the vectors needed for the statistic
+        DMatrix<double> TildeX = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+        DMatrix<double> Tilder_star = eigenvectors.transpose();   			        		// V^t
+        // Select eigenvalues that will not be flipped basing on the estimated bias carried
+        DVector<double> Tilder_hat = eigenvectors.transpose()* (m_.y() - (m_.X())* beta_hat); // This vector represents Tilder using only beta_hat, needed for bias estimation
+        DVector<double> Partial_res_H0_CI;
+        Partial_res_H0_CI.resize(Lambda_.cols());
+        
+
+        // fill the p_values matrix
+        for (int i=0; i<p; i++){
+            DMatrix<double> TildeX_loc = TildeX.row(beta_in_test[i]);
+            beta_hat_mod = beta_hat;
+
+            // compute the partial residuals and p value
+            beta_hat_mod(beta_in_test[i])=UU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UU[i](in test))
+            local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+            // compute the partial residuals and p value
+            beta_hat_mod(beta_in_test[i])=UL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UL[i](in test))
+            local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+            // compute the partial residuals and p value
+            beta_hat_mod(beta_in_test[i])=LU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LU[i](in test))
+            local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+            // compute the partial residuals and p value
+            beta_hat_mod(beta_in_test[i])=LL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+            Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LL[i](in test))
+            local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+        }
+
+        // extract the CI significance (1-confidence)
+        double alpha=0.05;
+
+        if(type == one_at_the_time){
+            alpha=0.5*alpha;
+        }else{
+            alpha=0.5/p*alpha;
+        }
+    
+        int Max_Iter=50;
+        int Count_Iter=0;
+        while((!all_betas_converged) & (Count_Iter<Max_Iter)){
+
+        
+            // Compute all p_values (only those needed)
+            for (int i=0; i<p; i++){
+
+            DMatrix<double> TildeX_loc= TildeX.row(beta_in_test[i]);
+            beta_hat_mod = beta_hat;
+
+            if(!converged_up[i]){
+                if(local_p_values(0,i)>alpha){ // Upper-Upper bound excessively tight
+
+                UU(i)=UU(i)+0.5*(UU(i)-UL(i));
+            
+                // compute the partial residuals
+                beta_hat_mod(beta_in_test[i])=UU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UU[i](in test))
+                local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+        
+                }else{
+        
+                    if(local_p_values(1,i)<alpha){ // Upper-Lower bound excessively tight
+                        UL(i)=beta_hat(beta_in_test[i])+0.5*(UL(i)-beta_hat(beta_in_test[i]));
+                
+                        // compute the partial residuals
+                        beta_hat_mod(beta_in_test[i])=UL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                        Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UL[i](in test))
+                        local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+                    }else{//both the Upper bounds are well defined
+
+                        if(UU(i)-UL(i)<ESF_bisection_tolerances(i)){
+
+                        converged_up[i]=true;
+
+                        }else{
+
+                            double proposal=0.5*(UU(i)+UL(i));
+        
+                            // compute the partial residuals
+                            beta_hat_mod(beta_in_test[i])=proposal; // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
+                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+                            if(prop_p_val<=alpha){UU(i)=proposal; local_p_values(0,i)=prop_p_val;}else{UL(i)=proposal;local_p_values(1,i)=prop_p_val;}
+                        }
+                    }
+                }
+            }  // end if
+
+
+            if(!converged_low[i]){
+	            if(local_p_values(2,i)<alpha){ // Lower-Upper bound excessively tight
+
+	                LU(i)=beta_hat(beta_in_test[i])-0.5*(beta_hat(beta_in_test[i])-LU(i));
+  
+                    // compute the partial residuals
+                    beta_hat_mod(beta_in_test[i])=LU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                    Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*LU[i](in test))
+                    local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                
+	            }else{
+ 
+                    if(local_p_values(3,i)>alpha){ // Lower-Lower bound excessively tight
+                        LL(i)=LL(i)-0.5*(LU(i)-LL(i));
+                
+                        // compute the partial residuals
+                        beta_hat_mod(beta_in_test[i])=LL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                        Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod);// (z-W*beta_hat(non in test)-W*LL[i](in test))
+                        local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+                    }else{//both the Upper bounds are well defined
+
+	                    if(LU(i)-LL(i)<ESF_bisection_tolerances(i)){
+
+	                        converged_low[i]=true;
+
+	                    }else{
+
+	                        double proposal=0.5*(LU(i)+LL(i));
+   
+	                        // compute the partial residuals
+                            beta_hat_mod(beta_in_test[i])=proposal; // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
+                            Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
+                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+
+                            if(prop_p_val<=alpha){LL(i)=proposal; local_p_values(3,i)=prop_p_val;}else{LU(i)=proposal;local_p_values(2,i)=prop_p_val;}
+                        }
+                    }
+                }
+            }  // end if
         }  // end for
         all_betas_converged =true;
         for(int j=0; j<p; j++){
@@ -598,21 +1004,20 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
       }
       }
-      /*
+      
       else {
       // pay attention that this has the opposite dimensions of the other Psi
       int m = mesh_nodes_.size();
-      m_.init_psi_esf();
       SpMatrix<double> Psi = m_.PsiESF();
       Psi_p_.resize(m, Psi.cols());
       for(int j = 0; j < m; ++j) {
-        int col = mesh_nodes_[j];
-        for(SpMatrix<double>::InnerIterator it(Psi, col); it; ++it) {
-            Psi_p_.insert(it.row(), j) = it.value();
+        int row = mesh_nodes_[j];
+        for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+            Psi_p_.insert(j, it.col()) = it.value();
         }       
       }
       }
-      */
+      
       Psi_p_.makeCompressed();
       if(p_l_ == 0)
         p_l_ = Psi_p_.rows();
@@ -620,8 +1025,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     }
 
     DVector<double> yp(){
-      if(is_empty(locations_f_))
+      if(is_empty(locations_f_)  && is_empty(mesh_nodes_))
         return m_.y();
+
+      else if (is_empty(mesh_nodes_)){
         
       int m = locations_f_.size();
       DVector<double> y = m_.y();
@@ -632,15 +1039,29 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         yp.row(j) = y.row(row);
       }
       return yp;
+      }
+      else{
+      int m = mesh_nodes_.size();
+      DVector<double> y = m_.y();
+      DVector<double> yp;
+      yp.resize(m);
+      for(int j = 0; j < m; ++j) {
+        int row = mesh_nodes_[j];
+        yp.row(j) = y.row(row);
+      }
+      return yp;
+      }
     }
 
     DMatrix<double> Xp(){
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_)){
+      if(is_empty(locations_f_) && is_empty(mesh_nodes_)){
         return m_.X();
       }
       if(!m_.has_covariates())
         return m_.X();
+
+      if(is_empty(mesh_nodes_)){
       int m = locations_f_.size();
       DMatrix<double> X = m_.X();
       DMatrix<double> Xp;
@@ -649,8 +1070,17 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         int row = locations_f_[j];
         Xp.row(j) = X.row(row);
       }
-
       return Xp;
+      }
+      int m = mesh_nodes_.size();
+      DMatrix<double> X = m_.X();
+      DMatrix<double> Xp;
+      Xp.resize(m, X.cols());
+      for(int j = 0; j < m; ++j) {
+        int row = mesh_nodes_[j];
+        Xp.row(j) = X.row(row);
+      }
+      return Xp;      
     }
 
     DMatrix<double> Wp(){

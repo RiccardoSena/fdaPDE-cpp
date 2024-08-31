@@ -58,20 +58,27 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     // template <typename PDEType>
     // SRPDE(PDETtype&& pde, Sampling s) : Base(pde, s) {};
 
-/*
+
     template <typename PDEType>
     void init_psi_esf(PDEType&& pde) {
 
-        PsiESF_.resize(pde.n_dofs(), Base::n_locs()); // ???
+        // perchè psi cols e non psi rows??????
+        PsiESF_.resize(Psi().cols(), Psi().cols()); 
 
         std::vector<Eigen::Triplet<double>> triplet_list;
 
-        for(int i = 0; i < n_nodes(); ++i) {
+        // not sure about Psi().rows(, should be the number of nodes
+        // take a look at linear_network.h
+
+        // should be Psi().rows()
+        for(int i = 0; i < Psi().cols(); ++i) {
             auto patch = pde.domain().node_patch(i);
             std::set<int> s;
             s.insert(i);
+            // should be that the matrix cells stores in the rows the nodes composing each cells
             for (auto e : patch) {
-                for(int j : e.nodes()) {
+                // e.nodes() dovrebbe dare i nodi che sono presenti nella cell della patch
+                for(int j : pde.domain().cells().row(e)) {
                     s.insert(j);
                 }
             }
@@ -79,7 +86,19 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
                 triplet_list.emplace_back(i, j, 1.0);
             }
         }
+
+        /*
+        for (const auto& triplet : triplet_list) {
+        std::cout << "Row: " << triplet.row()
+                  << ", Col: " << triplet.col()
+                  << ", Value: " << triplet.value()
+                  << std::endl;
+        }
+        */
+
+
         PsiESF_.setFromTriplets(triplet_list.begin(), triplet_list.end());
+        // std::cout << PsiESF_ << std::endl;
         PsiESF_.makeCompressed();
 
         // save PsiESF in private member
@@ -89,7 +108,6 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     // getter for PsiESF (needed for inference)
     const SpMatrix<double>& PsiESF() const{return PsiESF_;}
 
-*/
 
     void init_model() {
         if (runtime().query(runtime_status::is_lambda_changed)) {

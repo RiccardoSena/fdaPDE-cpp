@@ -592,6 +592,51 @@ TEST(inference_test, exact27) {
     DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << CIESF_<<std::endl;
 
+    /*
+    int m = 7;
+
+    DVector<int> flips (m);
+    flips << 10, 100, 1000, 5000, 10000, 50000, 100000;
+    DVector<double> ci_saved (m);
+    DVector<double> p_saved (m);
+    for(int i = 0; i < m; ++i){
+    inferenceESF.setNflip(flips(i));
+
+    double start_serial, end_serial, start_parallel, end_parallel;
+    start_serial = omp_get_wtime();
+    inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
+    end_serial = omp_get_wtime();
+    double tempo_seriale = end_serial - start_serial;
+    start_parallel = omp_get_wtime();
+    inferenceESF.computeCI(fdapde::models::one_at_the_time);
+    end_parallel = omp_get_wtime();
+    double tempo_parallelo = end_parallel - start_parallel;
+    double tempo_risparmiato = tempo_seriale - tempo_parallelo;
+
+    //std::cout << "Tempo seriale: " << tempo_seriale << " secondi\n";
+    //std::cout << "Tempo parallelo: " << tempo_parallelo << " secondi\n";
+    //std::cout << "Tempo risparmiato: " << tempo_risparmiato << " secondi\n";
+
+    double start_serial2, end_serial2, start_parallel2, end_parallel2;
+    start_serial2 = omp_get_wtime();
+    inferenceESF.p_value_serial(fdapde::models::one_at_the_time);
+    end_serial2 = omp_get_wtime();
+    double tempo_seriale2 = end_serial2 - start_serial2;
+    start_parallel2 = omp_get_wtime();
+    inferenceESF.p_value(fdapde::models::one_at_the_time);
+    end_parallel2 = omp_get_wtime();
+    double tempo_parallelo2 = end_parallel2 - start_parallel2;
+    double tempo_risparmiato2 = tempo_seriale2 - tempo_parallelo2;
+
+    ci_saved(i) = tempo_risparmiato;
+    p_saved(i) = tempo_risparmiato2;
+
+    }
+    std::cout << "ci saved: " << ci_saved << std::endl;
+    std::cout << "p saved: " << p_saved << std::endl;
+    */
+
+
     // test correctness Wald
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
@@ -1324,14 +1369,14 @@ TEST(inference_test, inference28) {
 
 TEST(inference_test, inference29) {
     // define domain
-    MeshLoader<Mesh2D> domain("c_shaped");
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     // import data from files
     DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
     DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
     // define regularizing PDE
     auto L = -laplacian<FEM>();
-    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
     PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
     // define statistical model
     double lambda = 0.2201047;
@@ -1389,14 +1434,16 @@ TEST(inference_test, inference29) {
     //inferenceESF.setNflip(10);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
-    //std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
+    std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
 
+*/
 
+/*
 TEST(inference_test, inference2999) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
@@ -1539,7 +1586,7 @@ TEST(inference_test, inference210) {
 
 
 
-
+/*
 TEST(inference_test, inference_f_) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -1579,5 +1626,44 @@ TEST(inference_test, inference_f_) {
     std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
+
+}
+*/
+
+
+TEST(inference_test, inference29) {
+    // define domain
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.init_psi_esf(problem);
+    model.solve();
+
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+
+    DVector<double> mesh_loc (3);
+    mesh_loc << 1, 2, 3;
+    inferenceESF.setMesh_loc(mesh_loc);
+
+    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+
 
 }
