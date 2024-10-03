@@ -1153,7 +1153,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
        for(int i = 0; i < n_flip; ++i){
             for(int j = 0; j < VQr.size(); ++j){
-	         int flip = 2 * distr(eng)-1;
+	         int flip = 2 * distr(eng) - 1;
 	         tp_vqr(j) = VQr(j) * flip;
             }
             Tp = Psi_p_.transpose() * Qp_dec_ * tp_vqr;
@@ -1164,12 +1164,54 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
              ++count;
             } 
         }
-        double p_value = count/n_flip;
+        double p_value = count/static_cast<double>(n_flip);
 
         return p_value;
     }
 
     
+    double sign_flip_p_value(){
+        if(is_empty(Psi_p_))
+           Psi_p();
+        if(is_empty(f0_)){
+           Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+        }
+
+        // test statistic when Pi = Id
+        DVector<double> VQr = Qp_ * (yp() - f0_);
+
+        DVector<double> Ti = Psi_p_.transpose() * VQr;
+
+       // save the rank of Ti
+       double Ti_rank = Ti.array().square().sum();
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+       std::random_device rd; 
+       std::default_random_engine eng{rd()};
+       std::uniform_int_distribution<> distr{0,1};
+       int count = 0;
+       DVector<double> tp_vqr = VQr; 
+       DVector<double> Tp = Ti;
+
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < VQr.size(); ++j){
+	         int flip = 2 * distr(eng)-1;
+	         tp_vqr(j) = VQr(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * tp_vqr;
+            // flipped statistics
+            double Tp_rank = Tp.array().square().sum();
+      
+            if(Tp_rank >= Ti_rank){
+             ++count;
+            } 
+        }
+        double p_value = count/static_cast<double>(n_flip);
+
+        return p_value;
+    }
+
 
     double f_CI_p_val(const DVector<double> res, const int curr_index){
         if(is_empty(Qp_dec_))
