@@ -59,17 +59,20 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      };
      struct NonExactInverse {
         SpMatrix<double> compute(Model m){
+            
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
+            DMatrix<double> Ct_ = inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
-            SpMatrix<double> invE_ = Base::invE_approx(m);
+            SpMatrix<double> invE_ = Base::invE_approx(m);           
 
-             // nella vecchia libreria:             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
+            DMatrix<double> G_tilde = - Ct_ + Vt_*invE_*Ut_;
+  
+            Eigen::PartialPivLU<DMatrix<double>> G_tilde_decp; 
+            G_tilde_decp.compute(G_tilde);
+  
+            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * G_tilde_decp.solve(Vt_*invE_);
 
             
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
-
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
             // Ciclo per stampare i primi dieci elementi di invE_
            /* std::cout << "First ten elements of invE_:\n";
             int count = 0;

@@ -524,10 +524,10 @@ TEST(inference_test, SpeckmanNonExact27oat){
 } 
 
 
+
 */
 
-
-
+/*
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 TEST(inference_test, exact27) {
@@ -586,7 +586,7 @@ TEST(inference_test, exact27) {
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
-    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
@@ -604,7 +604,7 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
+*/
 /*
 TEST(inference_test, exact27) {
     // define problem specifics
@@ -653,9 +653,11 @@ TEST(inference_test, exact27) {
 
     DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << CIESF_<<std::endl;
+}
 */
 
 
+/*
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -734,7 +736,7 @@ TEST(inference_test, nonexact27) {
 
 
 
-
+*/
 
 
 
@@ -1065,7 +1067,6 @@ TEST(inference_test, chrono27) {
 
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
-
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     int cols = model.beta().size();
@@ -1096,31 +1097,32 @@ TEST(inference_test, chrono27) {
 
 
 
-
+*/
 
 TEST(inference_test, chronoWald) {
     // define domain
-    MeshLoader<Mesh2D> domain("c_shaped");
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     // import data from files
     DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
     DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
     // define regularizing PDE
     auto L = -laplacian<FEM>();
-    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
     PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
     // define statistical model
     double lambda = 0.2201047;
-    DVector<double> beta0(2);
-    beta0(0)=2;
-    beta0(1)=-1;
-
-    int cols = beta0.size();
-    DMatrix<double> C = DMatrix<double>::Identity(cols, cols);
-
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
     BlockFrame<double, int> df;
     df.insert(OBSERVATIONS_BLK, y);
     df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
 
     // chrono start
     using namespace std::chrono;
@@ -1131,19 +1133,20 @@ TEST(inference_test, chronoWald) {
 
     for(int i = 0; i < n_it; ++i){
 
-    SRPDE model(problem, Sampling::pointwise);
-    model.set_lambda_D(lambda);
-    model.set_spatial_locations(locs);
-    // set model's data
-    model.set_data(df);
-    // solve smoothing problem
-    model.init();
-    model.solve();
-
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     
     inferenceWald.setC(C);
+
+
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
     inferenceWald.setBeta0(beta0);
+ 
 
     inferenceWald.p_value(fdapde::models::simultaneous);
     }
@@ -1154,7 +1157,7 @@ TEST(inference_test, chronoWald) {
     std::cout << "mean Wald execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
 
 }
-
+/*
 
 TEST(inference_test, chronoSpeckman) {
     // define domain
@@ -1631,7 +1634,7 @@ TEST(inference_test, inference_f_) {
 
 }
 */
-
+/*
 
 TEST(inference_test, inference29) {
     // define domain

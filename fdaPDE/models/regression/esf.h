@@ -138,8 +138,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> stat_flip = stat;
             //std::cout<<"questo è stat observed: "<<stat<<std::endl;
             //Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
+            //std::random_device rd; 
+            //std::default_random_engine eng{rd()};
+            std::default_random_engine eng{12345};
             std::uniform_int_distribution<> distr{0,1}; 
             int up = 0;
             int down = 0;

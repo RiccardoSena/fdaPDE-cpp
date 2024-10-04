@@ -221,7 +221,7 @@ template <typename Model> class InferenceBase{
         
         SpMatrix<double> Et_sparse = Et_.sparseView();
           
-         Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
+       Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
         FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
