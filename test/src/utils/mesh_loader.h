@@ -68,12 +68,15 @@ template <typename MeshType_> struct MeshLoader {
         std::string boundary_file  = MESH_PATH + meshID + "/boundary.csv";
 
         points_ = double_reader.parse_file<Eigen::Dense>(points_file);
+
+
         // realign indexes to 0, if requested
         elements_ = (int_reader.parse_file<Eigen::Dense>(elements_file).array() - 1).matrix();
         edges_ = (int_reader.parse_file<Eigen::Dense>(edges_file).array() > 0)
                    .select(int_reader.parse_file<Eigen::Dense>(edges_file).array() - 1, -1)
                    .matrix();
         boundary_ = int_reader.parse_file<Eigen::Dense>(boundary_file);
+        
         if constexpr (!core::is_network<M, N>::value)
             neighbors_ = (int_reader.parse_file<Eigen::Dense>(neighbors_file).array() > 0)
                            .select(int_reader.parse_file<Eigen::Dense>(neighbors_file).array() - 1, -1)

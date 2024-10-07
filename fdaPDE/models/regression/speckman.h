@@ -50,6 +50,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
                         SpMatrix<double> invE_ = Base::invE_approx(m);
 
             // Ciclo per stampare i primi dieci elementi di invE_
+            /*
             std::cout << "First ten elements of invE_:\n";
             int count = 0;
             for (int k = 0; k < invE_.outerSize(); ++k) {
@@ -59,6 +60,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
                }
                if (count >= 10) break; // Interrompi se hai stampato 10 elementi
             }
+            */
             return Base::invE_approx(m);
          }
       };
