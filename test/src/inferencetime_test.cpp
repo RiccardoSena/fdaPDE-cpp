@@ -10,7 +10,7 @@ using fdapde::core::SPLINE;
 using fdapde::core::bilaplacian;
 using fdapde::core::laplacian;
 using fdapde::core::PDE;
-using fdapde::core::Mesh;
+using fdapde::core::Triangulation;
 using fdapde::core::spline_order;
 
 #include "../../fdaPDE/models/regression/strpde.h"
@@ -28,10 +28,9 @@ using fdapde::testing::MeshLoader;
 using fdapde::testing::read_mtx;
 using fdapde::testing::read_csv;
 
-
 #include "../../fdaPDE/models/regression/wald.h"
 #include "../../fdaPDE/models/regression/speckman.h"
-#include "../../fdaPDE/models/regression/eigen_sign_flip.h"
+#include "../../fdaPDE/models/regression/esf.h"
 
 
 // questi sono da controllare 
@@ -49,7 +48,6 @@ using fdapde::core::diffusion;
 using fdapde::core::dt;
 using fdapde::core::SPLINE;
 using fdapde::core::bilaplacian;
-using fdapde::core::Mesh;
 using fdapde::core::spline_order;
 
 #include "../../fdaPDE/models/regression/srpde.h"
@@ -138,19 +136,19 @@ using fdapde::testing::read_csv;
 
 TEST(inferencetime_test, Exact24) {
     // define temporal and spatial domain
-    Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
-    MeshLoader<Mesh2D> domain("c_shaped");
+    Triangulation<1, 1> time_mesh(0, fdapde::testing::pi, 4);
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     // import data from files
     DMatrix<double> locs = read_csv<double>("../data/models/strpde/2D_test2/locs.csv");
     DMatrix<double> y    = read_csv<double>("../data/models/strpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/strpde/2D_test2/X.csv");
     // define regularizing PDE in space
     auto Ld = -laplacian<FEM>();
-    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_elements() * 3, 1);
-    PDE<Mesh<2, 2>, decltype(Ld), DMatrix<double>, FEM, fem_order<1>> space_penalty(domain.mesh, Ld, u);
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<Triangulation<2, 2>, decltype(Ld), DMatrix<double>, FEM, fem_order<1>> space_penalty(domain.mesh, Ld, u);
     // define regularizing PDE in time
     auto Lt = -bilaplacian<SPLINE>();
-    PDE<Mesh<1, 1>, decltype(Lt), DMatrix<double>, SPLINE, spline_order<3>> time_penalty(time_mesh, Lt);
+    PDE<Triangulation<1, 1>, decltype(Lt), DMatrix<double>, SPLINE, spline_order<3>> time_penalty(time_mesh, Lt);
     // define model
     double lambda_D = 0.01;
     double lambda_T = 0.01;
@@ -188,7 +186,7 @@ TEST(inferencetime_test, Exact24) {
     EXPECT_TRUE(almost_equal(inferenceS.p_value(fdapde::models::one_at_the_time)(0), 0.715712 , 1e-7));
 
 }
-
+/*
 TEST(inferencetime_test2, Exact242) {
     // define temporal and spatial domain
     Mesh<1, 1> time_mesh(0, fdapde::testing::pi, 4);
@@ -239,6 +237,48 @@ TEST(inferencetime_test2, Exact242) {
 
     EXPECT_TRUE(almost_equal(inferenceW.p_value(fdapde::models::one_at_the_time)(0), 0.7660934 , 1e-7));
     EXPECT_TRUE(almost_equal(inferenceS.p_value(fdapde::models::one_at_the_time)(0), 0.715712 , 1e-7));
+
+}
+
+*/
+
+
+TEST(inferencetime_test, nonparametric24) {
+    // define temporal and spatial domain
+    Triangulation<1, 1> time_mesh(0, fdapde::testing::pi, 4);
+    MeshLoader<Triangulation<2, 2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/strpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/strpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/strpde/2D_test2/X.csv");
+    // define regularizing PDE in space
+    auto Ld = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<Triangulation<2, 2>, decltype(Ld), DMatrix<double>, FEM, fem_order<1>> space_penalty(domain.mesh, Ld, u);
+    // define regularizing PDE in time
+    auto Lt = -bilaplacian<SPLINE>();
+    PDE<Triangulation<1, 1>, decltype(Lt), DMatrix<double>, SPLINE, spline_order<3>> time_penalty(time_mesh, Lt);
+    // define model
+    double lambda_D = 0.01;
+    double lambda_T = 0.01;
+    STRPDE<SpaceTimeSeparable, fdapde::monolithic> model(space_penalty, time_penalty, Sampling::pointwise);
+    model.set_lambda_D(lambda_D);
+    model.set_lambda_T(lambda_T);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.stack(OBSERVATIONS_BLK, y);
+    df.stack(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // test correctness 
+    fdapde::models::Wald<STRPDE<SpaceTimeSeparable, fdapde::monolithic>, fdapde::models::exact> inferenceW(model);
+    std::cout << "p-value: " << inferenceW.f_p_value() << std::endl;
+    std::cout << "CI: " << std::endl;
+    std::cout << inferenceW.f_CI() << std::endl;
 
 }
 
