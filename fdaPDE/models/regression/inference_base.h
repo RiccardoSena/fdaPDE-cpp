@@ -221,13 +221,13 @@ template <typename Model> class InferenceBase{
         
         SpMatrix<double> Et_sparse = Et_.sparseView();
           
-         Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
+        //Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
         FSPAI fspai_E(Et_sparse);
         fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.getInverse();
-        Eigen::saveMarket(invE_, "inversaE2.mtx");  
+        //Eigen::saveMarket(invE_, "inversaE2.mtx");  
         SpMatrix<double> precondE= fspai_E.getL();
-        Eigen::saveMarket(precondE, "precondE.mtx");
+        //Eigen::saveMarket(precondE, "precondE.mtx");
         
         /*
         //CALCOLO DELL'INVERSA PER CONFRONTI CON LIBRERIA ORIGINALE DI FSPAI 

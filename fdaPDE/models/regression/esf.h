@@ -66,7 +66,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      int p_l_ = 0;   // number of locations for inference on f
      SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
      DMatrix<double> Qp_dec_ {}; // Decomposition of Qp matrix
-     DVector<double> mesh_nodes_ {};  // if inference is performed on a subset of mesh nodes
+     DVector<int> mesh_nodes_ {};  // if inference is performed on a subset of mesh nodes
 
      
     public:
@@ -128,9 +128,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             }
             
             // partial residuals
-            DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod; 
+            DMatrix<double> X = m_.X();
+            DMatrix<double> res_H0 = m_.y() - X * beta_hat_mod; 
             // W^t * V * D
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   
+            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
@@ -180,6 +181,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         else{
             // ONE AT THE TIME   
             DMatrix<double> res_H0(Lambda_.cols(), p);
+            DMatrix<double> X = m_.X();
             for(int i = 0; i < p; ++i){
             // Extract the current beta in test
             beta_hat_mod = beta_hat;
@@ -190,10 +192,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 }
             }
             // compute the partial residuals
-            res_H0.col(i) = m_.y() - m_.X()* beta_hat_mod;
+            res_H0.col(i) = m_.y() - X * beta_hat_mod;
             }
             // compute the vectors needed for the statistic
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
             DMatrix<double> Tilder = eigenvectors.transpose() * res_H0;   			        		// V^t * partial_res_H0
 
             // Observed statistic
@@ -1102,10 +1104,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> Xp_ = Xp();    
         DMatrix<double> Wp_ = Wp();     
         DMatrix<double> XptWp = Xp_.transpose() * Wp_;   // X^\top*W,   q x p_l_ 
-        DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);    // q x q       
-        // perchè unica richiesta di solve per PartialPivLU è che il numero di righe di XtWX e v sia uguale
-        // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
-        Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
+        //DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);    // q x q   
+        DMatrix<double> XpTXp = Xp_.transpose() * Xp_;
+
+        // in the old library they use the ldlt decomposition (non exact inverse)
+        //Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
+        Qp_ = DMatrix<double>::Identity(p_l_, p_l_) - Xp_ * XpTXp.ldlt().solve(Xp_.transpose());
 
     }
 
@@ -1546,7 +1550,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         n_flip = m;
      };
            
-     void setMesh_loc(DVector<double> m_nodes){
+     void setMesh_loc(DVector<int> m_nodes){
         mesh_nodes_ = m_nodes;
      }
 

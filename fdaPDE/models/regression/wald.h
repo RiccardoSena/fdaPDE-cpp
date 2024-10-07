@@ -59,17 +59,27 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      };
      struct NonExactInverse {
         SpMatrix<double> compute(Model m){
-            DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
+         // It might be that we need to take the top n_nodes rows of Ut and the first n_nodes cols of Vt_
+         /*
+            DMatrix<double> Ut_ = m.Psi().transpose() * m.X(); // or Psi.transpose * A * W
+            std::cout << "Dimensions of Ut: " << Ut_.rows() << "; " << Ut_.cols() << std::endl;
             DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
+            std::cout << "Dimensions of Vt: " << Vt_.rows() << "; " << Vt_.cols() << std::endl;
+         */
             SpMatrix<double> invE_ = Base::invE_approx(m);
+         
 
              // nella vecchia libreria:             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
-
+            int nodes = m.Psi().cols();
+            DMatrix<double> Ut_ = m.U().topRows(nodes); 
+            //std::cout << "Dimensions of Ut: " << Ut_.rows() << "; " << Ut_.cols() << std::endl;
+            DMatrix<double> Vt_ = m.V().leftCols(nodes);
+            //std::cout << "Dimensions of Vt: " << Vt_.rows() << "; " << Vt_.cols() << std::endl;
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());        
             
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
+            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_)* Vt_ * invE_;
             // Ciclo per stampare i primi dieci elementi di invE_
            /* std::cout << "First ten elements of invE_:\n";
             int count = 0;
@@ -136,13 +146,14 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      }
 
      void V() override{
-        DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
-        std::cout<<"qui è corretta"<<std::endl; 
+        DMatrix<double> X = m_.X();
+        DMatrix<double> invSigma_ = inverse(X.transpose() * X);
+       // std::cout<<"qui è corretta"<<std::endl; 
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
         DMatrix<double> ss = S * S.transpose();
-        DMatrix<double> left = invSigma_ * m_.X().transpose();
+        DMatrix<double> left = invSigma_ * X.transpose();
         V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
-        std::cout<<"V corretta"<<std::endl;
+       // std::cout<<"V corretta"<<std::endl;
      }
 
      void Psi_p(){
