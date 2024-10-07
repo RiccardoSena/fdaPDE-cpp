@@ -56,6 +56,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
       };
 
      int n_flip = 1000; //default value
+     int set_seed=0;
      DMatrix<double> Lambda_ {};
      
      // variabili aggiunte per confidence intervals 
@@ -104,14 +105,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             V();
         }
 
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
-
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
@@ -138,10 +135,17 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> stat_flip = stat;
             //std::cout<<"questo è stat observed: "<<stat<<std::endl;
             //Random sign-flips
-            //std::random_device rd; 
-            //std::default_random_engine eng{rd()};
-            std::default_random_engine eng{12345};
-            std::uniform_int_distribution<> distr{0,1}; 
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+
             int up = 0;
             int down = 0;
 
@@ -202,9 +206,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DMatrix<double> stat_flip = stat;
 
             // Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             DVector<double> up = DVector<double>::Zero(p);
             DVector<double> down = DVector<double>::Zero(p);
             
@@ -256,13 +267,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             V();
         }
 
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
@@ -290,9 +298,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> stat_flip = stat;
             //std::cout<<"questo è stat observed: "<<stat<<std::endl;
             //Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; 
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             int up = 0;
             int down = 0;
 
@@ -353,9 +368,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DMatrix<double> stat_flip = stat;
 
             // Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             DVector<double> up = DVector<double>::Zero(p);
             DVector<double> down = DVector<double>::Zero(p);
             
@@ -414,14 +436,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             }
         }
 
-        // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // declare the matrix that will store the intervals
         DMatrix<double> result;
@@ -678,14 +696,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             }
         }
 
-        // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // declare the matrix that will store the intervals
         DMatrix<double> result;
@@ -952,9 +967,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         double stat_flip=stat;
 
         // Random sign-flips
-        std::random_device rd; 
-        std::default_random_engine eng{rd()};
-        std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
         double count_Up = 0;   // Counter for the number of flipped statistics that are larger the observed statistic
         double count_Down = 0; // Counter for the number of flipped statistics that are smaller the observed statistic
             
@@ -1145,9 +1167,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-       std::random_device rd; 
-       std::default_random_engine eng{rd()};
-       std::uniform_int_distribution<> distr{0,1};
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
        int count = 0;
        DVector<double> tp_vqr = VQr; 
        DVector<double> Tp = Ti;
@@ -1188,9 +1217,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-       std::random_device rd; 
-       std::default_random_engine eng{rd()};
-       std::uniform_int_distribution<> distr{0,1};
+             std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
        int count = 0;
        DVector<double> tp_vqr = VQr; 
        DVector<double> Tp = Ti;
@@ -1224,9 +1260,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-       std::random_device rd; 
-       std::default_random_engine eng{rd()};
-       std::uniform_int_distribution<> distr{0,1};
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
        int up = 0;
        int down = 0;
        DVector<double> Tp = Ti;
@@ -1546,6 +1589,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      void setNflip(int m){
         n_flip = m;
      };
+
+     void setseed(int k){
+        set_seed=k;
+     }
            
      void setMesh_loc(DVector<double> m_nodes){
         mesh_nodes_ = m_nodes;

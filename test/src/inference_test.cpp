@@ -571,6 +571,7 @@ TEST(inference_test, exact27) {
 
     int n = 1000;
     inferenceESF.setNflip(n);
+    inferenceESF.setseed(46);
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
     //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
