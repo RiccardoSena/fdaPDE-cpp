@@ -54,7 +54,7 @@ class SpaceTimeParabolicBase : public SpaceTimeBase<Model, SpaceTimeParabolic> {
         Im_.setIdentity();
         // assemble matrix associated with derivation in time L_
         // [L_]_{ii} = 1/DeltaT for i \in {1 ... m} and [L_]_{i,i-1} = -1/DeltaT for i \in {1 ... m-1}
-        std::vector<fdapde::Triplet<double>> triplet_list;
+        std::vector<fdapde::core::Triplet<double>> triplet_list;
         triplet_list.reserve(2 * m_);
         // start assembly loop
         double invDeltaT = 1.0 / DeltaT_;
@@ -82,7 +82,7 @@ class SpaceTimeParabolicBase : public SpaceTimeBase<Model, SpaceTimeParabolic> {
     const PDE& pde() const { return pde_; }   // regularizing term df/dt + Lf - u
     const SpMatrix<double>& R0() const { return R0_; }
     const SpMatrix<double>& R1() const { return R1_; }
-    const fdapde::SparseLU<SpMatrix<double>>& invR0() const {   // LU factorization of mass matrix R0
+    const fdapde::core::SparseLU<SpMatrix<double>>& invR0() const {   // LU factorization of mass matrix R0
         if (!invR0_) { invR0_.compute(R0()); }
         return invR0_;
     }
@@ -95,7 +95,7 @@ class SpaceTimeParabolicBase : public SpaceTimeBase<Model, SpaceTimeParabolic> {
     // computes and cache matrices (Im \kron R0)^{-1} and L \kron R0, returns the discretized penalty P =
     // \lambda_D*((Im \kron R1 + \lambda_T*(L \kron R0))^T*(I_m \kron R0)^{-1}*(Im \kron R1 + \lambda_T*(L \kron R0)))
     auto P() {
-        if (is_empty(pen_)) {   // compute once and cache result
+        if (fdapde::core::is_empty(pen_)) {   // compute once and cache result
             penT_ = Kronecker(L_, pde_.mass());
         }
         return lambda_D() * (R1() + lambda_T() * penT_).transpose() * invR0().solve(R1() + lambda_T() * penT_);
@@ -113,7 +113,7 @@ class SpaceTimeParabolicBase : public SpaceTimeBase<Model, SpaceTimeParabolic> {
     SpMatrix<double> R0_;     // Im \kron R0 (R0: spatial mass matrix)
     SpMatrix<double> R1_;     // Im \kron R1 (R1: spatial penalty discretization)
     SpMatrix<double> penT_;   // L_ \kron pde.R0
-    mutable fdapde::SparseLU<SpMatrix<double>> invR0_;
+    mutable fdapde::core::SparseLU<SpMatrix<double>> invR0_;
     // discretized penalty: (Im \kron R1 + L \kron R0)^T*(I_m \kron R0)^{-1}*(Im \kron R1 + L \kron R0)
     SpMatrix<double> pen_;
 };

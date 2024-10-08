@@ -21,6 +21,7 @@
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
 using fdapde::core::lump;
+using fdapde::core::is_empty;
 
 #include "../model_macros.h"
 #include "../sampling_design.h"
