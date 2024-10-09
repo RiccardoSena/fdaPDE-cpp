@@ -1068,11 +1068,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
       else{
       int m = mesh_nodes_.size();
       DVector<double> y = m_.y();
-      DVector<double> yp;
-      yp.resize(m);
+      DVector<double> yp = m_.Psi().transpose() * y;
+      y.resize(m);
       for(int j = 0; j < m; ++j) {
         int row = mesh_nodes_[j];
-        yp.row(j) = y.row(row);
+        y.row(j) = yp.row(row);
       }
       return yp;
       }
@@ -1122,8 +1122,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     void Qp() {
         if (!m_.has_covariates()){
             Qp_ = Wp() * DMatrix<double>::Identity(p_l_, p_l_);
-            return;
         }   
+        else{
         DMatrix<double> Xp_ = Xp();    
         DMatrix<double> Wp_ = Wp();     
         DMatrix<double> XptWp = Xp_.transpose() * Wp_;   // X^\top*W,   q x p_l_ 
@@ -1133,6 +1133,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         // in the old library they use the ldlt decomposition (non exact inverse)
         //Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
         Qp_ = DMatrix<double>::Identity(p_l_, p_l_) - Xp_ * XpTXp.ldlt().solve(Xp_.transpose());
+        }
 
     }
 
@@ -1147,7 +1148,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
         DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
-        Qp_dec_ = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
+        if(m_.has_covariates())
+          Qp_dec_ = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
+        else
+          Qp_dec_ = Q_eigenvectors;
     }
 
 
@@ -1210,7 +1214,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         if(is_empty(f0_)){
            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
         }
-
+        if(is_empty(Qp_)){
+           Qp();
+        }
         // test statistic when Pi = Id
         DVector<double> VQr = Qp_ * (yp() - f0_);
 
@@ -1221,7 +1227,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-             std::default_random_engine eng;
+            std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
 
             //if we have a set seed 
@@ -1234,10 +1240,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
        int count = 0;
        DVector<double> tp_vqr = VQr; 
        DVector<double> Tp = Ti;
-
+       
        for(int i = 0; i < n_flip; ++i){
             for(int j = 0; j < VQr.size(); ++j){
-	         int flip = 2 * distr(eng)-1;
+	         int flip = 2 * distr(eng) - 1;
 	         tp_vqr(j) = VQr(j) * flip;
             }
             Tp = Psi_p_.transpose() * tp_vqr;
@@ -1248,7 +1254,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
              ++count;
             } 
         }
-        double p_value = count/static_cast<double>(n_flip);
+        double p_value = static_cast<double>(count)/static_cast<double>(n_flip);
 
         return p_value;
     }

@@ -522,7 +522,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 */
 
-/*
+
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 /*
@@ -593,16 +593,16 @@ TEST(inference_test, exact27) {
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
-    //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-8));
-    //EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-78);
+    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
+    EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
 
     // test correctness ESF
     //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
 */
+
 
 /*
 TEST(inference_test, exact27) {
@@ -1097,10 +1097,9 @@ TEST(inference_test, chrono27) {
     std::cout << "mean execution time (seconds) for " << n_it << " iterations: " << duration.count()/n_it << std::endl;
 
 }
-
-
-
 */
+
+
 
 /*
 TEST(inference_test, chronoWald) {
@@ -1165,6 +1164,8 @@ TEST(inference_test, chronoWald) {
 */
 
 
+/*
+
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
@@ -1220,7 +1221,6 @@ TEST(inference_test, chrono) {
     model.solve();
 
     // chrono start
-    using namespace std::chrono;
 
     int n_it = 20;
     std::chrono::microseconds total_duration(0);
@@ -1251,6 +1251,89 @@ TEST(inference_test, chrono) {
     }
 
 }
+*/
+
+
+TEST(inference_test, chrono_investigation) {
+    
+    std::vector<std::string> Nodes = {
+        "40nodes"
+    };
+
+    std::string prefix1 = "TIME/";
+    std::string prefix2 = "../data/models/TIME/";
+    std::string suffix1 = "/y.csv";
+    std::string suffix2 = "/X.csv";
+
+    for(std::size_t i = 0; i < Nodes.size(); ++i){
+
+    std::string mesh_str = prefix1 + Nodes[i];
+    std::string y_str = prefix2 + Nodes[i] + suffix1;
+    std::string X_str = prefix2 + Nodes[i] + suffix2;
+
+    MeshLoader<Triangulation<2,2>> domain(mesh_str);
+    // import data from files
+    DMatrix<double> y    = read_csv<double>(y_str);
+    DMatrix<double> X    = read_csv<double>(X_str);
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.01;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    
+    // set model's data
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // chrono start
+
+    int n_it = 1;
+    std::chrono::microseconds total_duration(0);
+
+    for(int i = 0; i < n_it; ++i){
+
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    
+    inference.setC(C);
+    inference.setBeta0(beta0);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    inference.p_value(fdapde::models::one_at_the_time);
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    std::cout << "P val: " << inference.p_value(fdapde::models::one_at_the_time) << std::endl;
+
+    total_duration += duration;
+
+    }
+    
+    auto average_duration = total_duration / n_it;
+
+    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
+
+    }
+
+}
+
+
 
 
 
@@ -1662,24 +1745,23 @@ TEST(inference_test, inference_f_) {
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     DVector<int> loc_indexes(6);
-    loc_indexes << 1, 5, 7, 8, 9, 10;
+    loc_indexes << 2, 6, 8, 9, 10, 11;
     inferenceWald.setLocationsF(loc_indexes);
     inferenceESF.setLocationsF(loc_indexes);
     inferenceESF.setNflip(10000);
+    inferenceESF.setseed(46);
 
-    std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
-    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+    //std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     std::cout << "Sign p value: " << inferenceESF.sign_flip_p_value() << std::endl;
+    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
 
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
 
 */
-<<<<<<< HEAD
-=======
 
->>>>>>> ca84b0a390c2acac0f12c50ef7ff23e5c3a301d2
+
 /*
 
 TEST(inference_test, inference292) {

@@ -19,6 +19,7 @@
 
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
+#include <chrono>
 using fdapde::core::FSPAI;
 using fdapde::core::lump;
 
@@ -76,7 +77,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             //std::cout << "Dimensions of Ut: " << Ut_.rows() << "; " << Ut_.cols() << std::endl;
             DMatrix<double> Vt_ = m.V().leftCols(nodes);
             //std::cout << "Dimensions of Vt: " << Vt_.rows() << "; " << Vt_.cols() << std::endl;
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());        
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());         
             
             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
@@ -136,24 +137,33 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      }
 
      // si potrebbe fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia
-     double sigma_sq() {
+     double sigma_sq(double trace) {
+        //auto start = std::chrono::high_resolution_clock::now();
         double sigma_sq_ = 0;             // sigma^2 
         DMatrix<double> epsilon = m_.y() - m_.fitted();
-        ExactEDF strat;
-        strat.set_model(m_);
-        sigma_sq_  = (1/(m_.n_obs() - m_.q() - strat.compute())) * epsilon.squaredNorm();
+        //ExactEDF strat;
+        //strat.set_model(m_);
+        sigma_sq_  = (1/(m_.n_obs() - m_.q() - trace)) * epsilon.squaredNorm();
+        //auto end = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        //std::cout << "Sigma sq time: " << duration << std::endl;
         return sigma_sq_;
      }
 
      void V() override{
+        //auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> X = m_.X();
         DMatrix<double> invSigma_ = inverse(X.transpose() * X);
        // std::cout<<"qui è corretta"<<std::endl; 
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
-        DMatrix<double> ss = S * S.transpose();
+        double trace = S.trace();
+        //DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * X.transpose();
-        V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
-       // std::cout<<"V corretta"<<std::endl;
+        V_ = sigma_sq(trace) * (invSigma_ + left * S * S.transpose() * left.transpose()); 
+        // std::cout<<"V corretta"<<std::endl;
+        //auto end = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        //std::cout << "V() time: " << duration << std::endl;
      }
 
      void Psi_p(){
