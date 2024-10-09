@@ -525,7 +525,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
-/*
+
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -1246,7 +1246,9 @@ TEST(inference_test, chrono) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
+    std::cout << "Mean time of " << Nodes[i] << " is: " 
+          << std::chrono::duration_cast<std::chrono::microseconds>(average_duration).count() 
+          << " ms" << std::endl;
 
     }
 
@@ -1760,8 +1762,11 @@ TEST(inference_test, inference_f_) {
 }
 
 */
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 80d8e9e2de78574eb1e0998924cf8001c265550d
 /*
 
 TEST(inference_test, inference292) {

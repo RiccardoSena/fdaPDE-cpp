@@ -36,6 +36,7 @@
 // for parallelization
 #include <omp.h>
 
+using fdapde::core::is_empty;
 
 namespace fdapde {
 namespace models {

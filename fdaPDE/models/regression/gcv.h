@@ -52,13 +52,13 @@ class GCV {
     std::vector<double> edfs_;                 // equivalent degrees of freedom q + Tr[S]
     std::vector<double> gcvs_;                 // computed values of GCV index
     // cache pairs (lambda, Tr[S]) for fast access if GCV is queried at an already computed point
-    std::map<VectorType, double, fdapde::d_vector_compare<double>> cache_;
+    std::map<VectorType, double, fdapde::core::d_vector_compare<double>> cache_;
 
     // analytical expression of gcv at \lambda
     //
     // edf = n - (q + Tr[S])
     // GCV(\lambda) = n/(edf^2)*norm(y - \hat y)^2
-    ScalarField<fdapde::Dynamic, double (This::*)(const VectorType&)> gcv_;
+    ScalarField<fdapde::core::Dynamic, double (This::*)(const VectorType&)> gcv_;
     double gcv_impl(const VectorType& lambda) {
         // fit the model given current lambda
         model_.set_lambda(lambda);
@@ -77,7 +77,7 @@ class GCV {
         return gcv_value;
     }
    public:
-    static constexpr int DomainDimension = fdapde::Dynamic;
+    static constexpr int DomainDimension = fdapde::core::Dynamic;
     using EDFStrategy = erase<heap_storage, EDFStrategy__>;
     // constructors
     template <typename ModelType_, typename EDFStrategy_>
@@ -95,7 +95,7 @@ class GCV {
     GCV& operator=(const GCV& other) {
         model_ = other.model_;
         trS_ = other.trS_;
-        gcv_ = ScalarField<fdapde::Dynamic, double (This::*)(const VectorType&)>(this, &This::gcv_impl);
+        gcv_ = ScalarField<fdapde::core::Dynamic, double (This::*)(const VectorType&)>(this, &This::gcv_impl);
         return *this;
     }
   

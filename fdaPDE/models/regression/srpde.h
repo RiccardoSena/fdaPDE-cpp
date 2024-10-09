@@ -38,7 +38,7 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
    private:
     using Base = RegressionBase<SRPDE, SpaceOnly>;
     SparseBlockMatrix<double, 2, 2> A_ {};         // system matrix of non-parametric problem (2N x 2N matrix)
-    fdapde::SparseLU<SpMatrix<double>> invA_ {};   // factorization of matrix A
+    fdapde::core::SparseLU<SpMatrix<double>> invA_ {};   // factorization of matrix A
     DVector<double> b_ {};                         // right hand side of problem's linear system (1 x 2N vector)
     SpMatrix<double> PsiESF_ {};
    public:
@@ -159,7 +159,7 @@ class SRPDE : public RegressionBase<SRPDE, SpaceOnly> {
     double norm(const DMatrix<double>& op1, const DMatrix<double>& op2) const { return (op1 - op2).squaredNorm(); }
     // getters
     const SparseBlockMatrix<double, 2, 2>& A() const { return A_; }
-    const fdapde::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
+    const fdapde::core::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
     virtual ~SRPDE() = default;
 };
 
