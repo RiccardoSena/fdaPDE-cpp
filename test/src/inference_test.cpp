@@ -520,7 +520,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 
 
-*/
+
 
 
 
@@ -1329,8 +1329,8 @@ TEST(inference_test, chrono_investigation) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
-
+std::cout << "Mean time of " << Nodes[i] << " is: " 
+                  << average_duration.count() << " microseconds" << std::endl;
     }
 
 }
@@ -1762,11 +1762,6 @@ TEST(inference_test, inference_f_) {
 }
 
 */
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 80d8e9e2de78574eb1e0998924cf8001c265550d
 /*
 
 TEST(inference_test, inference292) {
