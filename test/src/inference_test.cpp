@@ -569,7 +569,7 @@ TEST(inference_test, exact27) {
     inferenceSpeck.setBeta0(beta0);
     inferenceESF.setBeta0(beta0);
 
-    int n = 1000;
+    int n = 10000;
     inferenceESF.setNflip(n);
     inferenceESF.setseed(46);
 
@@ -584,7 +584,7 @@ TEST(inference_test, exact27) {
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
+    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << CIESF_<<std::endl;
@@ -601,7 +601,7 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-*/
+
 
 
 /*
@@ -1164,6 +1164,7 @@ TEST(inference_test, chronoWald) {
 */
 
 
+
 /*
 
 TEST(inference_test, chrono) {
@@ -1232,11 +1233,11 @@ TEST(inference_test, chrono) {
     inference.setC(C);
     inference.setBeta0(beta0);
 
-    auto start = high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     inference.p_value(fdapde::models::one_at_the_time);
 
-    auto end = high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
@@ -1246,14 +1247,13 @@ TEST(inference_test, chrono) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " 
-          << std::chrono::duration_cast<std::chrono::microseconds>(average_duration).count() 
-          << " ms" << std::endl;
+    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
 
     }
 
 }
 */
+
 
 
 TEST(inference_test, chrono_investigation) {
@@ -1308,7 +1308,7 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1762,11 +1762,8 @@ TEST(inference_test, inference_f_) {
 }
 
 */
-<<<<<<< HEAD
 
 
-=======
->>>>>>> 80d8e9e2de78574eb1e0998924cf8001c265550d
 /*
 
 TEST(inference_test, inference292) {
