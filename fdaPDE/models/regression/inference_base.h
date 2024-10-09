@@ -254,7 +254,7 @@ template <typename Model> class InferenceBase{
 
      
       // setter for matrix of combination of coefficients C
-      void setC(DMatrix<double> C){
+      void setC(const DMatrix<double>& C) {
          C_ = C;
       }
 
