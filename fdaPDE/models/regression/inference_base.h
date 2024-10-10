@@ -212,8 +212,8 @@ template <typename Model> class InferenceBase{
 
        // questo serve se voglio invertire R0 cojn fspai           
         FSPAI fspai_R0(m.R0());
-        fspai_R0.compute(alpha, beta, epsilon);
-        SpMatrix<double> invR0_ = fspai_R0.getInverse();  
+        fspai_R0.compute(m.R0(),alpha, beta, epsilon);
+        SpMatrix<double> invR0_ = fspai_R0.inverse();  
 
         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
@@ -223,10 +223,10 @@ template <typename Model> class InferenceBase{
           
         //Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
         FSPAI fspai_E(Et_sparse);
-        fspai_E.compute(alpha, beta, epsilon);
-        SpMatrix<double> invE_ = fspai_E.getInverse();
+        fspai_E.compute(Et_sparse,alpha, beta, epsilon);
+        SpMatrix<double> invE_ = fspai_E.inverse();
         //Eigen::saveMarket(invE_, "inversaE2.mtx");  
-        SpMatrix<double> precondE= fspai_E.getL();
+        //SpMatrix<double> precondE= fspai_E.getL();
         //Eigen::saveMarket(precondE, "precondE.mtx");
         
         /*

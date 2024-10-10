@@ -1176,7 +1176,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-            std::default_random_engine eng;
+                    std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
 
             //if we have a set seed 
