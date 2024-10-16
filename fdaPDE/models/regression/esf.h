@@ -89,6 +89,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      ESF() = default;                   // deafult constructor
      ESF(const Model& m): Base(m) {};     // constructor      
 
+     // parallel version pvalues of beta
      DVector<double> p_value(CIType type) override{
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
@@ -159,24 +160,19 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     Tilder_perm(j) = Tilder(j) * flip;
                 }
                 stat_flip = Xt * Tilder_perm; // Flipped statistic
-                //std::cout<<"questo è stat flip: "<<stat_flip<<std::endl;
 
                 if(is_Unilaterally_Greater(stat_flip, stat)){ 
                     up = up + 1;
-                    //std::cout<<"count up è: "<<up<<std::endl;
                 }
                 else{ 
                 if(is_Unilaterally_Smaller(stat_flip, stat)){ 
                     down = down + 1;
-                    //std::cout<<"count down è: "<<dwon<<std::endl;
                     }                    
                 }
             }
             
             double pval_up = static_cast<double>(up) / n_flip;
             double pval_down = static_cast<double>(down) / n_flip;
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
 
             result.resize(p); // Allocate more space so that R receives a well defined object (different implementations may require higher number of pvalues)
             result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
@@ -244,15 +240,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> pval_up = up.array() / static_cast<double>(n_flip);
             DVector<double> pval_down = down.array() / static_cast<double>(n_flip);
 
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
             result.resize(p);
             result = 2 * min(pval_up, pval_down); // Obtain the blateral p_value starting from the unilateral
         } 
         return result;
      }   
 
-
+     // serial version pvalues of beta 
      DVector<double> p_value_serial(CIType type){
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
@@ -291,15 +285,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             }
             
             // partial residuals
-            DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod; 
-            // W^t * V * D
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   
+            DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod;  
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();  // W^t * V * D 
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
             DVector<double> stat = Xt * Tilder;
             DVector<double> stat_flip = stat;
-            //std::cout<<"questo è stat observed: "<<stat<<std::endl;
             //Random sign-flips
             std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
@@ -322,24 +314,19 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                     Tilder_perm(j) = Tilder(j) * flip;
                 }
                 stat_flip = Xt * Tilder_perm; // Flipped statistic
-                //std::cout<<"questo è stat flip: "<<stat_flip<<std::endl;
 
                 if(is_Unilaterally_Greater(stat_flip, stat)){ 
                     up = up + 1;
-                    //std::cout<<"count up è: "<<up<<std::endl;
                 }
                 else{ 
                 if(is_Unilaterally_Smaller(stat_flip, stat)){ 
                     down = down + 1;
-                    //std::cout<<"count down è: "<<dwon<<std::endl;
                     }                    
                 }
             }
             
             double pval_up = static_cast<double>(up) / n_flip;
             double pval_down = static_cast<double>(down) / n_flip;
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
 
             result.resize(p); // Allocate more space so that R receives a well defined object (different implementations may require higher number of pvalues)
             result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
@@ -405,8 +392,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> pval_up = up.array() / static_cast<double>(n_flip);
             DVector<double> pval_down = down.array() / static_cast<double>(n_flip);
 
-            //std::cout<<"il valore di pvalup è : "<<pval_up<<std::endl;
-            //std::cout<<"il valore di pvaldown è : "<<pval_down<<std::endl;
             result.resize(p);
             result = 2 * min(pval_up, pval_down); // Obtain the blateral p_value starting from the unilateral
         } 
@@ -415,15 +400,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-
+     // parallel version CI for beta
      DMatrix<double> computeCI(CIType type) override{
-        // compute Lambda
         if(is_empty(Lambda_)){
-            V();
+            V();  // compute Lambda
         }
-
-        // Store beta_hat
-        DVector<double> beta_hat = m_.beta();
+        DVector<double> beta_hat = m_.beta(); // store beta_hat
         DVector<double> beta_hat_mod = beta_hat;
         
         fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
@@ -440,7 +422,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
         Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
-
         DMatrix<double> eigenvalues = solver.eigenvalues();
         DMatrix<double> eigenvectors = solver.eigenvectors();
 
@@ -792,17 +773,17 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
         // extract the CI significance (1-confidence)
-        double alpha=0.05;
-
+        double alpha_p=0.05;
+        double alpha=0;
         if(type == one_at_the_time){
-            alpha=0.5*alpha;
+            alpha=0.5*alpha_p;
         }else{
-            alpha=0.5/p*alpha;
+            alpha=0.5/p*alpha_p;
         }
     
         int Max_Iter=50;
         int Count_Iter=0;
-        while((!all_betas_converged) & (Count_Iter<Max_Iter)){
+        while((!all_betas_converged) && (Count_Iter<Max_Iter)){
 
         
             // Compute all p_values (only those needed)
@@ -846,7 +827,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
                             double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
-                            if(prop_p_val<=alpha){UU(i)=proposal; local_p_values(0,i)=prop_p_val;}else{UL(i)=proposal;local_p_values(1,i)=prop_p_val;}
+                            if(prop_p_val<=alpha){UU(i)=proposal; local_p_values(0,i)=prop_p_val;}
+                            else{UL(i)=proposal;local_p_values(1,i)=prop_p_val;}
                         }
                     }
                 }
@@ -888,7 +870,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
                             double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
 
-                            if(prop_p_val<=alpha){LL(i)=proposal; local_p_values(3,i)=prop_p_val;}else{LU(i)=proposal;local_p_values(2,i)=prop_p_val;}
+                            if(prop_p_val<=alpha){LL(i)=proposal; local_p_values(3,i)=prop_p_val;}
+                            else{LU(i)=proposal;local_p_values(2,i)=prop_p_val;}
                         }
                     }
                 }

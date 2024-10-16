@@ -610,58 +610,72 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
+*/
 
 
 TEST(inference_test, exact27) {
-    // define problem specifics
+    // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
     DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
     DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
-    ...
-    //define model
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
     double lambda = 0.2201047;
     SRPDE model(problem, Sampling::pointwise);
-    ...
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
     // solve smoothing problem
     model.init();
     model.solve();
-
     // define inference objects
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
-    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    //fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    //fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
     fdapde::models::ESF<SRPDE,fdapde::models::exact> inferenceESF(model);
+    fdapde::models::PESF<SRPDE,fdapde::models::exact> inferencePESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     
-    inferenceWald.setC(C);
-    inferenceSpeck.setC(C);
+    //inferenceWald.setC(C);
+    //inferenceSpeck.setC(C);
     inferenceESF.setC(C);
+    inferencePESF.setC(C);
 
     DVector<double> beta0(2);
     beta0(0)=2;
     beta0(1)=-1;
-    inferenceWald.setBeta0(beta0);
-    inferenceSpeck.setBeta0(beta0);
+    //inferenceWald.setBeta0(beta0);
+    //inferenceSpeck.setBeta0(beta0);
     inferenceESF.setBeta0(beta0);
+    inferencePESF.setBeta0(beta0);
 
     int n = 1000;
     inferenceESF.setNflip(n);
+    inferencePESF.setNflip(n);
 
-    inferenceWald.p_value(fdapde::models::one_at_the_time);
-    inferenceWald.computeCI(fdapde::models::one_at_the_time);
+    inferenceESF.setseed(46);
+    inferencePESF.setseed(46);
 
-    inferenceSpeck.p_value(fdapde::models::one_at_the_time);
-    inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
-
-    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvaluesesf = inferenceESF.p_value_serial(fdapde::models::one_at_the_time);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
-    DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << CIESF_<<std::endl;
+    DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
+    std::cout << "computed CI esf : " << CIESF_<<std::endl;
+   // DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::one_at_the_time);
+   // std::cout<<"pvalues Partial-esf: "<<pvaluespesf<<std::endl;
+
 }
-*/
+
 
 
 /*
@@ -1261,7 +1275,8 @@ TEST(inference_test, chrono) {
     }
 
 }
-*/
+
+
 
 
 TEST(inference_test, chrono_investigation) {
@@ -1353,10 +1368,6 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
 }
 
 
-
-
-
-/*
 
 TEST(inference_test, chronoESF) {
     // define domain

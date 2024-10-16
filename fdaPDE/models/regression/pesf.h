@@ -108,13 +108,10 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
             V();
         }
 
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
@@ -315,13 +312,11 @@ DMatrix<double> computeCI_serial(CIType type){
         }
 
         // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
+ Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
 
         // declare the matrix that will store the intervals
         DMatrix<double> result;
@@ -824,7 +819,7 @@ DMatrix<double> computeCI_serial(CIType type){
      void setNflip(int m){
         n_flip = m;
      };
-          void setseed(int k){
+     void setseed(int k){
         set_seed=k;
      }
      void setMesh_loc(DVector<double> m_nodes){
