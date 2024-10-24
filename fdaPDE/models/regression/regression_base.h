@@ -44,9 +44,9 @@ class RegressionBase :
     DMatrix<double> T_ {};      // T = \Psi^\top*Q*\Psi + P (required by GCV)
     Eigen::PartialPivLU<DMatrix<double>> invXtWX_ {};   // factorization of the dense q x q matrix XtWX_.
     // missing data and masking logic
-    BinaryVector<fdapde::Dynamic> nan_mask_;     // indicator function over missing observations
-    BinaryVector<fdapde::Dynamic> y_mask_;       // discards i-th observation from the fitting if y_mask_[i] == true
-    int n_nan_ = 0;                      // number of missing entries in observation vector
+    BinaryVector<fdapde::core::Dynamic> nan_mask_;     // indicator function over missing observations
+    BinaryVector<fdapde::core::Dynamic> y_mask_;       // discards i-th observation from the fitting if y_mask_[i] == true
+    int n_nan_ = 0;                              // number of missing entries in observation vector
     SpMatrix<double> B_;                         // matrix \Psi corrected for NaN and masked observations
 
     // matrices required for Woodbury decomposition
@@ -91,20 +91,20 @@ class RegressionBase :
     const DVector<double>& f() const { return f_; };         // estimate of spatial field
     const DVector<double>& g() const { return g_; };         // PDE misfit
     const DVector<double>& beta() const { return beta_; };   // estimate of regression coefficients
-    const BinaryVector<fdapde::Dynamic>& nan_mask() const { return nan_mask_; }
-    BinaryVector<fdapde::Dynamic> masked_obs() const { return y_mask_ | nan_mask_; }
+    const BinaryVector<fdapde::core::Dynamic>& nan_mask() const { return nan_mask_; }
+    BinaryVector<fdapde::core::Dynamic> masked_obs() const { return y_mask_ | nan_mask_; }
     int n_obs() const { return y().rows() - masked_obs().count(); }   // number of (active) observations
     // getters to Woodbury decomposition matrices
     const DMatrix<double>& U() const { return U_; }
     const DMatrix<double>& V() const { return V_; }
     // access to NaN corrected \Psi and \Psi^\top*D matrices
-    const SpMatrix<double>& Psi() const { return !is_empty(B_) ? B_ : Psi(not_nan()); }
-    auto PsiTD() const { return !is_empty(B_) ? B_.transpose() * D() : Psi(not_nan()).transpose() * D(); }
+    const SpMatrix<double>& Psi() const { return !fdapde::core::is_empty(B_) ? B_ : Psi(not_nan()); }
+    auto PsiTD() const { return !fdapde::core::is_empty(B_) ? B_.transpose() * D() : Psi(not_nan()).transpose() * D(); }
     bool has_covariates() const { return q() != 0; }                 // true if the model has a parametric part
     bool has_weights() const { return df_.has_block(WEIGHTS_BLK); }  // true if heteroskedastic observation are provided
     bool has_nan() const { return n_nan_ != 0; }                     // true if there are missing data
     // setters
-    void set_mask(const BinaryVector<fdapde::Dynamic>& mask) {
+    void set_mask(const BinaryVector<fdapde::core::Dynamic>& mask) {
         fdapde_assert(mask.size() == Base::n_locs());
         if (mask.any()) {
             model().runtime().set(runtime_status::require_psi_correction);
@@ -120,8 +120,7 @@ class RegressionBase :
         return W_ * x - W_ * X() * z;
     }
 
-    //PARTE AGGIUNTA 
-    //
+
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     DMatrix<double> Q() const {
         if (!has_covariates()) return W_;
@@ -136,12 +135,10 @@ class RegressionBase :
         return (PsiTD() * Psi() + P());
     }
 
-    //
-    // FINE PARTE AGGIUNTA
 
     // computes fitted values \hat y = \Psi*f_ + X*beta_
     DMatrix<double> fitted() const {
-        fdapde_assert(!is_empty(f_));
+        fdapde_assert(!fdapde::core::is_empty(f_));
         DMatrix<double> hat_y = Psi(not_nan()) * f_;
         if (has_covariates()) hat_y += X() * beta_;
         return hat_y;
@@ -156,7 +153,7 @@ class RegressionBase :
         }
     }
     double ftPf(const SVector<Base::n_lambda>& lambda) const {
-        if (is_empty(g_)) return f().dot(Base::P(lambda) * f());   // fallback to explicit f^\top*P*f
+        if (fdapde::core::is_empty(g_)) return f().dot(Base::P(lambda) * f());   // fallback to explicit f^\top*P*f
         return ftPf(lambda, f(), g());
     }
     double ftPf() const { return ftPf(Base::lambda()); }
@@ -179,7 +176,7 @@ class RegressionBase :
         if (has_weights() && df_.is_dirty(WEIGHTS_BLK)) {
             W_ = df_.template get<double>(WEIGHTS_BLK).col(0).asDiagonal();
             model().runtime().set(runtime_status::require_W_update);
-        } else if (is_empty(W_)) {
+        } else if (fdapde::core::is_empty(W_)) {
             // default to homoskedastic observations
             W_ = DVector<double>::Ones(Base::n_locs()).asDiagonal();
         }
@@ -204,7 +201,7 @@ class RegressionBase :
     }
     // correct \Psi setting to zero rows corresponding to masked observations
     void correct_psi() {
-        if (masked_obs().any()) B_ = (~masked_obs().blk_repeat(1, n_basis())).select(Psi(not_nan()));
+        if (masked_obs().any()) B_ = (~masked_obs().repeat(1, n_basis())).select(Psi(not_nan()));
     }
 };
 

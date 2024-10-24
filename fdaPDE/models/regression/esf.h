@@ -33,6 +33,10 @@
 
 #include <algorithm>
 
+// for parallelization
+#include <omp.h>
+
+using fdapde::core::is_empty;
 
 namespace fdapde {
 namespace models {
@@ -53,6 +57,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
       };
 
      int n_flip = 1000; //default value
+     int set_seed=0;
      DMatrix<double> Lambda_ {};
      
      bool is_speckman_aux_computed = false;
@@ -61,6 +66,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      DMatrix<double> Qp_ {};
      int p_l_ = 0;   // number of locations for inference on f
      SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
+     DMatrix<double> Qp_dec_ {}; // Decomposition of Qp matrix
+     DVector<int> mesh_nodes_ {};  // if inference is performed on a subset of mesh nodes
 
      
     public:
@@ -70,6 +77,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      using Base::f0_;
      using Base::C_;
      using Base::locations_f_;
+     using Base::alpha_f_;
      using Base::beta0_;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_;
@@ -80,11 +88,12 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      ESF() = default;                   // deafult constructor
      ESF(const Model& m): Base(m) {};     // constructor      
 
+     // parallel version pvalues of beta
      DVector<double> p_value(CIType type) override{
         // extract matrix C (in the eigen-sign-flip case we cannot have linear combinations, but we can have at most one 1 for each column of C) 
-        fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+        fdapde_assert(!is_empty(C_));        
 
-        if(is_empty(beta0_)){
+        if(is_empty(beta0_)){ 
             Base::setBeta0(DVector<double>::Zero(m_.beta().size()));
         }
 
@@ -97,21 +106,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             V();
         }
 
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
-
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
         
         if(type == simultaneous){  
             // SIMULTANEOUS   
-            // extract the current betas in test
             for(int i = 0; i < p; ++i){
                 for(int j = 0; j < C_.cols(); j++){
                     if(C_(i,j) > 0){
@@ -120,10 +124,11 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 }
             }
             
-
-            DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod; 
-
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   
+            // partial residuals
+            DMatrix<double> X = m_.X();
+            DMatrix<double> res_H0 = m_.y() - X * beta_hat_mod; 
+            // W^t * V * D
+            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
@@ -131,9 +136,17 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> stat_flip = stat;
 
             //Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; 
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+
             int up = 0;
             int down = 0;
 
@@ -159,7 +172,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             double pval_up = static_cast<double>(up) / n_flip;
             double pval_down = static_cast<double>(down) / n_flip;
 
-
             result.resize(p); 
             result(0) = 2 * std::min(pval_up, pval_down); 
             for(int k = 1; k < p; k++){
@@ -169,6 +181,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         else{
             // ONE AT THE TIME   
             DMatrix<double> res_H0(Lambda_.cols(), p);
+            DMatrix<double> X = m_.X();
             for(int i = 0; i < p; ++i){
 
             beta_hat_mod = beta_hat;
@@ -179,10 +192,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 }
             }
             // compute the partial residuals
-            res_H0.col(i) = m_.y() - m_.X()* beta_hat_mod;
+            res_H0.col(i) = m_.y() - X * beta_hat_mod;
             }
             // compute the vectors needed for the statistic
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
             DMatrix<double> Tilder = eigenvectors.transpose() * res_H0;   			        		// V^t * partial_res_H0
 
             // Observed statistic
@@ -190,14 +203,22 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DMatrix<double> stat_flip = stat;
 
             // Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             DVector<double> up = DVector<double>::Zero(p);
             DVector<double> down = DVector<double>::Zero(p);
             
             DMatrix<double> Tilder_perm = Tilder;
             
+            #pragma omp parallel for
             for(int i = 0; i < n_flip; ++i){
                 for(int j = 0; j < Xt.cols(); ++j){
                     int flip = 2 * distr(eng) - 1;
@@ -218,27 +239,24 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             DVector<double> pval_down = down.array() / static_cast<double>(n_flip);
 
             result.resize(p);
-            result = 2 * min(pval_up, pval_down); // Obtain the blateral p_value starting from the unilateral
+            result = 2 * min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
         } 
         return result;
      }   
 
 
-
+     // CI for beta
      DMatrix<double> computeCI(CIType type) override{
-        // compute Lambda
         if(is_empty(Lambda_)){
-            V();
+            V();  // compute Lambda
         }
-
-        // Store beta_hat
-        DVector<double> beta_hat = m_.beta();
+        DVector<double> beta_hat = m_.beta(); // store beta_hat
         DVector<double> beta_hat_mod = beta_hat;
         
-        fdapde_assert(!is_empty(C_));      // throw an exception if condition is not met  
+        fdapde_assert(!is_empty(C_));     
         int p = C_.rows(); 
 
-        DVector<int> beta_in_test; // In this vector are stored the respective positions of the beta we are testing in the actual test (ie le posizioni dei beta che vengono testate perchè in C abbiamo un 1 nella corrispondente posizione)
+        DVector<int> beta_in_test; 
         beta_in_test.resize(p);
         for(int i=0; i<p; i++){
             for(int j=0; j<C_.cols(); j++){
@@ -248,14 +266,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             }
         }
 
-        // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
-
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // declare the matrix that will store the intervals
         DMatrix<double> result;
@@ -267,7 +280,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         }
 
         // this vector will store the tolerance for each interval upper/lower limit
-        // QUI NON SO SE 0.1 O 0.2 PER LA TOLLERANZA MASSIMA 
         DVector<double> ESF_bisection_tolerances = 0.1*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
         
 
@@ -284,11 +296,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
         // ESF initialization with Speckman intervals as initial guess 
-        for(int i=0; i<p; ++i){
+        for(int i = 0; i < p; ++i){
             double half_range = Speckman_aux_ranges(i);
 
             // compute the limits of the interval
-            // QUI NON SO SE DEVO CONSIDERARE COME LIMITI 1/2 O 3/2 DEL HALF_RANGE
             result(i,0) = beta_hat(beta_in_test[i]) - half_range;
             LU(i)=result(i,0)+0.5*half_range;
             LL(i)=result(i,0)-0.5*half_range;
@@ -355,13 +366,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         int Max_Iter=50;
         int Count_Iter=0;
         while((!all_betas_converged) & (Count_Iter<Max_Iter)){
+
+            omp_set_nested(1);
         
             // Compute all p_values (only those needed)
+            #pragma omp parallel for
             for (int i=0; i<p; i++){
 
             DMatrix<double> TildeX_loc= TildeX.row(beta_in_test[i]);
             beta_hat_mod = beta_hat;
-        
+
             if(!converged_up[i]){
                 if(local_p_values(0,i)>alpha){ // Upper-Upper bound excessively tight
 
@@ -401,7 +415,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                         }
                     }
                 }
-            }
+            }  
 
             if(!converged_low[i]){
 	            if(local_p_values(2,i)<alpha){ // Lower-Upper bound excessively tight
@@ -442,8 +456,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                         }
                     }
                 }
-            }
-        }
+            }  // end if
+        }  // end for
         all_betas_converged =true;
         for(int j=0; j<p; j++){
 
@@ -455,24 +469,18 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Count_Iter++;
 
         }
-        result.resize(p,3);
+        result.resize(p,2);
         // for each row of C matrix
         for(int i=0; i<p; ++i){
                  
             if(Count_Iter < Max_Iter){ // No discrepancy between beta_hat(i) and ESF, bisection converged
-                // Central element
-                result(i,1)=beta_hat(beta_in_test[i]);
-                
                 // Limits of the interval
                 result(i,0) = 0.5*(LU(i)+LL(i));
-                result(i,2) = 0.5*(UU(i)+UL(i)); 
-                }else{ // Not converged in time, give a warning in R
-                // Central element
-                result(i,1)=10e20;
-                
+                result(i,1) = 0.5*(UU(i)+UL(i)); 
+                }else{ // Not converged in time
                 // Limits of the interval
                 result(i,0) = 10e20;
-                result(i,2) = 10e20; 
+                result(i,1) = 10e20; 
             }
         }
         
@@ -509,9 +517,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     
     }
 
-        
-
-
 
     double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
         // declare the vector that will store the p-values
@@ -526,9 +531,16 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         double stat_flip=stat;
 
         // Random sign-flips
-        std::random_device rd; 
-        std::default_random_engine eng{rd()};
-        std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
         double count_Up = 0;   // Counter for the number of flipped statistics that are larger the observed statistic
         double count_Down = 0; // Counter for the number of flipped statistics that are smaller the observed statistic
             
@@ -561,70 +573,14 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
 
 
-    double f_p_value(){
-        if(is_empty(Psi_p_))
-            Psi_p();
-        // compute the Q only on the locations in which you want inference
-        if(is_empty(Qp_))
-           Qp();
-
-        if(is_empty(f0_)){
-            Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
-        }
-        
-        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
-
-        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
-        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
-        DMatrix<double> V = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
-
-
-        // test statistic when Pi = Id
-        DVector<double> VQr = V.transpose() * Qp_ * (yp() - f0_);
-        DVector<double> Ti = Psi_p_.transpose() * V * VQr;
-
-
-       // save the rank of Ti
-       double Ti_rank = Ti.array().square().sum();
-
-        // random sign-flips
-        // Bernoulli dist (-1, 1) with p = 0.5
-       std::random_device rd; 
-       std::default_random_engine eng{rd()};
-       std::uniform_int_distribution<> distr{0,1};
-       int count = 0;
-       DVector<double> tp_vqr = VQr; 
-       DVector<double> Tp = Ti;
-
-       for(int i = 0; i < n_flip; ++i){
-            for(int j = 0; j < VQr.size(); ++j){
-	         int flip = 2 * distr(eng)-1;
-	         tp_vqr(j) = VQr(j) * flip;
-            }
-            Tp = Psi_p_.transpose() * V * tp_vqr;
-            // flipped statistics
-            double Tp_rank = Tp.array().square().sum();
-      
-            if(Tp_rank >= Ti_rank){
-             ++count;
-            } 
-        }
-        std::cout << "Count: " << count << std::endl;
-        double p_value = count/n_flip;
-
-        return p_value;
-    }
-
     void Psi_p(){
-
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_)){
+      if(is_empty(locations_f_) && is_empty(mesh_nodes_)){
         Psi_p_ = m_.Psi();
         if(p_l_ == 0)
            p_l_ = Psi_p_.rows();
-        return;
       }
-
+      else if(is_empty(mesh_nodes_)){
       int m = locations_f_.size();
       SpMatrix<double> Psi = m_.Psi();
       Psi_p_.resize(m, Psi.cols());
@@ -634,14 +590,33 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             Psi_p_.insert(j, it.col()) = it.value();
         }
       }
+      }
+      
+      else {
+      // opposite dimensions of the Psi in the other cases
+      int m = mesh_nodes_.size();
+      SpMatrix<double> Psi = m_.PsiESF();
+      Psi_p_.resize(m, Psi.cols());
+      for(int j = 0; j < m; ++j) {
+        int row = mesh_nodes_[j];
+        for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+            Psi_p_.insert(j, it.col()) = it.value();
+        }       
+      }
+      }
+      
       Psi_p_.makeCompressed();
       if(p_l_ == 0)
         p_l_ = Psi_p_.rows();
+
     }
 
     DVector<double> yp(){
-      if(is_empty(locations_f_))
+      if(is_empty(locations_f_)  && is_empty(mesh_nodes_))
         return m_.y();
+
+      else if (is_empty(mesh_nodes_)){
+        
       int m = locations_f_.size();
       DVector<double> y = m_.y();
       DVector<double> yp;
@@ -651,15 +626,28 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         yp.row(j) = y.row(row);
       }
       return yp;
+      }
+      else{
+      int m = mesh_nodes_.size();
+      DVector<double> y = m_.y();
+      DVector<double> yp = m_.Psi().transpose() * y;
+      y.resize(m);
+      for(int j = 0; j < m; ++j) {
+        int row = mesh_nodes_[j];
+        y.row(j) = yp.row(row);
+      }
+      return yp;
+      }
     }
 
     DMatrix<double> Xp(){
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_)){
+      if(is_empty(locations_f_) || !is_empty(mesh_nodes_)){
         return m_.X();
       }
       if(!m_.has_covariates())
         return m_.X();
+      if(!is_empty(locations_f_)){
       int m = locations_f_.size();
       DMatrix<double> X = m_.X();
       DMatrix<double> Xp;
@@ -669,10 +657,10 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Xp.row(j) = X.row(row);
       }
       return Xp;
+      }    
     }
 
     DMatrix<double> Wp(){
-        // how to deal with this
         // for now set it as a identity matrix
         if(is_empty(Psi_p_)){
             Psi_p();
@@ -683,20 +671,403 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     void Qp() {
-        if(is_empty(Psi_p_)){
-            Psi_p();
-        }
         if (!m_.has_covariates()){
             Qp_ = Wp() * DMatrix<double>::Identity(p_l_, p_l_);
-            return;
         }   
+        else{
         DMatrix<double> Xp_ = Xp();    
         DMatrix<double> Wp_ = Wp();     
         DMatrix<double> XptWp = Xp_.transpose() * Wp_;   // X^\top*W,   q x p_l_ 
-        DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);    // q x q       
-       // compute W - W*X*z = W - (W*X*(X^\top*W*X)^{-1}*X^\top*W) = W(I - H) = Q
-        Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
+        //DMatrix<double> invXptWpXp = inverse(Xp_.transpose() * Wp_ * Xp_);    // q x q   
+        DMatrix<double> XpTXp = Xp_.transpose() * Xp_;
+
+        // in the old library they use the ldlt decomposition (non exact inverse)
+        //Qp_ =  Wp_ * DMatrix<double>::Identity(p_l_, p_l_) - Wp_ * Xp_ * invXptWpXp * XptWp;
+        Qp_ = DMatrix<double>::Identity(p_l_, p_l_) - Xp_ * XpTXp.ldlt().solve(Xp_.transpose());
+        }
+
     }
+
+    void Qp_dec(){
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+        // Q * (y - epislon) = Q * r
+        // Eigen decomposition
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> Q_eigen(Qp_);  
+        // matrix V is the matrix p_l_ x (p_l_-q) of the nonzero eigenvectors of Q
+        DMatrix<double> Q_eigenvectors = Q_eigen.eigenvectors();
+        if(m_.has_covariates())
+          Qp_dec_ = Q_eigenvectors.rightCols(p_l_ - m_.X().cols());
+        else
+          Qp_dec_ = Q_eigenvectors;
+    }
+
+
+
+    double f_p_value(){
+        if(is_empty(Psi_p_))
+           Psi_p();
+        if(is_empty(f0_)){
+           Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+        }
+        if(is_empty(Qp_dec_))
+           Qp_dec();
+
+        // test statistic when Pi = Id
+        DVector<double> VQr = Qp_dec_.transpose() * Qp_ * (yp() - f0_);
+
+        DVector<double> Ti = Psi_p_.transpose() * Qp_dec_ * VQr;
+
+       // save the rank of Ti
+       double Ti_rank = Ti.array().square().sum();
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+                    std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+       int count = 0;
+       DVector<double> tp_vqr = VQr; 
+       DVector<double> Tp = Ti;
+
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < VQr.size(); ++j){
+	         int flip = 2 * distr(eng) - 1;
+	         tp_vqr(j) = VQr(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * Qp_dec_ * tp_vqr;
+            // flipped statistics
+            double Tp_rank = Tp.array().square().sum();
+      
+            if(Tp_rank >= Ti_rank){
+             ++count;
+            } 
+        }
+        double p_value = count/static_cast<double>(n_flip);
+
+        return p_value;
+    }
+
+    
+    double sign_flip_p_value(){
+        if(is_empty(Psi_p_))
+           Psi_p();
+        if(is_empty(f0_)){
+           Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+        }
+        if(is_empty(Qp_)){
+           Qp();
+        }
+        // test statistic when Pi = Id
+        DVector<double> VQr = Qp_ * (yp() - f0_);
+
+        DVector<double> Ti = Psi_p_.transpose() * VQr;
+
+       // save the rank of Ti
+       double Ti_rank = Ti.array().square().sum();
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+       int count = 0;
+       DVector<double> tp_vqr = VQr; 
+       DVector<double> Tp = Ti;
+       
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < VQr.size(); ++j){
+	         int flip = 2 * distr(eng) - 1;
+	         tp_vqr(j) = VQr(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * tp_vqr;
+            // flipped statistics
+            double Tp_rank = Tp.array().square().sum();
+      
+            if(Tp_rank >= Ti_rank){
+             ++count;
+            } 
+        }
+        double p_value = static_cast<double>(count)/static_cast<double>(n_flip);
+
+        return p_value;
+    }
+
+
+    double f_CI_p_val(const DVector<double> res, const int curr_index){
+        if(is_empty(Qp_dec_))
+           Qp_dec();
+
+        DVector<double> Vres = Qp_dec_.transpose() * res;
+
+        DVector<double> Ti = Psi_p_.transpose() * Qp_dec_ * Vres;
+
+        // random sign-flips
+        // Bernoulli dist (-1, 1) with p = 0.5
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+       int up = 0;
+       int down = 0;
+       DVector<double> Tp = Ti;
+       DVector<double> perm_res = Vres;
+
+       for(int i = 0; i < n_flip; ++i){
+            for(int j = 0; j < Vres.size(); ++j){
+                int flip = 2 * distr(eng) - 1;
+                perm_res(j) = Vres(j) * flip;
+            }
+            Tp = Psi_p_.transpose() * Qp_dec_ * perm_res;
+
+            if(Tp(curr_index) > Ti(curr_index)){
+                ++up;
+            }
+            else if (Tp(curr_index) < Ti(curr_index)){
+                ++down;
+            }
+       }
+
+       return std::min(up, down);
+
+    }
+
+
+
+    DVector<double> Wald_range(){
+        // create Wald object
+        Wald<Model, Strategy> Wald_(m_);
+
+        DMatrix<double> id = DMatrix<double>::Identity(m_.Psi().cols(), m_.Psi().cols());
+         
+        DMatrix<double> Wald_CI = Wald_.f_CI();
+        int size = Wald_CI.rows();
+        DVector<double> ranges {};
+        ranges.resize(size);
+
+        for(int i = 0; i < size; ++i){
+            ranges(i) = 0.5 * (Wald_CI(i, 1) - Wald_CI(i, 0));
+        }
+
+        return ranges;
+    }
+    
+    DMatrix<double> f_CI(){
+        // only if the locations are a subset of the mesh
+        // compute the Q only on the locations in which you want inference
+        if(is_empty(Qp_))
+           Qp();
+        
+        DVector<double> fp = Psi_p_ * m_.f();
+        int nloc = fp.size();
+
+        DMatrix<double> CI;
+        CI.resize(nloc, 2);
+
+        DVector<double> Wald_ranges_ = Wald_range();
+
+        // bisection tolerance
+        DVector<double> bis_tol = 0.2 * Wald_ranges_;
+
+        DVector<double> UU; // Upper limit for Upper bound
+        UU.resize(nloc);
+        DVector<double> UL; // Lower limit for Upper bound
+        UL.resize(nloc);
+        DVector<double> LU; // Upper limit for Lower bound
+        LU.resize(nloc);
+        DVector<double> LL; // Lower limit for Lower bound
+        LL.resize(nloc);
+
+        // initialize the intervals with a Wald estimate
+        for(int i = 0; i < nloc; ++i){
+            double range = Wald_ranges_(i);
+            CI(i, 0) = fp(i) - range; 
+            CI(i, 1) = fp(i) + range;
+            UU(i) = CI(i, 1) + 0.5 * range;
+            UL(i) = CI(i, 1) - 0.5 * range;
+            LU(i) = CI(i, 0) + 0.5 * range;
+            LL(i) = CI(i, 0) - 0.5 * range;
+        }
+
+        // vector of booleans to check which inetrvals have converged
+        std::vector<bool> converged_up(nloc, false);
+        std::vector<bool> converged_low(nloc, false);
+        bool converged = false;
+        
+        // we need p-values ofr UU, UL, LU, LL
+        DMatrix<double> p_values(4, nloc);
+        // need this to compute the p-values
+        DVector<double> res(nloc);
+
+        // for getting the current index
+        if(is_empty(locations_f_)){
+            locations_f_ = DVector<int>::LinSpaced(nloc, 0, nloc-1);
+        }
+
+        for(int i = 0; i < nloc; ++i){
+            DVector<double> fp_UU = fp;
+            DVector<double> fp_UL = fp;
+            DVector<double> fp_LU = fp;
+            DVector<double> fp_LL = fp;
+
+            res = Qp_ * (yp() - fp_UU); 
+            p_values(0,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_UL); 
+            p_values(1,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_LU); 
+            p_values(2,i) = f_CI_p_val(res, locations_f_[i]);
+            res = Qp_ * (yp() - fp_LL); 
+            p_values(3,i) = f_CI_p_val(res, locations_f_[i]);
+
+        }
+        // one at the time confidence intervals
+        int max_it = 5;
+        int count = 0;
+        double ppval = 0;
+
+        while(!converged && count < max_it){
+
+            omp_set_nested(1);
+
+            // compute p-values needed
+            #pragma omp parallel for
+            for(int i = 0; i < nloc; ++i){
+                DVector<double> fp_UU = fp;
+                DVector<double> fp_UL = fp;
+                DVector<double> fp_LU = fp;
+                DVector<double> fp_LL = fp;
+
+
+                #pragma omp parallel sections
+                {
+                #pragma omp section
+                {
+                if(!converged_up[i]){
+                   // check upper upper
+                    if(p_values(0, i) > 0.5 * alpha_f_){
+	                    UU(i) = UU(i) + 0.5 * (UU(i) - UL(i));
+                        res = Qp_ * (yp() - fp_UU); 
+                        p_values(0,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else if(p_values(1, i) < 0.5 * alpha_f_){
+                        UL(i) = fp(i) + 0.5 * (UL(i) - fp(i));
+                        res = Qp_ * (yp() - fp_UL); 
+                        p_values(1,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else{
+                        if((UU(i) - UL(i)) < bis_tol(i)){
+                            converged_up[i] = true;
+                        }
+                        else{
+                            double proposal = 0.5 * (UU(i) + UL(i));
+                            DVector<double> fpp = fp;
+                            res = Qp_ * (yp() - fpp);
+                            ppval = f_CI_p_val(res, locations_f_[i]);
+                            if(ppval <= 0.5 * alpha_f_){
+                                UU(i) = proposal;
+                                p_values(0, i) = ppval;
+                            }
+                            else{
+                                UL(i) = proposal;
+                                p_values(1, i) = ppval;
+                            }
+                        }
+                    }
+                } // end if
+                } // end pragma section
+
+                #pragma omp section
+                {
+                if(!converged_low[i]){
+                   // check lower upper
+                    if(p_values(2, i) < 0.5 * alpha_f_){
+	                    LU(i) = fp(i) - 0.5 * (fp(i) - LU(i));
+                        res = Qp_ * (yp() - fp_LU); 
+                        p_values(2,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else if(p_values(3, i) > 0.5 * alpha_f_){
+                        LL(i) = LL(i) + 0.5 * (LU(i) - LL(i));
+                        res = Qp_ * (yp() - fp_LL); 
+                        p_values(3,i) = f_CI_p_val(res, locations_f_[i]);
+                    }
+                    else{
+                        if((LU(i) - LL(i)) < bis_tol(i)){
+                            converged_low[i] = true;
+                        }
+                        else{
+                            double proposal = 0.5 * (LU(i) + LL(i));
+                            DVector<double> fpp = fp;
+                            res = Qp_ * (yp() - fpp);
+                            ppval = f_CI_p_val(res, locations_f_[i]);
+                            if(ppval <= 0.5 * alpha_f_){
+                                LL(i) = proposal;
+                                p_values(3, i) = ppval;
+                            }
+                            else{
+                                LU(i) = proposal;
+                                p_values(2, i) = ppval;
+                            }
+                        }
+                    }
+
+                } // end if
+                } // end pragma section
+                } // end pragma sections
+
+            } // for end
+
+            converged = true;
+
+            for(int j = 0; j < nloc; ++j){
+                if(!converged_up[j] || !converged_low[j]){
+                    converged = false;
+                }
+            }
+
+            count++;
+               
+        }
+        if(!converged){
+            std::cout << "Not all ESF CI converged" << std::endl;
+        }
+
+        for(int k = 0; k < nloc; ++k){
+            if(!converged_up[k] || !converged_low[k]){
+                // set a unfeasible number if the interval has not converged
+                CI(k, 0) = 10e20;
+                CI(k, 1) = 10e20;
+            }    
+            else{
+                CI(k, 0) = 0.5 * (LU(k) + LL(k));
+                CI(k, 1) = 0.5 * (UU(k) + UL(k));
+            }        
+        }
+
+        return CI;       
+    }
+
+
 
      void V() override{
         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
@@ -744,6 +1115,14 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
      void setNflip(int m){
         n_flip = m;
      };
+
+     void setseed(int k){
+        set_seed=k;
+     }
+           
+     void setMesh_loc(DVector<int> m_nodes){
+        mesh_nodes_ = m_nodes;
+     }
 
 };
 

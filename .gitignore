@@ -14,3 +14,5 @@ test/CMakeFiles/
 test/_deps/
 test/libs/
 test/lib/
+./run_tests.sh
+

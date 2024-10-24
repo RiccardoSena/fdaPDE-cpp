@@ -21,7 +21,7 @@
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
 using fdapde::core::lump;
-
+using fdapde::core::is_empty;
 #include "../model_macros.h"
 #include "../model_traits.h"
 #include "../model_base.h"
@@ -34,8 +34,9 @@ using fdapde::core::lump;
 #include <cmath>
 #include <random>
 
-// per salvare la matrice con savemarket
+//serve per salvare le matrici 
 #include <unsupported/Eigen/SparseExtra> 
+#include <fstream>
 
 
 
@@ -52,9 +53,9 @@ template <typename Model> class InferenceBase{
       DVector<double> beta_ {};        // sol of srpde ( q x 1 ) matrix          
       DVector<double> beta0_ {};        // inference hypothesis H0 (p x 1) matrix
       DVector<double> f0_ {};          // inference hypothesis H0
-      DVector<int> locations_f_ {};   // vector of indexes of locations for which we want inference
       double alpha_ = 0;                // level of the confidence intervals for beta
-      double alpha_f_ = 0;              // level of confidence intervals for f 
+      double alpha_f_ = 0.05;              // level of confidence intervals for f 
+      DVector<int> locations_f_ {};   // indexes of the subset of locations if locations are exctracted from existing ones
 
 
     public: 
@@ -118,6 +119,7 @@ template <typename Model> class InferenceBase{
          CIMatrix.col(1) = upperBound;
          return CIMatrix;
       }
+
 
       virtual DVector<double> p_value(CIType type){
 
@@ -188,39 +190,29 @@ template <typename Model> class InferenceBase{
 
       // return the sparse approx of E^{-1}
       static SpMatrix<double> invE_approx(const Model& m){
-        SpMatrix<double> decR0_ = lump(m.R0());  
-        DiagMatrix<double> invR0_(decR0_.rows());
-        invR0_.setZero(); 
-        for (int i = 0; i < decR0_.rows(); ++i) {
-            double diagElement = decR0_.diagonal()[i];  
-            invR0_.diagonal()[i] = 1.0 / diagElement; 
-        }
-         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
 
+        int alpha = 10;    
+        int beta = 10;     
+        double epsilon = 0.005; 
 
-            int alpha = 10;    
-            int beta = 10;      
-            double epsilon = 0.05; 
-            SpMatrix<double> Et_sparse = Et_.sparseView();
-            
- 
-            FSPAI fspai_E(Et_sparse);
-            fspai_E.compute(alpha, beta, epsilon);
-            SpMatrix<double> invE_ = fspai_E.getInverse();
+        FSPAI<SpMatrix<double>> fspai_R0(m.R0(), alpha, beta, epsilon);
+        SpMatrix<double> invR0_ = fspai_R0.inverse();  
+        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();        
+        SpMatrix<double> Et_sparse = Et_.sparseView();
+        FSPAI<SpMatrix<double>> fspai_E(Et_sparse, alpha, beta, epsilon);
+        SpMatrix<double> invE_ = fspai_E.inverse();
 
-            
         return invE_;  
       }
-
      
       // setter for matrix of combination of coefficients C
-      void setC(DMatrix<double> C){
+      void setC(const DMatrix<double>& C) {
          C_ = C;
       }
 
       // setter for alpha
       void setAlpha(double alpha){
-         fdapde_assert(0 <= alpha && alpha <= 1);      // throw an exception if condition is not met  
+         fdapde_assert(0 <= alpha && alpha <= 1);       
          if( 0 <= alpha && alpha <= 1) {
             alpha_ = alpha;
          }
@@ -228,25 +220,26 @@ template <typename Model> class InferenceBase{
 
       // setter for alpha f
       void setAlpha_f(double alpha){
-         fdapde_assert(0 <= alpha&& alpha <= 1);      // throw an exception if condition is not met  
+         fdapde_assert(0 <= alpha&& alpha <= 1);       
          if( 0 <= alpha && alpha <= 1) {
             alpha_f_ = alpha;
          }
       }      
 
-      // setter for beta0_
+      // setter for beta0_ 
       void setBeta0(DVector<double> beta0){
          beta0_ = beta0;
       }
 
       // setter for f0_
-      void setf0(DVector<double> f0){
+      void setf0(DVector<double> f0){ 
          f0_ = f0;
       }
 
-      void setLocations_f(DVector<int> loc){
-         locations_f_ = loc;
+      void setLocationsF(DVector<int> locs){
+         locations_f_ = locs;
       }
+
 
 };
 

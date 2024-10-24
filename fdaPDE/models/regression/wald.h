@@ -19,8 +19,10 @@
 
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
+#include <chrono>
 using fdapde::core::FSPAI;
 using fdapde::core::lump;
+using fdapde::core::is_empty;
 
 #include "../model_macros.h"
 #include "../sampling_design.h"
@@ -43,18 +45,18 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
     private: 
      struct ExactInverse {
-        DMatrix<double> compute(Model m){
+        DMatrix<double> compute(Model m){       
             return inverse(m.T());
         }
      };
      struct NonExactInverse {
         SpMatrix<double> compute(Model m){
-            DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());
-            DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             SpMatrix<double> invE_ = Base::invE_approx(m);
-            
-            SpMatrix<double> invMt_ = invE_ + invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            int nodes = m.Psi().cols();
+            DMatrix<double> Ut_ = m.U().topRows(nodes); 
+            DMatrix<double> Vt_ = m.V().leftCols(nodes);
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());                     
+            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             return invMt_;            
         }       
      };
@@ -65,7 +67,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      int p_l_;
      int rank;       // need to save this, since it's the degrees of freedom of the chi
      DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
-     int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the mesh nodes
+     int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the locations
 
     public: 
      using Base = InferenceBase<Model>;
@@ -86,22 +88,20 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      void beta() override{
         beta_ = m_.beta();
      }
-
-     double sigma_sq() {
-        double sigma_sq_ = 0;            
+     double sigma_sq(double trace) {
+       double sigma_sq_ = 0;             // sigma^2 
         DMatrix<double> epsilon = m_.y() - m_.fitted();
-        ExactEDF strat;
-        strat.set_model(m_);
-        sigma_sq_  = (1/(m_.n_obs() - m_.q() - strat.compute())) * epsilon.squaredNorm();
+        sigma_sq_  = (1/(m_.n_obs() - m_.q() - trace)) * epsilon.squaredNorm();
         return sigma_sq_;
      }
 
      void V() override{
-        DMatrix<double> invSigma_ = inverse(m_.X().transpose() * m_.X());
+        DMatrix<double> X = m_.X();
+        DMatrix<double> invSigma_ = inverse(X.transpose() * X);
         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
-        DMatrix<double> ss = S * S.transpose();
-        DMatrix<double> left = invSigma_ * m_.X().transpose();
-        V_ = sigma_sq() * (invSigma_ + left * ss * left.transpose()); 
+        double trace = S.trace();
+        DMatrix<double> left = invSigma_ * X.transpose();
+        V_ = sigma_sq(trace) * (invSigma_ + left * S * S.transpose() * left.transpose()); 
      }
 
      void Psi_p(){
@@ -126,6 +126,11 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       }
      }
 
+     // setter needed for ESF f CI
+     void set_Psi_p(SpMatrix<double> Psi){
+      Psi_p_ = Psi;
+     }
+
      void fp(){
       if(is_empty(Psi_p_))
          Psi_p();
@@ -134,34 +139,31 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void Vf(){
       // covariance matrice of f^
-      DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); 
-      DMatrix<double> Vff = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
-
+      // still difference in exact and non exact when computing S
+      DMatrix<double> S_psiT = s_.compute(m_) * m_.Psi().transpose(); 
+      // needed to compute the variance of the residuals
+      DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.Psi().transpose() * m_.Q(); 
+      double trace = S.trace();
+      DMatrix<double> Vff = sigma_sq(trace) * S_psiT * m_.Q() * S_psiT.transpose(); 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
       // belonging to the chosen portion Omega_p
-
       if(is_empty(Psi_p_))
          Psi_p();
       Vf_ = Psi_p_ * Vff * Psi_p_.transpose();
-
      }
 
      DMatrix<double> invVf(){
       if(is_empty(Vf_))
          Vf();
-
-
       // to retrieve eigenvalues and eigenvectors of the Vw matrix
       Eigen::SelfAdjointEigenSolver<DMatrix<double>> Vw_eigen(Vf_);
       DVector<double> eigenvalues = Vw_eigen.eigenvalues();
-
       // now we need to discard the one really close to 0
-
-      double thresh = 0.0001;
-      
+      double thresh = 0.0001;      
       int flag = 0;
       int it = 0;
       while(flag == 0 && it < eigenvalues.size()){
+         //if(eigenvalues(it, it) > thresh)
          if(eigenvalues(it) > thresh)
             flag = 1;
          ++it;
@@ -173,7 +175,6 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       DVector<double> imp_eigval = eigenvalues.tail(rank);
       // consider only the significant eigenvectors
       DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(rank);
-
       // now we can compute the r-rank pseudoinverse
       DVector<double> temp = imp_eigval.array().inverse();
       DiagMatrix<double> inv_imp_eigval = temp.asDiagonal();
@@ -187,12 +188,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             fp();
          if(is_empty(f0_))
             Base::setf0(DVector<double>::Zero(fp_.size()));
-
+         // compute the test statistic
          double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
-         std::cout << "fp - f0: " << std::endl;
-         std::cout << fp_ - f0_ << std::endl;;
          double pvalue = 0;
-
          double p = chi_squared_cdf(stat, rank);
          if(p < 0){
             pvalue = 1;

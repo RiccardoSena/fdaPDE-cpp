@@ -21,6 +21,7 @@
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
 using fdapde::core::lump;
+using fdapde::core::is_empty;
 
 #include "../model_macros.h"
 #include "../model_traits.h"
@@ -47,6 +48,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
 
       struct NonExactInverse{
          SpMatrix<double> compute(Model m){
+            SpMatrix<double> invE_ = Base::invE_approx(m);
             return Base::invE_approx(m);
          }
       };
@@ -68,7 +70,9 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
 
      // return Lambda_^2
      DMatrix<double> Lambda() {
-        DMatrix<double> Lambda = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+        int n = m_.n_obs();
+        DMatrix<double> pax =  s_.compute(m_);
+        DMatrix<double> Lambda = DMatrix<double>::Identity(n, n) - m_.Psi() * pax * m_.PsiTD();
         DMatrix<double> Lambda_squared = Lambda * Lambda;
         return Lambda_squared;
      }
@@ -77,10 +81,9 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         if(is_empty(Lambda_)){
             Lambda_ = Lambda();
         }
-        
         DMatrix<double> W = m_.X();
         DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));      
-        beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());            
+        beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());         
      }
 
      void V() override{
@@ -95,7 +98,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         V_.resize(m_.q(), m_.q());                   
         DMatrix<double> W_t = W.transpose();           
         DMatrix<double> diag = Res2.asDiagonal();
-        V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;         
+        V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;      
      }
  
 };

@@ -29,7 +29,6 @@
 namespace fdapde {
 namespace models {
 
-    // oggetti comuni a Wald e Speckman
     struct exact {};
     struct nonexact {};
     enum CIType {bonferroni,simultaneous,one_at_the_time};
@@ -42,14 +41,13 @@ namespace models {
             return 0; 
         }            
         if (x == 1) {
-            return 1; // Caso base: gamma(1) = 1
+            return 1; 
         }         
         if (x > 1) {
 
             double logGamma = 0.5 * log(2 * M_PI * x) + (x - 0.5) * log(x) - x + 1.0 / (12 * x);
             return exp(logGamma);
         } else {
-            // Formula di riflessione di Euler
             return M_PI / (sin(M_PI * x) * gamma(1 - x));
         }
     }
