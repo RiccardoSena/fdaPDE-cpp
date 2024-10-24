@@ -216,7 +216,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       // covariance matrice of f^
       // still difference in exact and non exact when computing S
       DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
-      DMatrix<double> Vff = sigma_sq() * S_psiT * m_.Q() * S_psiT.transpose(); 
+      // needed to compute the variance of the residuals
+      DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
+      double trace = S.trace();
+      DMatrix<double> Vff = sigma_sq(trace) * S_psiT * m_.Q() * S_psiT.transpose(); 
 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
       // belonging to the chosen portion Omega_p

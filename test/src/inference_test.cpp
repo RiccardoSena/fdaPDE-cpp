@@ -518,9 +518,9 @@ TEST(inference_test, SpeckmanNonExact27oat){
     EXPECT_TRUE(almost_equal(pvalues(1), 0.0902682, 1e-7));
 } 
 
-
-
 */
+
+
 
 
 
@@ -1165,8 +1165,6 @@ TEST(inference_test, chronoWald) {
 
 
 
-/*
-
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
@@ -1228,7 +1226,7 @@ TEST(inference_test, chrono) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1252,10 +1250,10 @@ TEST(inference_test, chrono) {
     }
 
 }
-*/
 
 
 
+/*
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1308,7 +1306,7 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1329,12 +1327,12 @@ TEST(inference_test, chrono_investigation) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
-
+std::cout << "Mean time of " << Nodes[i] << " is: " 
+                  << average_duration.count() << " microseconds" << std::endl;
     }
 
 }
-
+*/
 
 
 
@@ -1747,7 +1745,8 @@ TEST(inference_test, inference_f_) {
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     DVector<int> loc_indexes(6);
-    loc_indexes << 2, 6, 8, 9, 10, 11;
+    //loc_indexes << 2, 6, 8, 9, 10, 11;
+    loc_indexes << 1, 5, 7, 8, 9, 10;
     inferenceWald.setLocationsF(loc_indexes);
     inferenceESF.setLocationsF(loc_indexes);
     inferenceESF.setNflip(10000);
@@ -1760,8 +1759,8 @@ TEST(inference_test, inference_f_) {
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
-
 */
+
 
 
 /*

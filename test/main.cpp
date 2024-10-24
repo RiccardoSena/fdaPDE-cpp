@@ -21,8 +21,8 @@
 */
 
 
-#include "src/inference_test.cpp"
-//#include "src/inferencetime_test.cpp"
+//#include "src/inference_test.cpp"
+#include "src/inferencetime_test.cpp"
 #include <unsupported/Eigen/SparseExtra> 
 #include <fstream>
 

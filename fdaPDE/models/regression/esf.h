@@ -103,13 +103,21 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         
         // compute Lambda
         if(is_empty(Lambda_)){
+            auto start = std::chrono::high_resolution_clock::now();
             V();
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+            std::cout << "V(): " << duration << std::endl;
         }
 
         Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
+        auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> eigenvalues = solver.eigenvalues();
         DMatrix<double> eigenvectors = solver.eigenvectors();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Eigen values: " << duration << std::endl;
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
@@ -674,8 +682,6 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     };
 
 
-
-
      DMatrix<double> computeCI_serial(CIType type){
         // compute Lambda
         if(is_empty(Lambda_)){
@@ -1081,7 +1087,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
     DMatrix<double> Xp(){
       // case in which the locations are extracted from the observed ones
-      if(is_empty(locations_f_) && is_empty(mesh_nodes_)){
+      if(is_empty(locations_f_) || !is_empty(mesh_nodes_)){
         return m_.X();
       }
       if(!m_.has_covariates())
@@ -1097,16 +1103,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         Xp.row(j) = X.row(row);
       }
       return Xp;
-      }
-      int m = mesh_nodes_.size();
-      DMatrix<double> X = m_.X();
-      DMatrix<double> Xp;
-      Xp.resize(m, X.cols());
-      for(int j = 0; j < m; ++j) {
-        int row = mesh_nodes_[j];
-        Xp.row(j) = X.row(row);
-      }
-      return Xp;      
+      }    
     }
 
     DMatrix<double> Wp(){
