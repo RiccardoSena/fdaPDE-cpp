@@ -56,6 +56,8 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
       };
 
      int n_flip = 1000; //default value
+     int set_seed=0;
+
      DMatrix<double> Lambda_ {};
      
      // variabili aggiunte per confidence intervals 
@@ -106,13 +108,10 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
             V();
         }
 
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
-
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
@@ -151,9 +150,17 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
             DVector<double> stat_flip = stat;
 
             //Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; 
+             //Random sign-flips
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             int up = 0;
             int down = 0;
 
@@ -233,9 +240,16 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
             DMatrix<double> stat_flip = stat;
 
             // Random sign-flips
-            std::random_device rd; 
-            std::default_random_engine eng{rd()};
-            std::uniform_int_distribution<> distr{0,1}; // Bernoulli(1/2)
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
             DVector<double> up = DVector<double>::Zero(p);
             DVector<double> down = DVector<double>::Zero(p);
             
@@ -298,13 +312,11 @@ DMatrix<double> computeCI_serial(CIType type){
         }
 
         // compute eigenvectors and eigenvalues of Lambda
-        Eigen::EigenSolver<DMatrix<double>> solver(Lambda_);        
+ Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
-        DMatrix<std::complex<double>> eigenvalues_complex = solver.eigenvalues();
-        DMatrix<std::complex<double>> eigenvectors_complex = solver.eigenvectors();
+        DMatrix<double> eigenvalues = solver.eigenvalues();
+        DMatrix<double> eigenvectors = solver.eigenvectors();
 
-        DMatrix<double> eigenvalues = eigenvalues_complex.real();
-        DMatrix<double> eigenvectors = eigenvectors_complex.real();
 
         // declare the matrix that will store the intervals
         DMatrix<double> result;
@@ -554,7 +566,59 @@ DMatrix<double> computeCI_serial(CIType type){
     
     }
 
+  double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
+        // declare the vector that will store the p-values
+        double result;
+    
+        // compute the vectors needed for the statistic 
+        DVector<double> Tilder = Tilder_star * partial_res_H0_CI;
 
+        // Initialize observed statistic and sign_flipped statistic
+        DMatrix<double> stat_temp = TildeX*Tilder;
+        double stat=stat_temp(0);
+        double stat_flip=stat;
+
+        // Random sign-flips
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+
+            //if we have a set seed 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+
+        double count_Up = 0;   // Counter for the number of flipped statistics that are larger the observed statistic
+        double count_Down = 0; // Counter for the number of flipped statistics that are smaller the observed statistic
+            
+        DVector<double> Tilder_perm=Tilder;
+    
+        // get the number of flips
+        int nflip=n_flip;
+
+        for(int i=0;i<nflip;i++){
+            for(int j=0;j<TildeX.cols();j++){
+                int flip;
+                flip=2*distr(eng)-1;
+                Tilder_perm(j)=Tilder(j)*flip;
+            }
+                DMatrix<double> stat_flip_temp = TildeX*Tilder_perm; 
+                stat_flip= stat_flip_temp(0);// Flipped statistic
+                if(stat_flip > stat){ ++count_Up;}else{ 
+                    if(stat_flip < stat){ ++count_Down;}  
+                }
+        }
+            
+        double pval_Up = count_Up/n_flip;     
+        double pval_Down = count_Down/n_flip; 
+
+        result = std::min(pval_Up, pval_Down); // select the correct unilateral p_value 
+
+        return result;
+        
+    };
     
         
 
@@ -755,7 +819,9 @@ DMatrix<double> computeCI_serial(CIType type){
      void setNflip(int m){
         n_flip = m;
      };
-           
+     void setseed(int k){
+        set_seed=k;
+     }
      void setMesh_loc(DVector<double> m_nodes){
         mesh_nodes_ = m_nodes;
      }

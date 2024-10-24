@@ -229,7 +229,7 @@ template <typename Model> class InferenceBase{
         //fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.inverse();
         //Eigen::saveMarket(invE_, "inversaE2.mtx");  
-        SpMatrix<double> precondE= fspai_E.getL();
+        //SpMatrix<double> precondE= fspai_E.getL();
         //Eigen::saveMarket(precondE, "precondE.mtx");
         
         /*
