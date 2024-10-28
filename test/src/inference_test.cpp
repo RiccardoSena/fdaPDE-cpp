@@ -519,6 +519,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
     EXPECT_TRUE(almost_equal(pvalues(1), 0.0902682, 1e-7));
 } 
 
+*/
 
 
 
@@ -572,7 +573,7 @@ TEST(inference_test, exact27) {
     inferenceESF.setBeta0(beta0);
     inferencePESF.setBeta0(beta0);
 
-    int n = 1000;
+    int n = 10000;
     inferenceESF.setNflip(n);
     inferenceESF.setseed(46);
     inferencePESF.setNflip(n);
@@ -588,12 +589,8 @@ TEST(inference_test, exact27) {
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
-    DVector<double> pvaluesesf = inferenceESF.p_value_serial(fdapde::models::simultaneous);
-   std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
-
-
-    DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::simultaneous);
-    std::cout<<"pvalues p-esf: "<<pvaluespesf<<std::endl;
+    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << CIESF_<<std::endl;
@@ -610,9 +607,14 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
+<<<<<<< HEAD
+
+=======
+>>>>>>> db701278faf6795b8b1aeea6a3ef147803ba61f8
 
 
 
+/*
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -1186,7 +1188,10 @@ TEST(inference_test, chronoWald) {
 */
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> db701278faf6795b8b1aeea6a3ef147803ba61f8
 
 TEST(inference_test, chrono) {
     
@@ -1272,17 +1277,15 @@ TEST(inference_test, chrono) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " 
-          << std::chrono::duration_cast<std::chrono::microseconds>(average_duration).count() 
-          << " ms" << std::endl;
+    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
 
     }
 
 }
 
 
-/*
 
+/*
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1344,7 +1347,7 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::exact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1370,8 +1373,12 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
     }
 
 }
+*/
 
 
+
+
+/*
 
 TEST(inference_test, chronoESF) {
     // define domain
@@ -1779,7 +1786,8 @@ TEST(inference_test, inference_f_) {
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     DVector<int> loc_indexes(6);
-    loc_indexes << 2, 6, 8, 9, 10, 11;
+    //loc_indexes << 2, 6, 8, 9, 10, 11;
+    loc_indexes << 1, 5, 7, 8, 9, 10;
     inferenceWald.setLocationsF(loc_indexes);
     inferenceESF.setLocationsF(loc_indexes);
     inferenceESF.setNflip(10000);
@@ -1792,8 +1800,10 @@ TEST(inference_test, inference_f_) {
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
-
 */
+
+
+
 /*
 
 TEST(inference_test, inference292) {

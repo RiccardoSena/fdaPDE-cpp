@@ -121,6 +121,7 @@ template <typename Model> class InferenceBase{
          return CIMatrix;
       }
 
+
       virtual DVector<double> p_value(CIType type){
 
          fdapde_assert(!is_empty(C_));      
@@ -211,8 +212,9 @@ template <typename Model> class InferenceBase{
             //Et_ should be stored as a sparse matrix 
 
        // questo serve se voglio invertire R0 cojn fspai           
-        FSPAI fspai_R0(m.R0());
-        fspai_R0.compute(m.R0(),alpha, beta, epsilon);
+        //FSPAI fspai_R0(m.R0());
+        FSPAI<SpMatrix<double>> fspai_R0(m.R0(), alpha, beta, epsilon);
+        //fspai_R0.compute(alpha, beta, epsilon);
         SpMatrix<double> invR0_ = fspai_R0.inverse();  
 
         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
@@ -222,8 +224,9 @@ template <typename Model> class InferenceBase{
         SpMatrix<double> Et_sparse = Et_.sparseView();
           
         //Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
-        FSPAI fspai_E(Et_sparse);
-        fspai_E.compute(Et_sparse,alpha, beta, epsilon);
+        //FSPAI fspai_E(Et_sparse);
+        FSPAI<SpMatrix<double>> fspai_E(Et_sparse, alpha, beta, epsilon);
+        //fspai_E.compute(alpha, beta, epsilon);
         SpMatrix<double> invE_ = fspai_E.inverse();
         //Eigen::saveMarket(invE_, "inversaE2.mtx");  
         //SpMatrix<double> precondE= fspai_E.getL();
