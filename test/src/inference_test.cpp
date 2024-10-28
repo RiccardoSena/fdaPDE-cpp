@@ -610,7 +610,7 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-*/
+
 
 
 TEST(inference_test, exact27) {
@@ -678,7 +678,7 @@ TEST(inference_test, exact27) {
 
 
 
-/*
+
 TEST(inference_test, nonexact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -1186,7 +1186,7 @@ TEST(inference_test, chronoWald) {
 */
 
 
-/*
+
 
 TEST(inference_test, chrono) {
     
@@ -1242,6 +1242,10 @@ TEST(inference_test, chrono) {
     model.init();
     model.solve();
 
+
+
+    // se vuoi velocizzare i tempi set(CMAKE_CXX_FLAGS "-O3 -march=native -std=c++20 ${CMAKE_WARNINGS_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR}/../ -I${CMAKE_CURRENT_SOURCE_DIR}/../fdaPDE/core/ -fPIE")
+   
     // chrono start
 
     int n_it = 20;
@@ -1249,16 +1253,16 @@ TEST(inference_test, chrono) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Wald<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
 
-    auto start = high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
     inference.p_value(fdapde::models::one_at_the_time);
 
-    auto end = high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
@@ -1277,7 +1281,7 @@ TEST(inference_test, chrono) {
 }
 
 
-
+/*
 
 TEST(inference_test, chrono_investigation) {
     
@@ -1469,10 +1473,10 @@ TEST(inference_test, non_exactESF27) {
     std::cout << "ESF non exact: " << inferenceESF.p_value(fdapde::models::simultaneous) << std::endl;
 
 }
-*/
 
 
-/*
+
+
 TEST(inference_test, inference28) {
     // define domain
     MeshLoader<Mesh2D> domain("c_shaped");
