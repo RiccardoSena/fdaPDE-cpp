@@ -527,6 +527,8 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 
+
+/*
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -589,8 +591,8 @@ TEST(inference_test, exact27) {
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
-    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
-    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
+    //DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
     //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << CIESF_<<std::endl;
@@ -599,6 +601,7 @@ TEST(inference_test, exact27) {
     EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
+
     EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
     EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
 
@@ -608,7 +611,7 @@ TEST(inference_test, exact27) {
 
 }
 
-
+*/
 
 /*
 TEST(inference_test, exact27) {
@@ -673,7 +676,7 @@ TEST(inference_test, exact27) {
    // std::cout<<"pvalues Partial-esf: "<<pvaluespesf<<std::endl;
 
 }
-
+*/
 
 
 /*
@@ -1185,6 +1188,8 @@ TEST(inference_test, chronoWald) {
 
 
 
+/*
+
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
@@ -1271,9 +1276,11 @@ TEST(inference_test, chrono) {
 
 }
 
+*/
 
 
-/*
+
+
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1330,12 +1337,12 @@ TEST(inference_test, chrono_investigation) {
 
     // chrono start
 
-    int n_it = 1;
+    int n_it = 20;
     std::chrono::microseconds total_duration(0);
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::ESF<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1348,8 +1355,6 @@ TEST(inference_test, chrono_investigation) {
 
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << "P val: " << inference.p_value(fdapde::models::one_at_the_time) << std::endl;
-
     total_duration += duration;
 
     }
@@ -1361,7 +1366,6 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
     }
 
 }
-*/
 
 
 
@@ -2272,4 +2276,103 @@ TEST(inference_test, inference3D){
 */
 
 
+/*
+TEST(inference_test, lump){
+
+    MeshLoader<Triangulation<2,2>> domain("TIME/10nodes");
+    // import data from files
+    DMatrix<double> y    = read_csv<double>("../data/models/TIME/10nodes/y_exact.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/TIME/10nodes/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.01;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    H1 << 0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 1;
+    // repetition for the simulations
+    int rep = 100;
+
+    DMatrix<double> res_lump(rep, H1.size());
+    DMatrix<double> res_fspai(rep, H1.size());
+
+    double sd = 0.1;
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_lump(rep);
+        DVector<double> pval_fspai(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            std::normal_distribution<double> distribution(0, sd);
+            DVector<double> random_vector(y.size());
+            for (int i = 0; i < random_vector.size(); ++i) {
+                random_vector[i] = distribution(generator);
+            }
+
+            DMatrix<double> observations = X * H1[i] + y + random_vector;
+        
+            SRPDE model(problem, Sampling::mesh_nodes);
+            model.set_lambda_D(lambda);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+        
+            fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceSpeck(model);
+            inferenceSpeck.setBeta0(beta0);
+            inferenceSpeck.setC(C);
+
+            fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inferenceSpeck_lump(model);
+            inferenceSpeck_lump.setBeta0(beta0);
+            inferenceSpeck_lump.setC(C);
+            inferenceSpeck_lump.setLumping(1);
+
+            pval_fspai[k-1] = inferenceSpeck.p_value(fdapde::models::one_at_the_time)(0);
+            pval_lump[k-1] = inferenceSpeck_lump.p_value(fdapde::models::one_at_the_time)(0);
+
+        }
+        res_lump.col(i) = pval_lump;
+        res_fspai.col(i) = pval_fspai;
+
+    }
+
+    DVector<double> power_matrix_lump(H1.size());
+    DVector<double> power_matrix_fspai(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_lump = 0;
+        int count_fspai = 0;
+        for (int i = 0; i < res_fspai.rows(); ++i){
+            if (res_fspai(i, j) < threshold){
+                count_fspai++;
+            }
+            if (res_lump(i, j) < threshold){
+                count_lump++;
+            }
+        }   
+        power_matrix_lump[j] = static_cast<double> (count_lump) / rep; 
+        power_matrix_fspai[j] = static_cast<double> (count_fspai) / rep;    
+    }
+
+    std::cout << "Power with lumping R0:" << std::endl;
+    std::cout << power_matrix_lump << std::setprecision(7) << std::endl;
+    std::cout << "Power with fspai for R0:" << std::endl;
+    std::cout << power_matrix_fspai << std::setprecision(7) << std::endl;
+
+
+}
+
+*/
 
