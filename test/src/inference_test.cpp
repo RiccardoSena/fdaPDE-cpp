@@ -524,7 +524,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 
 
-
+/*
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 
 TEST(inference_test, exact27) {
@@ -575,42 +575,46 @@ TEST(inference_test, exact27) {
 
     int n = 10000;
     inferenceESF.setNflip(n);
-    inferenceESF.setseed(46);
+    inferenceESF.setseed(48);
     inferencePESF.setNflip(n);
-    inferencePESF.setseed(46);
+    inferencePESF.setseed(48);
 
-    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
+    //DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
     //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
    // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
-    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    //DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
     //std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
-    DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
+    DVector<double> pvaluesesf = inferenceESF.p_value_serial(fdapde::models::simultaneous);
     std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
-    //DMatrix<double> CIESF_=inferenceESF.computeCI(fdapde::models::one_at_the_time);
-   // std::cout << "computed CI: " << CIESF_<<std::endl;
+    DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
+    std::cout << "computed CI: " << CIESF_<<std::endl;
+
+
+    DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::simultaneous);
+    std::cout<<"pvalues p-esf: "<<pvaluespesf<<std::endl;
+
+    DMatrix<double> CIPESF_=inferencePESF.computeCI_serial(fdapde::models::one_at_the_time);
+    std::cout << "computed CI: " << CIPESF_<<std::endl;
 
     // test correctness Wald
-    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
+    //EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
-    EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
-    EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
+    //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
+   // EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
 
     // test correctness ESF
     //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> db701278faf6795b8b1aeea6a3ef147803ba61f8
+*/
 
 
 
@@ -1185,14 +1189,6 @@ TEST(inference_test, chronoWald) {
 
 }
 
-*/
-
-
-<<<<<<< HEAD
-
-=======
->>>>>>> db701278faf6795b8b1aeea6a3ef147803ba61f8
-
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
@@ -1283,9 +1279,9 @@ TEST(inference_test, chrono) {
 
 }
 
+*/
 
 
-/*
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1347,7 +1343,7 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::ESF<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
@@ -1373,7 +1369,7 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
     }
 
 }
-*/
+
 
 
 

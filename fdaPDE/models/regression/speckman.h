@@ -89,13 +89,13 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         DMatrix<double> pax =  s_.compute(m_);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "pax: " << duration << std::endl;
+        std::cout << "pax: " << duration.count() << std::endl;
         DMatrix<double> Lambda = DMatrix<double>::Identity(n, n) - m_.Psi() * pax * m_.PsiTD();
         //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD()*DMatrix<double>::Identity(m_.n_obs(), m_.n_obs())-m_.Psi() * s_.compute(m_) * m_.PsiTD();
         DMatrix<double> Lambda_squared = Lambda * Lambda;
         auto end1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-        std::cout << "Lambda: " << duration1 << std::endl;
+        std::cout << "Lambda: " << duration1.count() << std::endl;
         return Lambda_squared;
      }
 
@@ -109,7 +109,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());   
          auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            std::cout << "Beta: " << duration << std::endl;         
+            std::cout << "Beta: " << duration.count() << std::endl;         
      }
 
      void V() override{
@@ -128,7 +128,7 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;  
          auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            std::cout << "V: " << duration << std::endl;       
+            std::cout << "V: " << duration.count() << std::endl;       
      }
  
 };

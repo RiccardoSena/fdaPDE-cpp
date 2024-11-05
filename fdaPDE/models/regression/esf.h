@@ -108,7 +108,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             V();
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            std::cout << "V(): " << duration << std::endl;
+            std::cout << "V(): " << duration.count() << std::endl;
         }
 
         Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
@@ -118,7 +118,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> eigenvectors = solver.eigenvectors();
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "Eigen values: " << duration << std::endl;
+        std::cout << "Eigen values: " << duration.count() << std::endl;
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
         DVector<double> beta_hat_mod = beta_hat;
@@ -703,7 +703,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         // this vector will store the tolerance for each interval upper/lower limit
         // QUI NON SO SE 0.1 O 0.2 PER LA TOLLERANZA MASSIMA 
-        DVector<double> ESF_bisection_tolerances = 0.1*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
+        DVector<double> ESF_bisection_tolerances = 0.2*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
         
 
         // define storage structures for bisection algorithms
@@ -743,7 +743,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         local_p_values.resize(4,p);
         
         // compute the vectors needed for the statistic
-        DMatrix<double> TildeX = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+        DMatrix<double> TildeX = ( m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
         DMatrix<double> Tilder_star = eigenvectors.transpose();   			        		// V^t
         // Select eigenvalues that will not be flipped basing on the estimated bias carried
         DVector<double> Tilder_hat = eigenvectors.transpose()* (m_.y() - (m_.X())* beta_hat); // This vector represents Tilder using only beta_hat, needed for bias estimation
@@ -913,12 +913,13 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         
     };
 
-    void Compute_speckman_aux(void){
+void Compute_speckman_aux(void){
         // questo è il calcolo di Speckman intervals per initial guess per CI di ESF 
         // COSTRUITA ESATTAMENTE COME LA NOSTRA 
         fdapde_assert(!is_empty(C_));  
 
         double alpha_=0.05;
+        /*
         if(is_empty(V_)){
            V();
         }
@@ -939,13 +940,64 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
 
         is_speckman_aux_computed = true; 
         return;
+        */
+    //check if Lambda has been computed
+  if(!is_empty(Lambda_)){
+    V();
+  }
+
+  // extract W and W^T
+  DMatrix<double> X = m_.X();
+DMatrix<double> X_t = m_.X().transpose();  
+  // Decomposition of [W^t * Lambda^2 * W] 
+  Eigen::PartialPivLU<DMatrix<double>> XLX_dec; 
+  XLX_dec.compute((X_t)*(Lambda_*Lambda_)*(X));
+  
+  // get the residuals needed
+  DVector<double> eps_hat = (m_.y() - m_.fitted());
+  // build squared residuals
+    DVector<double> Res2=eps_hat.array()*eps_hat.array();
+  
+  // resize the variance-covariance matrix
+  int q = C_.cols();
+  DMatrix<double> V;
+  V.resize(q,q);
+  
+  
+  DMatrix<double> diag = Res2.asDiagonal();
+  
+  V = (XLX_dec).solve((X_t)*(Lambda_*Lambda_)*Res2.asDiagonal()*(Lambda_*Lambda_)*(X)*(XLX_dec).solve(DMatrix<double>::Identity(q,q))); // V = [(W*Lambda2*W)^-1 * Res2 * (W*Lambda2*W)^-1]
+
+  // Extract the quantile needed for the computation of upper and lower bounds
+  double quant = normal_standard_quantile(1 - alpha_/2);            
+
+  // extract matrix C 
+  
+  int p = C_.rows(); 
+  
+  Speckman_aux_ranges.resize(p);
+ 
+  // for each row of C matrix
+  for(int i=0; i<p; ++i){
+    DVector<double> col = C_.row(i);
     
-    }
+    // compute the standard deviation of the linear combination and half range of the interval
+    double sd_comb = std::sqrt(col.adjoint()*V*col);
+    double half_range=sd_comb*quant;
+    
+    // save the half range
+    Speckman_aux_ranges(i)=half_range;  	
+  }
+
+  this->is_speckman_aux_computed = true;
+
+  return;
+}
 
         
 
 
-
+//DA CONTROLLARE RISPETTO A IMPLEMENTAZIONE VECCHIA PERCHèHA  UN INPUT IN PIù
     double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
         // declare the vector that will store the p-values
         double result;
@@ -957,6 +1009,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         DMatrix<double> stat_temp = TildeX*Tilder;
         double stat=stat_temp(0);
         double stat_flip=stat;
+
 
         // Random sign-flips
             std::default_random_engine eng;
