@@ -20,7 +20,7 @@
 #include <fdaPDE/linear_algebra.h>
 #include <fdaPDE/utils.h>
 using fdapde::core::FSPAI;
-using fdapde::core::lump;
+using fdapde::core::lump; 
 using fdapde::core::is_empty;
 
 #include "../model_macros.h"
@@ -33,46 +33,42 @@ using fdapde::core::is_empty;
 #include "inference_base.h"
 #include "inference.h"
 
+#include <chrono>
 
 namespace fdapde {
 namespace models {
+
+/*
+template <typename RegularizationType, typename Strategy>
+class Speckman<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<RegularizationType>> {
+   ....
+};
+*/
 
 template <typename Model, typename Strategy> class Speckman: public InferenceBase<Model> {
 
     private:
       struct ExactInverse{
          DMatrix<double> compute(Model m){
-            return inverse(m.E());       
+            return inverse(m.E()).block(0, 0, m.n_basis(), m.n_basis());       
          }
       };
 
       struct NonExactInverse{
          SpMatrix<double> compute(Model m){
-                        SpMatrix<double> invE_ = Base::invE_approx(m);
-
-            // Ciclo per stampare i primi dieci elementi di invE_
-            /*
-            std::cout << "First ten elements of invE_:\n";
-            int count = 0;
-            for (int k = 0; k < invE_.outerSize(); ++k) {
-               for (SpMatrix<double>::InnerIterator it(invE_, k); it; ++it) {
-                     std::cout << "(" << it.row() << ", " << it.col() << "): " << it.value() << "\n";
-                     if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
-               }
-               if (count >= 10) break; // Interrompi se hai stampato 10 elementi
-            }
-            */
             return Base::invE_approx(m);
          }
       };
 
       DMatrix<double> Lambda_ {};
 
+
     public: 
      using Base = InferenceBase<Model>;
      using Base::m_;
      using Base::V_;
      using Base::beta_;
+     using Base::lump_flag;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
 
@@ -83,19 +79,25 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
 
      // return Lambda_^2
      DMatrix<double> Lambda() {
-      auto start1 = std::chrono::high_resolution_clock::now();
-        int n = m_.n_obs();
-        auto start = std::chrono::high_resolution_clock::now();
-        DMatrix<double> pax =  s_.compute(m_);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "pax: " << duration << std::endl;
-        DMatrix<double> Lambda = DMatrix<double>::Identity(n, n) - m_.Psi() * pax * m_.PsiTD();
-        //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD()*DMatrix<double>::Identity(m_.n_obs(), m_.n_obs())-m_.Psi() * s_.compute(m_) * m_.PsiTD();
-        DMatrix<double> Lambda_squared = Lambda * Lambda;
-        auto end1 = std::chrono::high_resolution_clock::now();
-        auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-        std::cout << "Lambda: " << duration1 << std::endl;
+      //auto start1 = std::chrono::high_resolution_clock::now();
+        //int n = m_.n_obs();
+        //auto start = std::chrono::high_resolution_clock::now();
+        //DMatrix<double> pax =  s_.compute(m_);
+        //auto end = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        //std::cout << "pax: " << duration << std::endl;
+        //Lambda_ = DMatrix<double>::Identity(n, n) - m_.Psi() * pax * m_.PsiTD();
+        if (lump_flag == 0){
+         //std::cout << s_.compute(m_).topRows(5) << std::endl;
+           Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+        }
+         else{
+         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * Base::invE_approx_lump(m_) * m_.PsiTD();
+         }
+         DMatrix<double> Lambda_squared = Lambda_ * Lambda_;
+        //auto end1 = std::chrono::high_resolution_clock::now();
+        //auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+        //std::cout << "Lambda: " << duration1 << std::endl;
         return Lambda_squared;
      }
 
@@ -103,33 +105,35 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         if(is_empty(Lambda_)){
             Lambda_ = Lambda();
         }
-        auto start = std::chrono::high_resolution_clock::now();
+        //auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> W = m_.X();
         DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));      
         beta_ = invWtW * W.transpose() * Lambda_ * (m_.y());   
-         auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            std::cout << "Beta: " << duration << std::endl;         
+         //auto end = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+         //std::cout << "Beta: " << duration << std::endl;         
      }
 
      void V() override{
+      //auto start = std::chrono::high_resolution_clock::now();
         if(is_empty(Lambda_)){
             Lambda_ = Lambda();
         }
-        auto start = std::chrono::high_resolution_clock::now();
+        //auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> W = m_.X();
         DMatrix<double> invWtW = inverse(W.transpose() * Lambda_ * (W));
         DVector<double> eps_ = (m_.y() - m_.fitted());
-        DVector<double> Res2 = eps_.array() * eps_.array();            
+        DVector<double> Res2 = eps_.array() * eps_.array();      
         // resize the variance-covariance matrix
         V_.resize(m_.q(), m_.q());                   
         DMatrix<double> W_t = W.transpose();           
         DMatrix<double> diag = Res2.asDiagonal();
-        V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;  
-         auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            std::cout << "V: " << duration << std::endl;       
+        V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;
+         //auto end = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+         //std::cout << "V: " << duration << std::endl;       
      }
+
  
 };
 

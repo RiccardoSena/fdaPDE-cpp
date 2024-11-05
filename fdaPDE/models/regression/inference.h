@@ -27,6 +27,13 @@
 #include <random>
 
 namespace fdapde {
+
+// trait to detect if T is an Eigen dense matrix
+template <typename T> struct is_eigen_dense {
+  static constexpr bool value = std::is_base_of<Eigen::MatrixBase<T>, T>::value;
+};
+template <typename T> constexpr bool is_eigen_dense_v = is_eigen_dense<T>::value;
+
 namespace models {
 
     // oggetti comuni a Wald e Speckman
@@ -129,13 +136,17 @@ namespace models {
     }
 
 
- // function that returns the exact inverse of a matrix   
-    DMatrix<double> inverse(DMatrix<double> M){
-        Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
-        // Eigen::PartialPivLU<DMatrix<double>> Mdec_ (M);
-        // Mdec_ = M.partialPivLu(); 
-        return Mdec_.solve(DMatrix<double>::Identity(M.rows(), M.cols()));
-    }
+ // function that returns the exact inverse of a matrix
+    template <typename MatrixType>
+    DMatrix<double> inverse(const MatrixType& m) {
+        using SolverType = std::conditional_t<
+            fdapde::is_eigen_dense_v<MatrixType>, 
+            Eigen::PartialPivLU<DMatrix<double>>, Eigen::SparseLU<SpMatrix<double>>
+            >;
+        SolverType inv_m(m);
+        return inv_m.solve(DMatrix<double>::Identity(m.rows(), m.cols()));
+    }   
+
 
 
 } // closing models namespace
