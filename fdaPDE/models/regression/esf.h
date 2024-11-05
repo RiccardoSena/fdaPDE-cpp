@@ -46,7 +46,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
     private:
      struct ExactInverse{
          DMatrix<double> compute(Model m){
-            return inverse(m.E());       
+            return inverse(m.E()).block(0, 0, m.n_basis(), m.n_basis());     
          }
       };
 

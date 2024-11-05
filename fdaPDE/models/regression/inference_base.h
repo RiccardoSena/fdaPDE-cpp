@@ -56,7 +56,7 @@ template <typename Model> class InferenceBase{
       double alpha_ = 0;                // level of the confidence intervals for beta
       double alpha_f_ = 0.05;              // level of confidence intervals for f 
       DVector<int> locations_f_ {};   // indexes of the subset of locations if locations are exctracted from existing ones
-
+      int lump_flag = 0; // flag to test lumping on R0
 
     public: 
      
@@ -192,45 +192,27 @@ template <typename Model> class InferenceBase{
 
       // return the sparse approx of E^{-1}
       static SpMatrix<double> invE_approx(const Model& m){
-       /* SpMatrix<double> decR0_ = lump(m.R0()); 
-        DiagMatrix<double> invR0_(decR0_.rows());
-        invR0_.setZero(); 
-        for (int i = 0; i < decR0_.rows(); ++i) {
-            double diagElement = decR0_.diagonal()[i];  
-            invR0_.diagonal()[i] = 1.0 / diagElement; 
-        }*/
-        //DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
+         int alpha = 10;  
+         int beta = 10; 
+         double epsilon = 0.005;  
+         SpMatrix<double> invR0_;
+         //applico FSPAI su Atilde      
+         //FSPAI fspai_R0(m.R0());
+         FSPAI<SpMatrix<double>> fspai_R0(m.R0(), alpha, beta, epsilon);
+         //fspai_R0.compute(alpha, beta, epsilon);
+         invR0_ = fspai_R0.inverse(); 
 
-        //applico FSPAI su Atilde
-        int alpha = 10;    // Numero di aggiornamenti del pattern di sparsità per ogni colonna di A (perform alpha steps of approximate inverse update along column k)
-        int beta = 10;      // Numero di indici da aggiungere al pattern di sparsità di Lk per ogni passo di aggiornamento
-        double epsilon = 0.005; // Soglia di tolleranza per l'aggiornamento del pattern di sparsità (the best improvement is higher than accetable treshold)
-            //questi sono quelli trovati nella libreria vecchia 
-            //std::string tol_Inverse     = "0.005";  oppure 0.05                     // Controls the quality of approximation, default 0.005 
-            //std::string max_Step_Col    = "20";     oppure 10                     // Max number of improvement steps per columns
-            // std::string max_New_Nz      = "20";     oppure 10                     // Max number of new nonzero candidates per step
-            //Et_ should be stored as a sparse matrix 
-
-       // questo serve se voglio invertire R0 cojn fspai           
-        //FSPAI fspai_R0(m.R0());
-        FSPAI<SpMatrix<double>> fspai_R0(m.R0(), alpha, beta, epsilon);
-        //fspai_R0.compute(alpha, beta, epsilon);
-        SpMatrix<double> invR0_ = fspai_R0.inverse();  
-
-        DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();
-
-
-        
-        SpMatrix<double> Et_sparse = Et_.sparseView();
+         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();     
+         SpMatrix<double> Et_sparse = Et_.sparseView();
           
-        //Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
-        //FSPAI fspai_E(Et_sparse);
-        FSPAI<SpMatrix<double>> fspai_E(Et_sparse, alpha, beta, epsilon);
-        //fspai_E.compute(alpha, beta, epsilon);
-        SpMatrix<double> invE_ = fspai_E.inverse();
-        //Eigen::saveMarket(invE_, "inversaE2.mtx");  
-        //SpMatrix<double> precondE= fspai_E.getL();
-        //Eigen::saveMarket(precondE, "precondE.mtx");
+         //Eigen::saveMarket(Et_sparse, "Edainvertire.mtx");  
+         //FSPAI fspai_E(Et_sparse);
+         FSPAI<SpMatrix<double>> fspai_E(Et_sparse, alpha, beta, epsilon);
+         //fspai_E.compute(alpha, beta, epsilon);
+         SpMatrix<double> invE_ = fspai_E.inverse();
+         //Eigen::saveMarket(invE_, "inversaE2.mtx");  
+         //SpMatrix<double> precondE= fspai_E.getL();
+         //Eigen::saveMarket(precondE, "precondE.mtx");
         
         /*
         //CALCOLO DELL'INVERSA PER CONFRONTI CON LIBRERIA ORIGINALE DI FSPAI 
@@ -251,6 +233,28 @@ template <typename Model> class InferenceBase{
         //Eigen::loadMarket(risultatoFSPAI, "risultatoFSPAI.mtx");
         //std::cout<<"righe di fspai"<<risultatoFSPAI.rows()<<std::endl;
         //return risultatoFSPAI;
+
+        return invE_;  
+      }
+
+      static SpMatrix<double> invE_approx_lump(const Model& m){
+         SpMatrix<double> invR0_;
+         SpMatrix<double> decR0_ = lump(m.R0()); 
+         DiagMatrix<double> invR0_diag(decR0_.rows());
+         invR0_diag.setZero(); 
+         for (int i = 0; i < decR0_.rows(); ++i) {
+            double diagElement = decR0_.diagonal()[i];  
+            invR0_diag.diagonal()[i] = 1.0 / diagElement; 
+         }
+         invR0_ = invR0_diag;
+
+         DMatrix<double> Et_ = m.PsiTD()* m.Psi()+ m.lambda_D() * m.R1().transpose() * invR0_ * m.R1();     
+         SpMatrix<double> Et_sparse = Et_.sparseView();
+         int alpha = 10;  
+         int beta = 10; 
+         double epsilon = 0.005; 
+         FSPAI<SpMatrix<double>> fspai_E(Et_sparse, alpha, beta, epsilon);
+         SpMatrix<double> invE_ = fspai_E.inverse();
 
         return invE_;  
       }
@@ -291,6 +295,9 @@ template <typename Model> class InferenceBase{
          locations_f_ = locs;
       }
 
+      void setLumping(int lump){
+         lump_flag = lump;
+      }
 
 };
 

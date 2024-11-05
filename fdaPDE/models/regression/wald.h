@@ -69,6 +69,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             DMatrix<double> Vt_ = m.X().transpose() * m.Psi();
             std::cout << "Dimensions of Vt: " << Vt_.rows() << "; " << Vt_.cols() << std::endl;
          */
+            
             SpMatrix<double> invE_ = Base::invE_approx(m);
          
 
@@ -126,6 +127,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      using Base::alpha_f_;
      using Base::beta_;
      using Base::invE_approx;
+     using Base::lump_flag;
      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
      Solver s_; 
 
@@ -155,8 +157,20 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
         //auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> X = m_.X();
         DMatrix<double> invSigma_ = inverse(X.transpose() * X);
-       // std::cout<<"qui è corretta"<<std::endl; 
-        DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
+         // std::cout<<"qui è corretta"<<std::endl;
+         DMatrix<double> S;
+       if (lump_flag == 0){ 
+        S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
+        }
+        else{
+            SpMatrix<double> invE_ = Base::invE_approx_lump(m_);
+            int nodes = m_.Psi().cols();
+            DMatrix<double> Ut_ = m_.U().topRows(nodes); 
+            DMatrix<double> Vt_ = m_.V().leftCols(nodes);
+            DMatrix<double> Ct_ = - inverse(m_.X().transpose() * m_.X());                     
+            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            S = m_.Psi() * invMt_ * m_.PsiTD() * m_.Q(); 
+        }
         double trace = S.trace();
         //DMatrix<double> ss = S * S.transpose();
         DMatrix<double> left = invSigma_ * X.transpose();

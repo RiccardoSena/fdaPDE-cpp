@@ -132,8 +132,16 @@ class RegressionBase :
         return W_ * DMatrix<double>::Identity(X().rows(), X().rows())- W_ * X() * z;
     }
 
-    DMatrix<double> E() const {
-        return (PsiTD() * Psi() + P());
+    SpMatrix<double> E() const {
+
+        /*
+        core::SparseBlockMatrix<double, 2, 2> A_(
+              PsiTD() * W()  * Psi(), -Base::lambda_D() * Base::R1().transpose(),
+	      -Base::lambda_D() * Base::R1(),      -Base::lambda_D() * R0()            );
+        */
+        // (PsiTD() * Psi() + P());
+        //return A_;
+        return (-1)*static_cast<const Model&>(*this).A();
     }
 
     //

@@ -591,13 +591,8 @@ TEST(inference_test, exact27) {
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
-<<<<<<< HEAD
-    DVector<double> pvaluesesf = inferenceESF.p_value_serial(fdapde::models::simultaneous);
-    std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
-=======
     //DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
->>>>>>> a05f576cff524c308852b6c17d09070c33505c72
 
     DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
     std::cout << "computed CI: " << CIESF_<<std::endl;
@@ -613,14 +608,9 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
-<<<<<<< HEAD
-    //EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
-   // EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
-=======
 
     EXPECT_TRUE(almost_equal(pvaluesspeck(0), 0.0868023617435293, 1e-7));
     EXPECT_TRUE(almost_equal(pvaluesspeck(1), 0.4810795610695496, 1e-7));
->>>>>>> a05f576cff524c308852b6c17d09070c33505c72
 
     // test correctness ESF
     //EXPECT_TRUE(almost_equal(inferenceESF.p_value(fdapde::models::one_at_the_time)(0), 0.164 , 1e-7));
@@ -1202,15 +1192,12 @@ TEST(inference_test, chronoWald) {
 
 }
 
-<<<<<<< HEAD
-=======
 */
 
 
 
 /*
 
->>>>>>> a05f576cff524c308852b6c17d09070c33505c72
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
@@ -1302,11 +1289,8 @@ TEST(inference_test, chrono) {
 }
 
 */
-<<<<<<< HEAD
-=======
 
 
->>>>>>> a05f576cff524c308852b6c17d09070c33505c72
 
 
 TEST(inference_test, chrono_investigation) {
@@ -1394,10 +1378,6 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
     }
 
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> a05f576cff524c308852b6c17d09070c33505c72
 
 
 
