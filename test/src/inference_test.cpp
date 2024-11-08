@@ -524,11 +524,10 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 
 
-/*
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 
 
-/*
+
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -556,56 +555,56 @@ TEST(inference_test, exact27) {
 
     fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
     fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
-    fdapde::models::ESF<SRPDE,fdapde::models::exact> inferenceESF(model);
-    fdapde::models::PESF<SRPDE,fdapde::models::exact> inferencePESF(model);
+   // fdapde::models::ESF<SRPDE,fdapde::models::exact> inferenceESF(model);
+   // fdapde::models::PESF<SRPDE,fdapde::models::exact> inferencePESF(model);
 
     int cols = model.beta().size();
     DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
     
     inferenceWald.setC(C);
     inferenceSpeck.setC(C);
-    inferenceESF.setC(C);
-    inferencePESF.setC(C);
+    //inferenceESF.setC(C);
+    //inferencePESF.setC(C);
 
     DVector<double> beta0(2);
     beta0(0)=2;
     beta0(1)=-1;
     inferenceWald.setBeta0(beta0);
     inferenceSpeck.setBeta0(beta0);
-    inferenceESF.setBeta0(beta0);
-    inferencePESF.setBeta0(beta0);
+    //inferenceESF.setBeta0(beta0);
+   // inferencePESF.setBeta0(beta0);
 
-    int n = 10000;
-    inferenceESF.setNflip(n);
-    inferenceESF.setseed(48);
-    inferencePESF.setNflip(n);
-    inferencePESF.setseed(48);
+  //  int n = 10000;
+  //  inferenceESF.setNflip(n);
+   // inferenceESF.setseed(48);
+   // inferencePESF.setNflip(n);
+    //inferencePESF.setseed(48);
 
-    //DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
-    //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
    // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
-    //DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
-    //std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+    DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
     //DVector<double> pvaluesesf = inferenceESF.p_value(fdapde::models::one_at_the_time);
     //std::cout<<"pvalues esf: "<<pvaluesesf<<std::endl;
 
-    DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << CIESF_<<std::endl;
+    //DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
+    //std::cout << "computed CI: " << CIESF_<<std::endl;
 
 
-    DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::simultaneous);
-    std::cout<<"pvalues p-esf: "<<pvaluespesf<<std::endl;
+    //DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::simultaneous);
+    //std::cout<<"pvalues p-esf: "<<pvaluespesf<<std::endl;
 
-    DMatrix<double> CIPESF_=inferencePESF.computeCI_serial(fdapde::models::one_at_the_time);
-    std::cout << "computed CI: " << CIPESF_<<std::endl;
+    //DMatrix<double> CIPESF_=inferencePESF.computeCI_serial(fdapde::models::one_at_the_time);
+   // std::cout << "computed CI: " << CIPESF_<<std::endl;
 
     // test correctness Wald
-    //EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
+    EXPECT_TRUE(almost_equal(pvalueswald(0), 0.411991314607044 , 1e-7));
     
     // test correctness Speckman
 
@@ -617,11 +616,10 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-*/
 
-*/
 
 /*
+
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -680,11 +678,15 @@ TEST(inference_test, exact27) {
 
     DMatrix<double> CIESF_=inferenceESF.computeCI_serial(fdapde::models::one_at_the_time);
     std::cout << "computed CI esf : " << CIESF_<<std::endl;
-   // DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::one_at_the_time);
-   // std::cout<<"pvalues Partial-esf: "<<pvaluespesf<<std::endl;
+   
+   DVector<double> pvaluespesf = inferencePESF.p_value_serial(fdapde::models::one_at_the_time);
+   std::cout<<"pvalues Partial-esf: "<<pvaluespesf<<std::endl;
+
+   DMatrix<double> CIPESF_=inferencePESF.computeCI_serial(fdapde::models::one_at_the_time);
+    std::cout << "computed Partial-esf CI esf : " << CIPESF_<<std::endl;
 
 }
-*/
+
 
 
 
@@ -1291,7 +1293,7 @@ TEST(inference_test, chrono) {
 */
 
 
-
+/*
 
 TEST(inference_test, chrono_investigation) {
     
@@ -1354,14 +1356,17 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::ESF<SRPDE, fdapde::models::nonexact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
+    int n = 1000;
+    inference.setNflip(n);
+    inference.setseed(46);
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    inference.p_value(fdapde::models::one_at_the_time);
+    inference.p_value_serial(fdapde::models::one_at_the_time);
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -1378,7 +1383,7 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
     }
 
 }
-
+*/
 
 
 

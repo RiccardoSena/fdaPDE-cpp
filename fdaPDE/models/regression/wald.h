@@ -140,23 +140,34 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
      }
 
      // si potrebbe fare override anche di questo metodo visto che si può utilizzare StochasticEDF per calcolare la traccia
-     double sigma_sq(double trace) {
+   //double sigma_sq(double trace) {
+
+     double sigma_sq(DMatrix<double>& S_) {
         //auto start = std::chrono::high_resolution_clock::now();
         double sigma_sq_ = 0;             // sigma^2 
         DMatrix<double> epsilon = m_.y() - m_.fitted();
         //ExactEDF strat;
         //strat.set_model(m_);
-        sigma_sq_  = (1/(m_.n_obs() - m_.q() - trace)) * epsilon.squaredNorm();
+        DMatrix<double> W = m_.W();
+        DMatrix<double> X= m_.X();
+        DMatrix<double> H = W * X * inverse(X.transpose() * W * X) * X.transpose() * W;
+        double traceWH = (W * H).trace();
+        double traceQS = (m_.Q() * S_).trace();         
         //auto end = std::chrono::high_resolution_clock::now();
         //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         //std::cout << "Sigma sq time: " << duration << std::endl;
+        sigma_sq_ = (1 / (m_.n_obs() - traceWH - traceQS)) * (epsilon.transpose() * W * epsilon).value();
+          // nel modello originale e non pesato veniva calcolata così (se W==I allora le due approx di sigma si uguagliano)
+          // sigma_sq_  = (1/(m_.n_obs() - m_.q() - trace)) * epsilon.squaredNorm();
+
         return sigma_sq_;
      }
 
      void V() override{
         //auto start = std::chrono::high_resolution_clock::now();
         DMatrix<double> X = m_.X();
-        DMatrix<double> invSigma_ = inverse(X.transpose() * X);
+        DMatrix<double> W = m_.W();
+        DMatrix<double> invSigma_ = inverse(X.transpose() * W * X);
          // std::cout<<"qui è corretta"<<std::endl;
          DMatrix<double> S;
        if (lump_flag == 0){ 
@@ -171,10 +182,10 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
             S = m_.Psi() * invMt_ * m_.PsiTD() * m_.Q(); 
         }
-        double trace = S.trace();
+        //double trace = S.trace();
         //DMatrix<double> ss = S * S.transpose();
-        DMatrix<double> left = invSigma_ * X.transpose();
-        V_ = sigma_sq(trace) * (invSigma_ + left * S * S.transpose() * left.transpose()); 
+        DMatrix<double> left = invSigma_ * X.transpose() * W;
+        V_ = sigma_sq(S) * (invSigma_ + left * S * inverse(W) * S.transpose() * left.transpose()); 
         // std::cout<<"V corretta"<<std::endl;
         //auto end = std::chrono::high_resolution_clock::now();
         //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

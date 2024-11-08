@@ -89,11 +89,12 @@ template <typename Model, typename Strategy> class Speckman: public InferenceBas
         //Lambda_ = DMatrix<double>::Identity(n, n) - m_.Psi() * pax * m_.PsiTD();
         if (lump_flag == 0){
          //std::cout << s_.compute(m_).topRows(5) << std::endl;
-           Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+           Lambda_ = m_.W() * DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.W() * m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.W();
         }
          else{
-         Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * Base::invE_approx_lump(m_) * m_.PsiTD();
+         Lambda_ = m_.W()* DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * Base::invE_approx_lump(m_) * m_.PsiTD()*m_.W();
          }
+
          DMatrix<double> Lambda_squared = Lambda_ * Lambda_;
         //auto end1 = std::chrono::high_resolution_clock::now();
         //auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
