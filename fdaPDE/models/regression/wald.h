@@ -29,6 +29,7 @@ using fdapde::core::is_empty;
 #include "../model_traits.h"
 #include "../model_base.h"
 #include "srpde.h"
+#include "gsrpde.h"
 #include "strpde.h"
 #include "exact_edf.h"
 #include "stochastic_edf.h"
@@ -55,12 +56,21 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             if (++count >= 10) break; // Interrompi se hai stampato 10 elementi
         }
         if (count >= 10) break; // Interrompi se hai stampato 10 elementi
-    }*/         
+    }*/        
+   /* 
+            int nodes = m.Psi().cols();
+            DMatrix<double> Ut_ = m.U(); 
+            DMatrix<double> Vt_ = m.V();
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X()); 
+            DMatrix<double> invE_ = inverse(m.E());         
+            
+            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+   */
             return inverse(m.T());
-        }
+         }
      };
      struct NonExactInverse {
-        SpMatrix<double> compute(Model m){
+        DMatrix<double> compute(Model m){
          // It might be that we need to take the top n_nodes rows of Ut and the first n_nodes cols of Vt_
          /*
             DMatrix<double> Ut_ = m.Psi().transpose() * m.X(); // or Psi.transpose * A * W
@@ -79,9 +89,9 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             //std::cout << "Dimensions of Ut: " << Ut_.rows() << "; " << Ut_.cols() << std::endl;
             DMatrix<double> Vt_ = m.V().leftCols(nodes);
             //std::cout << "Dimensions of Vt: " << Vt_.rows() << "; " << Vt_.cols() << std::endl;
-            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());         
-            
-            SpMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.X());          
+            // Is it sparse???
+            DMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
 
             // Ciclo per stampare i primi dieci elementi di invE_
            /* std::cout << "First ten elements of invE_:\n";
@@ -356,10 +366,38 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
          loc_subset = 0;
          new_locations = loc;
       }
+};
 
+
+template <typename RegularizationType, typename Strategy>
+class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<RegularizationType>> {
+   public: 
+     using Base = InferenceBase<GSRPDE<RegularizationType>>;
+     using Base::m_;
+     using Base::V_;
+     // constructors
+     Wald() = default;                   // deafult constructor
+     Wald(const GSRPDE<RegularizationType>& m): Base(m) {};     // constructor   
+
+     // phi = (data loss in grspde) / (n-trace(M))
+     // D = ((G^k)^{-2})*((V^k)^{-1}) 
+     // E = W^T*D*W
+     // W is pW_ in grspde
+     // Variance for betas in GLM is phi*E^{-1}
+     // M = H + QS
+     void V() override{
+      DMatrix<double> X = m_.X();
+      DMatrix<double> H = X * inverse(X.transpose() * m_.pW().asDiagonal() * X) * X.transpose() * m_.pW().asDiagonal();
+      DMatrix<double> Q = DMatrix<double>::Identity(H.rows(), H.cols()) - H;
+      DMatrix<double> S = m_.Psi() * inverse(m_.Psi() * Q * m_.Psi() + m_.P()) * m_.Psi().transpose() * m_.Q();
+      DMatrix<double> M = H + Q * S;
+      double phi =  m_.data_loss() / (m_.n_obs() - M.trace()); 
+      V_ = phi * inverse(X.transpose() * m_.pW().asDiagonal() * X);
+     }
 
 
 };
+
 
 } // namespace models
 } // namespace fdapde

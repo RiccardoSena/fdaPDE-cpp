@@ -26,7 +26,7 @@
 
 namespace fdapde {
 namespace models {
-  
+   
 // base class for GSRPDE model
 template <typename RegularizationType_>
 class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, RegularizationType_> {
@@ -59,6 +59,7 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
     void set_fpirls_tolerance(double tol) { tol_ = tol; }
     void set_fpirls_max_iter(std::size_t max_iter) { max_iter_ = max_iter; }
     void init_model() { fpirls_.init(); }
+
     void solve() {
         fdapde_assert(y().rows() != 0);
         // execute FPIRLS for minimization of functional \norm{V^{-1/2}(y - \mu)}^2 + \lambda \int_D (Lf - u)^2
@@ -100,7 +101,7 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
     }
     const DVector<double>& py() const { return py_; }
     const DVector<double>& pW() const { return pW_; }
-    const fdapde::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
+    const Eigen::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
     // GCV support
     double norm(const DMatrix<double>& op1, const DMatrix<double>& op2) const {   // total deviance \sum dev(\hat y - y)
         DMatrix<double> mu = distr_.inv_link(op1);
@@ -110,12 +111,14 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
         }
         return result;
     }
+
    private:
     Distribution distr_ {};
     DVector<double> py_;   // \tilde y^k = G^k(y-u^k) + \theta^k
     DVector<double> pW_;   // diagonal of W^k = ((G^k)^{-2})*((V^k)^{-1})
     DVector<double> mu_;   // \mu^k = [ \mu^k_1, ..., \mu^k_n ] : mean vector at step k
-    fdapde::SparseLU<SpMatrix<double>> invA_;
+    Eigen::SparseLU<SpMatrix<double>> invA_;
+    SparseBlockMatrix<double, 2, 2> A_ {};
 
     // FPIRLS parameters (set to default)
     FPIRLS<This> fpirls_;

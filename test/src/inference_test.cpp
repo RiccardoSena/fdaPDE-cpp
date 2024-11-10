@@ -582,12 +582,12 @@ TEST(inference_test, exact27) {
     inferencePESF.setseed(46);
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
-    //std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
    // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
-    //std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
+    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
 
@@ -610,8 +610,8 @@ TEST(inference_test, exact27) {
     //EXPECT_TRUE(almost_equal(pvalinferenceESF.p_value(fdapde::models::one_at_the_time)(1), 0.924 , 1e-7));
 
 }
-
 */
+
 
 /*
 TEST(inference_test, exact27) {
@@ -1188,7 +1188,7 @@ TEST(inference_test, chronoWald) {
 
 
 
-/*
+
 
 TEST(inference_test, chrono) {
     
@@ -1270,17 +1270,17 @@ TEST(inference_test, chrono) {
     
     auto average_duration = total_duration / n_it;
 
-    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration << std::endl;
+    std::cout << "Mean time of " << Nodes[i] << " is: " << average_duration.count() << std::endl;
 
     }
 
 }
 
-*/
 
 
 
 
+/*
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1367,6 +1367,7 @@ std::cout << "Mean time of " << Nodes[i] << " is: "
 
 }
 
+*/
 
 
 
@@ -2373,6 +2374,174 @@ TEST(inference_test, lump){
 
 
 }
-
 */
 
+
+/*
+TEST(inference_test, lumping_time){
+
+    MeshLoader<Triangulation<2,2>> domain("TIME/10nodes");
+    // import data from files
+    DMatrix<double> y    = read_csv<double>("../data/models/TIME/10nodes/y_exact.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/TIME/10nodes/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.01;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    // repetition for the simulations
+    int rep = 10;
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    model.init();
+    model.solve();
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);
+    inference.setBeta0(beta0);
+    inference.setC(C);
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference_lump(model);
+    inference_lump.setBeta0(beta0);
+    inference_lump.setC(C);
+    inference_lump.setLumping(1);
+
+    std::chrono::microseconds total_duration(0);
+    std::chrono::microseconds total_duration_lump(0);
+
+    for (int i = 0; i < rep; ++i){
+
+        auto start = std::chrono::high_resolution_clock::now();
+        inference.p_value(fdapde::models::one_at_the_time)(0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+        auto start_lump = std::chrono::high_resolution_clock::now();
+        inference_lump.p_value(fdapde::models::one_at_the_time)(0);
+        auto end_lump = std::chrono::high_resolution_clock::now();
+        auto duration_lump = std::chrono::duration_cast<std::chrono::microseconds>(end_lump-start_lump);
+
+        total_duration += duration;
+        total_duration_lump += duration_lump;
+
+    }
+
+    auto average_duration = total_duration / rep;
+    auto average_duration_lump = total_duration_lump / rep;
+
+    std::cout << "Time FSPAI " << average_duration.count() << std::endl;
+    std::cout << "Time Lumping " << average_duration_lump.count() << std::endl;
+
+}
+*/
+
+
+/*
+TEST(inference_test, chrono_lumping) {
+    
+    std::vector<std::string> Nodes = {
+        "2nodes", 
+        "3nodes", 
+        "5nodes",
+        "10nodes", 
+        "15nodes", 
+        "20nodes", 
+        "25nodes", 
+        "30nodes",
+        "35nodes",
+        "40nodes"
+    };
+
+    std::string prefix1 = "TIME/";
+    std::string prefix2 = "../data/models/TIME/";
+    std::string suffix1 = "/y.csv";
+    std::string suffix2 = "/X.csv";
+
+    for(std::size_t i = 0; i < Nodes.size(); ++i){
+
+    std::string mesh_str = prefix1 + Nodes[i];
+    std::string y_str = prefix2 + Nodes[i] + suffix1;
+    std::string X_str = prefix2 + Nodes[i] + suffix2;
+
+    MeshLoader<Triangulation<2,2>> domain(mesh_str);
+    // import data from files
+    DMatrix<double> y    = read_csv<double>(y_str);
+    DMatrix<double> X    = read_csv<double>(X_str);
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.01;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);
+
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+
+    SRPDE model(problem, Sampling::mesh_nodes);
+    model.set_lambda_D(lambda);
+    
+    // set model's data
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    // chrono start
+
+    int n_it = 20;
+    std::chrono::microseconds total_duration(0);
+    std::chrono::microseconds total_duration_lump(0);
+
+    for(int i = 0; i < n_it; ++i){
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);    
+    inference.setC(C);
+    inference.setBeta0(beta0);
+
+    fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference_lump(model);
+    inference_lump.setBeta0(beta0);
+    inference_lump.setC(C);
+    inference_lump.setLumping(1);
+
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    inference.p_value(fdapde::models::one_at_the_time);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    auto start_lump = std::chrono::high_resolution_clock::now();
+    inference_lump.p_value(fdapde::models::one_at_the_time)(0);
+    auto end_lump = std::chrono::high_resolution_clock::now();
+    auto duration_lump = std::chrono::duration_cast<std::chrono::microseconds>(end_lump-start_lump);
+
+    total_duration += duration;
+    total_duration_lump += duration_lump;
+
+    }
+    
+    auto average_duration = total_duration / n_it;
+    auto average_duration_lump = total_duration_lump / n_it;
+
+    std::cout << "FSPAI time with " << Nodes[i] << " is: " 
+                  << average_duration.count() << " microseconds" << std::endl;
+    std::cout << "Lumping time with " << Nodes[i] << " is: " 
+                  << average_duration_lump.count() << " microseconds" << std::endl;
+    }
+
+}
+*/
