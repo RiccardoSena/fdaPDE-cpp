@@ -289,10 +289,23 @@ template <typename Model, typename Strategy> class PESF: public InferenceBase<Mo
      }   
 
 DMatrix<double> computeCI_serial(CIType type){
+
         // compute Lambda
-        if(is_empty(Lambda_)){
-            V();
-        }
+  if(is_empty(Lambda_)){
+    V();
+    if(is_empty(Lambda_)){
+      std::cout<<"Error: failed FSPAI inversion in confidence intervals computation, discarding inference\n"<<std::endl;
+      DMatrix<double> result;
+      for(int i=0; i<C_.rows(); ++i){
+	result.resize(i,2);
+
+	// compute the limits of the interval
+	result(i,0) = 10e20;
+	result(i,2) = 10e20; 	
+      }
+      return result;
+    }  
+  }
 
         // Store beta_hat
         DVector<double> beta_hat = m_.beta();
@@ -312,7 +325,7 @@ DMatrix<double> computeCI_serial(CIType type){
         }
 
         // compute eigenvectors and eigenvalues of Lambda
- Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
+        Eigen::SelfAdjointEigenSolver<DMatrix<double>> solver(Lambda_); // compute eigenvectors and eigenvalues of Lambda
 
         DMatrix<double> eigenvalues = solver.eigenvalues();
         DMatrix<double> eigenvectors = solver.eigenvectors();
@@ -329,7 +342,7 @@ DMatrix<double> computeCI_serial(CIType type){
 
         // this vector will store the tolerance for each interval upper/lower limit
         // QUI NON SO SE 0.1 O 0.2 PER LA TOLLERANZA MASSIMA 
-        DVector<double> ESF_bisection_tolerances = 0.1*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
+        DVector<double> ESF_bisection_tolerances = 0.2*Speckman_aux_ranges; // 0.1 of the speckman CI as maximum tolerance
         
 
         // define storage structures for bisection algorithms
@@ -369,7 +382,7 @@ DMatrix<double> computeCI_serial(CIType type){
         local_p_values.resize(4,p);
         
         // compute the vectors needed for the statistic
-        DMatrix<double> TildeX = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+        DMatrix<double> TildeX = (m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
         DMatrix<double> Tilder_star = eigenvectors.transpose();   			        		// V^t
         // Select eigenvalues that will not be flipped basing on the estimated bias carried
         DVector<double> Tilder_hat = eigenvectors.transpose()* (m_.y() - (m_.X())* beta_hat); // This vector represents Tilder using only beta_hat, needed for bias estimation
@@ -385,22 +398,22 @@ DMatrix<double> computeCI_serial(CIType type){
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=UU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
             Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UU[i](in test))
-            local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+            local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat, Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=UL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*UL[i](in test))
-            local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+            local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=LU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LU[i](in test))
-            local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+            local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
 
             // compute the partial residuals and p value
             beta_hat_mod(beta_in_test[i])=LL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
             Partial_res_H0_CI = m_.y() - (m_.X()) * (beta_hat_mod); // (y-W*beta_hat(non in test)-W*LL[i](in test))
-            local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+            local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
 
         }
 
@@ -432,7 +445,7 @@ DMatrix<double> computeCI_serial(CIType type){
                 // compute the partial residuals
                 beta_hat_mod(beta_in_test[i])=UU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                 Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UU[i](in test))
-                local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                local_p_values(0,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
         
                 }else{
         
@@ -442,7 +455,7 @@ DMatrix<double> computeCI_serial(CIType type){
                         // compute the partial residuals
                         beta_hat_mod(beta_in_test[i])=UL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                         Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*UL[i](in test))
-                        local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                        local_p_values(1,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc,Tilder_hat, Tilder_star);
 
                     }else{//both the Upper bounds are well defined
 
@@ -457,7 +470,7 @@ DMatrix<double> computeCI_serial(CIType type){
                             // compute the partial residuals
                             beta_hat_mod(beta_in_test[i])=proposal; // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
-                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc,Tilder_hat, Tilder_star);
 
                             if(prop_p_val<=alpha){UU(i)=proposal; local_p_values(0,i)=prop_p_val;}else{UL(i)=proposal;local_p_values(1,i)=prop_p_val;}
                         }
@@ -474,7 +487,7 @@ DMatrix<double> computeCI_serial(CIType type){
                     // compute the partial residuals
                     beta_hat_mod(beta_in_test[i])=LU(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                     Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*LU[i](in test))
-                    local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                    local_p_values(2,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
                 
 	            }else{
  
@@ -484,7 +497,7 @@ DMatrix<double> computeCI_serial(CIType type){
                         // compute the partial residuals
                         beta_hat_mod(beta_in_test[i])=LL(i); // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                         Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod);// (z-W*beta_hat(non in test)-W*LL[i](in test))
-                        local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                        local_p_values(3,i)=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_hat,Tilder_star);
 
                     }else{//both the Upper bounds are well defined
 
@@ -499,7 +512,7 @@ DMatrix<double> computeCI_serial(CIType type){
 	                        // compute the partial residuals
                             beta_hat_mod(beta_in_test[i])=proposal; // beta_hat_mod(i) = beta_hat(i) if i not in test; beta_HP otherwise
                             Partial_res_H0_CI =  m_.y() - (m_.X()) * (beta_hat_mod); // (z-W*beta_hat(non in test)-W*proposal)
-                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc, Tilder_star);
+                            double prop_p_val=compute_CI_aux_beta_pvalue(Partial_res_H0_CI, TildeX_loc,Tilder_hat, Tilder_star);
 
                             if(prop_p_val<=alpha){LL(i)=proposal; local_p_values(3,i)=prop_p_val;}else{LU(i)=proposal;local_p_values(2,i)=prop_p_val;}
                         }
@@ -543,30 +556,61 @@ DMatrix<double> computeCI_serial(CIType type){
         fdapde_assert(!is_empty(C_));  
 
         double alpha_=0.05;
-        if(is_empty(V_)){
-           V();
-        }
 
-        int p = C_.rows();
-        int size = std::min(C_.rows(), V_.rows());
-        DVector<double> diagon(size);
-        for (int i = 0; i < C_.rows(); ++i) {
-           DVector<double> ci = C_.row(i);
-           diagon[i] = ci.transpose() * V_ * ci;
-        }
+  if(!is_empty(Lambda_)){
+    V();
+  }
 
-        // ONE AT THE TIME
-        double quantile = normal_standard_quantile(1 - alpha_/2);            
-         
-        Speckman_aux_ranges.resize(p);
-        Speckman_aux_ranges=quantile * (diagon.array()).sqrt();
+  // extract W and W^T
+  DMatrix<double> X = m_.X();
+DMatrix<double> X_t = m_.X().transpose();  
+  // Decomposition of [W^t * Lambda^2 * W] 
+  Eigen::PartialPivLU<DMatrix<double>> XLX_dec; 
+  XLX_dec.compute((X_t)*(Lambda_*Lambda_)*(X));
+  
+  // get the residuals needed
+  DVector<double> eps_hat = (m_.y() - m_.fitted());
+  // build squared residuals
+    DVector<double> Res2=eps_hat.array()*eps_hat.array();
+  
+  // resize the variance-covariance matrix
+  int q = C_.cols();
+  DMatrix<double> V;
+  V.resize(q,q);
+  
+  
+  DMatrix<double> diag = Res2.asDiagonal();
+  
+  V = (XLX_dec).solve((X_t)*(Lambda_*Lambda_)*Res2.asDiagonal()*(Lambda_*Lambda_)*(X)*(XLX_dec).solve(DMatrix<double>::Identity(q,q))); // V = [(W*Lambda2*W)^-1 * Res2 * (W*Lambda2*W)^-1]
 
-        is_speckman_aux_computed = true; 
-        return;
+  // Extract the quantile needed for the computation of upper and lower bounds
+  double quant = normal_standard_quantile(1 - alpha_/2);            
+
+  // extract matrix C 
+  
+  int p = C_.rows(); 
+  
+  Speckman_aux_ranges.resize(p);
+ 
+  // for each row of C matrix
+  for(int i=0; i<p; ++i){
+    DVector<double> col = C_.row(i);
     
-    }
+    // compute the standard deviation of the linear combination and half range of the interval
+    double sd_comb = std::sqrt(col.adjoint()*V*col);
+    double half_range=sd_comb*quant;
+    
+    // save the half range
+    Speckman_aux_ranges(i)=half_range;  	
+  }
 
-  double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
+  this->is_speckman_aux_computed = true;
+
+  return;
+}
+
+
+  double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_hat, const  DMatrix<double> & Tilder_star) const {
         // declare the vector that will store the p-values
         double result;
     
@@ -577,7 +621,17 @@ DMatrix<double> computeCI_serial(CIType type){
         DMatrix<double> stat_temp = TildeX*Tilder;
         double stat=stat_temp(0);
         double stat_flip=stat;
+        
+        int n_obs=m_.n_obs();
 
+ // Estimate the standard error
+            DVector<double> eps_hat =  m_.y() - m_.fitted();
+            double SS_res = eps_hat.squaredNorm();
+            double Sigma_hat = std::sqrt(SS_res/(n_obs-1));
+
+            double threshold = 10*Sigma_hat; // This threshold is used to determine how many components will not be flipped: we drop those that show large alpha_hat w.r.t. the expected standar error
+            int N_Eig_Out=0; // It will store the number of biased components that will be kept fixed if enhanced-ESF is required
+            
         // Random sign-flips
             std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
@@ -594,22 +648,27 @@ DMatrix<double> computeCI_serial(CIType type){
         double count_Down = 0; // Counter for the number of flipped statistics that are smaller the observed statistic
             
         DVector<double> Tilder_perm=Tilder;
-    
-        // get the number of flips
-        int nflip=n_flip;
-
-        for(int i=0;i<nflip;i++){
-            for(int j=0;j<TildeX.cols();j++){
-                int flip;
-                flip=2*distr(eng)-1;
-                Tilder_perm(j)=Tilder(j)*flip;
+        
+        
+        for(int i = 0; i < n_flip; ++i){
+                N_Eig_Out=0;
+                for(int j = 0; j < TildeX.cols(); ++j){
+                    int flip;
+                    if((N_Eig_Out<n_obs/2) && (fabs(Tilder_hat(j))>threshold)){
+                        flip=1;
+                        ++N_Eig_Out; 
+                    }else{
+                        flip=2 * distr(eng) - 1;
+                    }
+                    Tilder_perm.row(j) = Tilder.row(j) * flip;
+                 }
+                DMatrix<double> stat_flip_temp = TildeX * Tilder_perm; // Flipped statistic
+            
+               stat_flip= stat_flip_temp(0);// Flipped statistic
+    if(stat_flip > stat){ ++count_Up;}else{ 
+      if(stat_flip < stat){ ++count_Down;}  
+    }
             }
-                DMatrix<double> stat_flip_temp = TildeX*Tilder_perm; 
-                stat_flip= stat_flip_temp(0);// Flipped statistic
-                if(stat_flip > stat){ ++count_Up;}else{ 
-                    if(stat_flip < stat){ ++count_Down;}  
-                }
-        }
             
         double pval_Up = count_Up/n_flip;     
         double pval_Down = count_Down/n_flip; 

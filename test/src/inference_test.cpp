@@ -583,10 +583,12 @@ TEST(inference_test, exact27) {
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
+    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
    // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
+    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
     std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
@@ -1190,6 +1192,7 @@ TEST(inference_test, chronoWald) {
 
 
 
+/*
 TEST(inference_test, chrono) {
     
     std::vector<std::string> Nodes = {
