@@ -941,6 +941,7 @@ void Compute_speckman_aux(void){
         is_speckman_aux_computed = true; 
         return;
         */
+       
     //check if Lambda has been computed
   if(!is_empty(Lambda_)){
     V();
@@ -997,7 +998,6 @@ DMatrix<double> X_t = m_.X().transpose();
         
 
 
-//DA CONTROLLARE RISPETTO A IMPLEMENTAZIONE VECCHIA PERCHèHA  UN INPUT IN PIù
     double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
         // declare the vector that will store the p-values
         double result;
@@ -1209,7 +1209,7 @@ DMatrix<double> X_t = m_.X().transpose();
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-                    std::default_random_engine eng;
+            std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
 
             //if we have a set seed 
