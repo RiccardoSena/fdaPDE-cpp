@@ -137,8 +137,8 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             // partial residuals
             DMatrix<double> X = m_.X();
             DMatrix<double> res_H0 = m_.y() - X * beta_hat_mod; 
-            // W^t * V * D
-            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   
+
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * m_.W() * eigenvectors * eigenvalues.asDiagonal();  // X^t * U * V * D 
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
@@ -204,7 +204,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             res_H0.col(i) = m_.y() - X * beta_hat_mod;
             }
             // compute the vectors needed for the statistic
-            DMatrix<double> Xt = (C_ * X.transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * m_.W() * eigenvectors * eigenvalues.asDiagonal();  // X^t * U * V * D 
             DMatrix<double> Tilder = eigenvectors.transpose() * res_H0;   			        		// V^t * partial_res_H0
 
             // Observed statistic
@@ -293,7 +293,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             
             // partial residuals
             DMatrix<double> res_H0 = m_.y() - m_.X() * beta_hat_mod;  
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();  // W^t * V * D 
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * m_.W() * eigenvectors * eigenvalues.asDiagonal();  // X^t * U * V * D 
             DVector<double> Tilder = eigenvectors.transpose() * res_H0;   
 
             // Initialize observed statistic and sign-flipped statistic
@@ -357,7 +357,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
             res_H0.col(i) = m_.y() - m_.X()* beta_hat_mod;
             }
             // compute the vectors needed for the statistic
-            DMatrix<double> Xt = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+            DMatrix<double> Xt = (C_ * m_.X().transpose()) * m_.W() * eigenvectors * eigenvalues.asDiagonal();  // X^t * U * V * D 
             DMatrix<double> Tilder = eigenvectors.transpose() * res_H0;   			        		// V^t * partial_res_H0
 
             // Observed statistic
@@ -483,7 +483,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         local_p_values.resize(4,p);
         
         // compute the vectors needed for the statistic
-        DMatrix<double> TildeX = (C_ * m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+        DMatrix<double> TildeX = (C_ * m_.X().transpose()) * m_.W() * eigenvectors * eigenvalues.asDiagonal();   	// X^t *U * V * D
         DMatrix<double> Tilder_star = eigenvectors.transpose();   			        		// V^t
         // Select eigenvalues that will not be flipped basing on the estimated bias carried
         DVector<double> Tilder_hat = eigenvectors.transpose()* (m_.y() - (m_.X())* beta_hat); // This vector represents Tilder using only beta_hat, needed for bias estimation
@@ -742,7 +742,7 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
         local_p_values.resize(4,p);
         
         // compute the vectors needed for the statistic
-        DMatrix<double> TildeX = ( m_.X().transpose()) * eigenvectors * eigenvalues.asDiagonal();   	// W^t * V * D
+        DMatrix<double> TildeX = ( m_.X().transpose()) * m_.W()* eigenvectors * eigenvalues.asDiagonal();   	// X^t UV * D
         DMatrix<double> Tilder_star = eigenvectors.transpose();   			        		// V^t
         // Select eigenvalues that will not be flipped basing on the estimated bias carried
         DVector<double> Tilder_hat = eigenvectors.transpose()* (m_.y() - (m_.X())* beta_hat); // This vector represents Tilder using only beta_hat, needed for bias estimation
@@ -940,6 +940,7 @@ void Compute_speckman_aux(void){
         is_speckman_aux_computed = true; 
         return;
         */
+       
     //check if Lambda has been computed
   if(!is_empty(Lambda_)){
     V();
@@ -996,7 +997,6 @@ DMatrix<double> X_t = m_.X().transpose();
         
 
 
-//DA CONTROLLARE RISPETTO A IMPLEMENTAZIONE VECCHIA PERCHèHA  UN INPUT IN PIù
     double compute_CI_aux_beta_pvalue(const DVector<double> & partial_res_H0_CI, const DMatrix<double> & TildeX,  const  DMatrix<double> & Tilder_star) const {
         // declare the vector that will store the p-values
         double result;
@@ -1229,7 +1229,7 @@ DMatrix<double> X_t = m_.X().transpose();
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
-                    std::default_random_engine eng;
+            std::default_random_engine eng;
             std::uniform_int_distribution<int> distr(0, 1); 
 
             //if we have a set seed 

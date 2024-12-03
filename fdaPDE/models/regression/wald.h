@@ -259,7 +259,6 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
      void Vf(){
       // covariance matrice of f^
-      // still difference in exact and non exact when computing S
       DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
       // needed to compute the variance of the residuals
       DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
