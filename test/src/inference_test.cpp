@@ -583,12 +583,10 @@ TEST(inference_test, exact27) {
 
     DVector<double> pvalueswald = inferenceWald.p_value(fdapde::models::simultaneous);
     std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
-    std::cout<<"pvalues wald: "<<std::fixed << std::setprecision(15)<<pvalueswald<<std::endl;
    // DMatrix<double> CIwald_=inferenceWald.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " <<std::fixed << std::setprecision(15)<< CIwald_<<std::endl;
 
     DVector<double> pvaluesspeck = inferenceSpeck.p_value(fdapde::models::one_at_the_time);
-    std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
     std::cout<<"pvalues speckman: "<<std::fixed << std::setprecision(15)<<pvaluesspeck<<std::endl;
    // DMatrix<double> CIspeck_=inferenceSpeck.computeCI(fdapde::models::one_at_the_time);
    // std::cout << "computed CI: " << std::fixed << std::setprecision(15)<<CIspeck_<<std::endl;
@@ -1191,7 +1189,6 @@ TEST(inference_test, chronoWald) {
 
 
 
-
 /*
 TEST(inference_test, chrono) {
     
@@ -1251,7 +1248,7 @@ TEST(inference_test, chrono) {
 
     int n_it = 20;
     std::chrono::microseconds total_duration(0);
-
+    // se vuoi velocizzare i tempi set(CMAKE_CXX_FLAGS "-O3 -march=native -std=c++20 ${CMAKE_WARNINGS_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR}/../ -I${CMAKE_CURRENT_SOURCE_DIR}/../fdaPDE/core/ -fPIE")
     for(int i = 0; i < n_it; ++i){
 
     fdapde::models::Wald<SRPDE, fdapde::models::nonexact> inference(model);
@@ -1279,7 +1276,7 @@ TEST(inference_test, chrono) {
 
 }
 
-
+*/
 
 
 
@@ -1529,7 +1526,6 @@ TEST(inference_test, inference28) {
 }
 */
 
-
 /*
 TEST(inference_test, inference29) {
     // define domain
@@ -1592,22 +1588,22 @@ TEST(inference_test, inference29) {
     //inferenceWald.setf0(f0); 
     //inferenceESF.setf0(f0);
     inferenceESF.setNflip(10000);
-    //DVector<int> loc_indexes(7);
-    //loc_indexes << 0, 1, 2, 3, 4, 5, 6;
+    DVector<int> loc_indexes(7);
+    loc_indexes << 0, 1, 2, 3, 4, 5, 6;
 
-    //inferenceWald.setLocationsF(loc_indexes);
+    inferenceWald.setLocationsF(loc_indexes);
     //inferenceESF.setLocationsF(loc_indexes);
 
     std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     //std::cout << "Wald f CI: " << inferenceWald.f_CI() << std::endl;
-    std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
+    //std::cout << "Esf p value: " << inferenceESF.f_p_value() << std::endl;
     std::cout << "Sign flip p value: " << inferenceESF.sign_flip_p_value() << std::endl;
 
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
-
 */
+
 
 
 /*
@@ -1782,12 +1778,11 @@ TEST(inference_test, inference_f_) {
     fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
 
     DVector<int> loc_indexes(6);
-    //loc_indexes << 2, 6, 8, 9, 10, 11;
     loc_indexes << 1, 5, 7, 8, 9, 10;
     inferenceWald.setLocationsF(loc_indexes);
     inferenceESF.setLocationsF(loc_indexes);
-    inferenceESF.setNflip(10000);
-    inferenceESF.setseed(46);
+    inferenceESF.setNflip(1000);
+    //inferenceESF.setseed(46);
 
     //std::cout << "Wald f p value: " << inferenceWald.f_p_value() << std::endl;
     std::cout << "Sign p value: " << inferenceESF.sign_flip_p_value() << std::endl;
@@ -1796,8 +1791,8 @@ TEST(inference_test, inference_f_) {
     //std::cout << "Esf CI: " << inferenceESF.f_CI() << std::endl;
 
 }
-*/
 
+*/
 
 
 /*
@@ -1955,11 +1950,10 @@ TEST(inference_test, inference37){
     //std::cout << "Speck CI: " << inferenceSpeck.computeCI(fdapde::models::bonferroni) << std::endl;
 
     std::cout << "Wald f p val: " << inferenceWald.f_p_value() << std::endl;
-    std::cout << "ESF f p val: " << inferenceESF.f_p_value() << std::endl;
-    std::cout << "Sign flip f p val: " << inferenceESF.sign_flip_p_value() << std::endl;
+    //std::cout << "ESF f p val: " << inferenceESF.f_p_value() << std::endl;
+    //std::cout << "Sign flip f p val: " << inferenceESF.sign_flip_p_value() << std::endl;
 
 }
-
 */
 
 
@@ -2316,8 +2310,8 @@ TEST(inference_test, lump){
             std::default_random_engine generator(k);
             std::normal_distribution<double> distribution(0, sd);
             DVector<double> random_vector(y.size());
-            for (int i = 0; i < random_vector.size(); ++i) {
-                random_vector[i] = distribution(generator);
+            for (int j = 0; j < random_vector.size(); ++j) {
+                random_vector[j] = distribution(generator);
             }
 
             DMatrix<double> observations = X * H1[i] + y + random_vector;
@@ -2548,3 +2542,144 @@ TEST(inference_test, chrono_lumping) {
 
 }
 */
+
+
+
+
+TEST(inference_test, power_f){
+    // define domain
+    MeshLoader<Triangulation<2, 2>> domain("power_f2D");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/power_f2D/locs.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/power_f2D/X.csv");
+
+    auto gamSim_2 = [](double x, double y) {
+    double pi = M_PI; 
+    double term1 = 1.2 * exp(-pow(x - 0.2, 2) / pow(0.3, 2) - pow(y - 0.3, 2) / pow(0.4, 2));
+    double term2 = 0.8 * exp(-pow(x - 0.7, 2) / pow(0.3, 2) - pow(y - 0.8, 2) / pow(0.4, 2));
+    return (0.4 * pow(pi, 0.3)) * (term1 + term2);
+    };
+
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = gamSim_2(locs(i,0), locs(i,1));
+    }
+
+    int m = 21;
+    DVector<double> scales(m);
+    scales << -0.2, -0.18, -0.16, -0.14, -0.12, -0.1, -0.08, -0.06, -0.04, -0.02, 0,
+    0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2;
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
+
+    int n_loc = 117;
+    DVector<int> loc_indexes(n_loc);
+    loc_indexes << 1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 15, 16, 19, 22, 24, 25, 26, 28, 30, 34, 36, 38, 
+39, 40, 41, 42, 43, 44, 45, 47, 48, 49, 51, 55, 58, 59, 61, 63, 69, 73, 75, 76, 77, 80, 82, 85, 
+88, 89, 96, 98, 103, 106, 114, 116, 117, 120, 122, 124, 127, 131, 132, 133, 134, 135, 139, 141, 
+142, 143, 144, 146, 148, 149, 152, 154, 155, 156, 157, 158, 162, 163, 164, 166, 169, 172, 173, 
+176, 178, 179, 181, 183, 185, 186, 187, 188, 189, 190, 191, 192, 194, 195, 196, 198, 199, 200, 
+201, 202, 203, 204, 206, 208, 213, 215, 216, 218, 219, 222, 223;
+
+
+
+    DVector<double> f_0(n_loc);
+    for(int p = 0; p < n_loc; ++p){
+        f_0(p) = gamSim_2(locs(loc_indexes(p), 0), locs(loc_indexes(p), 1));
+    }
+
+    int rep = 100;
+
+    //DMatrix<double> res_wald(rep, m);
+    DMatrix<double> res_sf(rep, m);
+    DMatrix<double> res_esf(rep, m);
+
+    double sd = 0.1;
+    
+    for(int i = 0; i < m; ++i){
+        //DVector<double> pval_wald(rep);
+        DVector<double> pval_sf(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            std::normal_distribution<double> distribution(0, sd);
+            DVector<double> random_vector(f.size());
+            for (int j = 0; j < random_vector.size(); ++j) {
+                random_vector[j] = distribution(generator);
+            }
+
+            DMatrix<double> observations = X + (1 + scales[i]) * f + random_vector;
+        
+            SRPDE model(problem, Sampling::pointwise);
+            model.set_lambda_D(lambda);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+        
+            fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+            fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+
+            inferenceWald.setLocationsF(loc_indexes);
+            inferenceESF.setLocationsF(loc_indexes);
+            inferenceWald.setf0(f_0);
+            inferenceESF.setf0(f_0);
+            inferenceESF.setNflip(1000);
+            //pval_wald[k-1] = inferenceWald.f_p_value();
+            pval_sf[k-1] = inferenceESF.sign_flip_p_value();
+            pval_esf[k-1] = inferenceESF.f_p_value();
+
+            //std::cout << "Wald: " << pval_wald[k-1] << std::endl;
+            std::cout << "SF: " << pval_sf[k-1] << std::endl;
+            std::cout << "ESF: " << pval_esf[k-1] << std::endl;
+
+        }
+        //res_wald.col(i) = pval_wald;
+        res_sf.col(i) = pval_sf;
+        res_esf.col(i) = pval_esf;
+
+    }
+
+    //DVector<double> power_matrix_wald(m);
+    DVector<double> power_matrix_sf(m);
+    DVector<double> power_matrix_esf(m);
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < m; ++j) {  
+        //int count_wald = 0;
+        int count_sf = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_esf.rows(); ++i){
+            //if (res_wald(i, j) < threshold){
+            //    count_wald++;
+            //}
+            if (res_sf(i, j) < threshold){
+                count_sf++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        //power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_sf[j] = static_cast<double> (count_sf) / rep;   
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;   
+    }
+
+    //std::cout << "Power Wald:" << std::endl;
+    //std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power Sign Flip:" << std::endl;
+    std::cout << power_matrix_sf << std::setprecision(7) << std::endl;
+    std::cout << "Power Eigen Sign Flip:" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+
+}

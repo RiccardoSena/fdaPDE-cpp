@@ -217,6 +217,16 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
             Psi_p_.insert(j, it.col()) = it.value();
          }
       }
+      /*
+      for(int j = 0; j < m; ++j) {
+        int row = locations_f_[j];
+        std::cout << "Psi row " << row << std::endl;
+        std::cout << Psi.row(row) << std::endl;
+        std::cout << "Psip row " << j << std::endl;
+        std::cout << Psi_p_.row(j) << std::endl;
+        }
+        */
+      Psi_p_.makeCompressed();
       }
       else{
       auto basis_evaluation = m_.pde().eval_basis(core::eval::pointwise, new_locations);
@@ -253,8 +263,7 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
       DMatrix<double> S_psiT = s_.compute(m_) * m_.PsiTD(); // is it Psi.transpose or PsiTD???
       // needed to compute the variance of the residuals
       DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.PsiTD() * m_.Q(); 
-      double trace = S.trace();
-      DMatrix<double> Vff = sigma_sq(trace) * S_psiT * m_.Q() * S_psiT.transpose(); 
+      DMatrix<double> Vff = sigma_sq(S) * S_psiT * m_.Q() * S_psiT.transpose(); 
 
       // need to create a new Psi: matrix of basis evaluation in the set of observed locations
       // belonging to the chosen portion Omega_p
@@ -382,30 +391,122 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 
 template <typename RegularizationType, typename Strategy>
 class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<RegularizationType>> {
+   private:
+      DMatrix<double> Q_{};
+      DMatrix<double> H_{};
+      SpMatrix<double> Psi_p_ {};         // Psi reductued only in the locations needed for inference
+      DVector<double> fp_ {};           // f in the locations of inference
+      DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
+      int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the locations
+
    public: 
-     using Base = InferenceBase<GSRPDE<RegularizationType>>;
-     using Base::m_;
-     using Base::V_;
-     // constructors
-     Wald() = default;                   // deafult constructor
-     Wald(const GSRPDE<RegularizationType>& m): Base(m) {};     // constructor   
+      using Base = InferenceBase<GSRPDE<RegularizationType>>;
+      using Base::m_;
+      using Base::V_;
+      using Base::beta_;
+      using Base::f0_;
+      using Base::locations_f_;
+      using Base::alpha_f_;
+      // constructors
+      Wald() = default;                   // deafult constructor
+      Wald(const GSRPDE<RegularizationType>& m): Base(m) {};     // constructor  
 
-     // phi = (data loss in grspde) / (n-trace(M))
-     // D = ((G^k)^{-2})*((V^k)^{-1}) 
-     // E = W^T*D*W
-     // W is pW_ in grspde
-     // Variance for betas in GLM is phi*E^{-1}
-     // M = H + QS
-     void V() override{
-      DMatrix<double> X = m_.X();
-      DMatrix<double> H = X * inverse(X.transpose() * m_.pW().asDiagonal() * X) * X.transpose() * m_.pW().asDiagonal();
-      DMatrix<double> Q = DMatrix<double>::Identity(H.rows(), H.cols()) - H;
-      DMatrix<double> S = m_.Psi() * inverse(m_.Psi() * Q * m_.Psi() + m_.P()) * m_.Psi().transpose() * m_.Q();
-      DMatrix<double> M = H + Q * S;
-      double phi =  m_.data_loss() / (m_.n_obs() - M.trace()); 
-      V_ = phi * inverse(X.transpose() * m_.pW().asDiagonal() * X);
-     }
+      // Variance for betas in GLM is phi*E^{-1}
+      void V() override{
+         if(is_empty(Q_)){
+            Q();
+         }
+         DMatrix<double> X = m_.X();
+         DMatrix<double> Sigma = inverse(X.transpose() * m_.pW().asDiagonal() * X);
+         DMatrix<double> block = X.transpose() * m_.pW().asDiagonal();
+         DMatrix<double> Psi_block =  inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
+         DMatrix<double> var_f = m_.Psi() * Psi_block * m_.Psi().transpose() * Q_ * m_.Psi() * Psi_block * m_.Psi().transpose();
+         V_ = phi() * (Sigma + Sigma * block * var_f * block.transpose() * Sigma);
+      }
 
+      double f_p_value(){ 
+         if(is_empty(fp_))
+            fp();
+         if(is_empty(f0_))
+            Base::setf0(DVector<double>::Zero(fp_.size()));
+         if(is_empty(Q_)){
+            Q();
+         }
+         DMatrix<double> E = inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
+         DMatrix<double> var = phi() * Psi_p_ * E * m_.Psi().transpose() * Q_ * m_.Psi() * E * Psi_p_.transpose();
+         double stat = (fp_ - f0_).transpose() * inverse(var) * (fp_ - f0_);
+         double pvalue = 0;
+         // distributed as a chi squared of r degrees of freedom
+         // the rank gets cmoputed when invVf() is called
+         std::cout << "Test statistic: " << stat << std::endl;
+         int rank = f0_.size();
+         std::cout << "Rank: " << rank << std::endl;
+         double p = chi_squared_cdf(stat, rank);
+         if(p < 0){
+            pvalue = 1;
+         }
+         if(p > 1){
+            pvalue = 0;
+         }
+         else{
+            pvalue = 1 - p;
+            //pvalue = p;
+         }
+         return pvalue;
+      }
+
+      void Psi_p(){
+         // case in which the locations are extracted from the observed ones
+         if(is_empty(locations_f_) && is_empty(new_locations)){
+            Psi_p_ = m_.Psi();
+         }
+         else if (loc_subset == 1){
+            int m = locations_f_.size();
+            SpMatrix<double> Psi = m_.Psi().transpose();
+            Psi_p_.resize(m, Psi.rows()); 
+            for(int j = 0; j < m; ++j) {
+               int row = locations_f_[j];
+               for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+                  Psi_p_.insert(j, it.row()) = it.value();               
+               }
+            }
+            Psi_p_.makeCompressed();
+         }
+         else{
+            auto basis_evaluation = m_.pde().eval_basis(core::eval::pointwise, new_locations);
+            Psi_p_ = basis_evaluation->Psi;
+         }
+      }
+ 
+      void Q(){
+         DMatrix<double> X = m_.X();
+         H_ = X * inverse(X.transpose() * m_.pW().asDiagonal() * X) * X.transpose() * m_.pW().asDiagonal();
+         Q_ = DMatrix<double>::Identity(H_.rows(), H_.cols()) - H_;
+      }
+
+      void fp(){
+         if(is_empty(Psi_p_))
+            Psi_p();
+         fp_ = Psi_p_ * m_.f(); 
+      }
+
+      void beta() override{
+         beta_ = m_.beta();
+      }
+
+      // phi = (data loss in grspde) / (n-trace(M))
+      // D = ((G^k)^{-2})*((V^k)^{-1}) 
+      // E = W^T*D*W
+      // M = H + QS
+      double phi(){
+         if(is_empty(Q_)){
+            Q();
+         }
+         DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q_;
+         DMatrix<double> M = H_ + Q_ * S;
+         return  m_.data_loss() / (m_.n_obs() - M.trace());
+      }
+      
 
 };
 

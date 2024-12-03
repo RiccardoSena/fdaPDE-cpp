@@ -77,7 +77,7 @@ class Poisson {
     }
    public:
     // constructor
-    Poisson() = default;
+    Poisson() = default; 
     Poisson(double l) : l_(l) {};
     // density function
     double pdf(std::size_t k) const { return std::pow(l_, k) * std::exp(-l_) / factorial(k); };

@@ -124,15 +124,12 @@ template <typename Model> class InferenceBase{
 
       virtual DVector<double> p_value(CIType type){
 
-         fdapde_assert(!is_empty(C_));      
-         if(is_empty(beta0_)){
-            if(is_empty(beta_)){
-               beta();
-            }
-            setBeta0(DVector<double>::Zero(beta_.size())); 
-         }
+         fdapde_assert(!is_empty(C_));  
          if(is_empty(beta_)){
             beta();
+         }    
+         if(is_empty(beta0_)){
+            setBeta0(DVector<double>::Zero(beta_.size())); 
          }
          if(is_empty(V_)){
             V();
@@ -140,11 +137,11 @@ template <typename Model> class InferenceBase{
          int p = C_.rows();
          DVector<double> statistics(p);         
          if(type == simultaneous){
-            // SIMULTANEOUS 
-            DVector<double> diff = C_ * beta_ - beta0_;          
+            // SIMULTANEOUS
+            DVector<double> diff = C_ * beta_ - beta0_;
             DMatrix<double> Sigma = C_ * V_ * C_.transpose();
             DMatrix<double> Sigmadec_ = inverse(Sigma);
-            double stat = diff.adjoint() * Sigmadec_ * diff;            
+            double stat = diff.adjoint() * Sigmadec_ * diff;           
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
             if(pvalue < 0){ 
@@ -169,7 +166,7 @@ template <typename Model> class InferenceBase{
             for(int i = 0; i < p; i++){
                DVector<double> col = C_.row(i);
                double diff = col.adjoint() * beta_ - beta0_[i];
-               double sigma = col.adjoint() * V_ *col;
+               double sigma = col.adjoint() * V_ * col;
                double stat = diff/std::sqrt(sigma);
                double pvalue = 2 * gaussian_cdf(-std::abs(stat), 0, 1);
                if(pvalue < 0){

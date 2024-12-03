@@ -172,10 +172,9 @@ template <typename Model, typename Strategy> class ESF: public InferenceBase<Mod
                 if(is_Unilaterally_Greater(stat_flip, stat)){ 
                     up = up + 1;
                 }
-                else{ 
-                if(is_Unilaterally_Smaller(stat_flip, stat)){ 
+                else if(is_Unilaterally_Smaller(stat_flip, stat)){ 
                     down = down + 1;
-                    }                    
+                                       
                 }
             }
             
@@ -1063,14 +1062,30 @@ DMatrix<double> X_t = m_.X().transpose();
       }
       else if(is_empty(mesh_nodes_)){
       int m = locations_f_.size();
-      SpMatrix<double> Psi = m_.Psi();
-      Psi_p_.resize(m, Psi.cols());
+      SpMatrix<double> Psi = m_.Psi().transpose();
+      Psi_p_.resize(m, Psi.rows());
       for(int j = 0; j < m; ++j) {
-        int row = locations_f_[j];
-        for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
-            Psi_p_.insert(j, it.col()) = it.value();
-        }
+         int row = locations_f_[j];
+         for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+            Psi_p_.insert(j, it.row()) = it.value();
+         }
+        
       }
+      Psi_p_.makeCompressed();
+
+      /*
+      
+      for(int j = 0; j < 5; ++j) {
+        int row = locations_f_[j];
+        std::cout << "Psi row " << row << std::endl;
+        std::cout << Psi.row(row) << std::endl;
+        std::cout << "Psip row " << j << std::endl;
+        std::cout << Psi_p_.row(j) << std::endl;
+        }
+
+        */
+
+        
       }
       
       else {
@@ -1139,7 +1154,8 @@ DMatrix<double> X_t = m_.X().transpose();
         Xp.row(j) = X.row(row);
       }
       return Xp;
-      }    
+      }  
+      return m_.X();  
     }
 
     DMatrix<double> Wp(){
@@ -1154,6 +1170,9 @@ DMatrix<double> X_t = m_.X().transpose();
 
     // computes matrix Q = W(I - X*(X^\top*W*X)^{-1}*X^\top*W)
     void Qp() {
+        if(is_empty(Psi_p_)){
+            Psi_p();
+        }   
         if (!m_.has_covariates()){
             Qp_ = Wp() * DMatrix<double>::Identity(p_l_, p_l_);
         }   
@@ -1204,8 +1223,9 @@ DMatrix<double> X_t = m_.X().transpose();
 
         DVector<double> Ti = Psi_p_.transpose() * Qp_dec_ * VQr;
 
-       // save the rank of Ti
-       double Ti_rank = Ti.array().square().sum();
+        // save the rank of Ti
+        DVector<double> Ti_square = Ti.array() * Ti.array();
+        double Ti_rank = Ti_square.sum();
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
@@ -1230,8 +1250,9 @@ DMatrix<double> X_t = m_.X().transpose();
             }
             Tp = Psi_p_.transpose() * Qp_dec_ * tp_vqr;
             // flipped statistics
-            double Tp_rank = Tp.array().square().sum();
-      
+            DVector<double> Tp_square = Tp.array() * Tp.array();
+            double Tp_rank = Tp_square.sum();
+
             if(Tp_rank >= Ti_rank){
              ++count;
             } 
@@ -1255,9 +1276,9 @@ DMatrix<double> X_t = m_.X().transpose();
         DVector<double> VQr = Qp_ * (yp() - f0_);
 
         DVector<double> Ti = Psi_p_.transpose() * VQr;
-
        // save the rank of Ti
-       double Ti_rank = Ti.array().square().sum();
+       DVector<double> Ti_sq = Ti.array() * Ti.array();
+       double Ti_rank = Ti_sq.sum();
 
         // random sign-flips
         // Bernoulli dist (-1, 1) with p = 0.5
@@ -1282,13 +1303,14 @@ DMatrix<double> X_t = m_.X().transpose();
             }
             Tp = Psi_p_.transpose() * tp_vqr;
             // flipped statistics
-            double Tp_rank = Tp.array().square().sum();
-      
+            DVector<double> Tp_sq = Tp.array() * Tp.array();
+            double Tp_rank = Tp_sq.sum();
+
             if(Tp_rank >= Ti_rank){
              ++count;
             } 
         }
-        double p_value = static_cast<double>(count)/static_cast<double>(n_flip);
+        double p_value = count/static_cast<double>(n_flip);
 
         return p_value;
     }
@@ -1643,6 +1665,205 @@ DMatrix<double> X_t = m_.X().transpose();
      }
 
 };
+
+
+
+template <typename RegularizationType, typename Strategy>
+class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<RegularizationType>> {
+    private:
+        int n_flip = 1000;
+        int set_seed = 0;
+    
+    public:
+        using Base = InferenceBase<GSRPDE<RegularizationType>>;
+        using Base::m_;
+        using Base::beta_;
+        using Base::beta0_;
+        using Base::C_;
+        using Base::V_;
+
+        // constructors
+        ESF() = default;
+        ESF(const GSRPDE<RegularizationType>& m): Base(m) {};
+
+        DVector<double> p_value(CIType type) override{
+            fdapde_assert(!is_empty(C_));
+            if(is_empty(beta0_)){
+                Base::setBeta0(DVector<double>::Zero(m_.beta().size()));
+            }
+            int p = C_.rows();
+            DMatrix<double> X = m_.X();
+            DVector<double> y = m_.y();
+            if(is_empty(V_)){
+                V();
+            }
+            // BERNOULLI -1; 1
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+            DVector<double> beta_hat = m_.beta();
+            DVector<double> beta_hat_mod = beta_hat;
+            if(type == simultaneous){
+                for(int i = 0; i < p; ++i){
+                    for(int j = 0; j < C_.cols(); j++){
+                        if(C_(i,j) > 0){
+                            beta_hat_mod[j] = beta0_[j];
+                        }
+                    }
+                }
+                // we probably could avoid computing phi since it is the same for every element
+                //DVector<double> scores = m_.X().transpose() * (m_.y() - m_.X() * beta_hat_mod) / phi();
+                DVector<double> f = V_ * (m_.py() - X * beta_hat_mod);
+                DVector<double> bet = X * beta_hat_mod;
+                DVector<double> H0 = bet + m_.Psi() * f;
+                /*
+                std::cout << "HO: " << std::endl;
+                for(int l = 0; l < 5; ++l){
+                    std::cout << H0(l) << std::endl;
+                }
+                */
+               /*
+                std::cout << "f_est: " << std::endl;
+                for(int l = 0; l < 4; ++l){
+                    std::cout << f(l) << std::endl;
+                }*/
+                DVector<double> stats = (y - m_.distr().inv_link(H0));
+                DVector<double> scores = C_ * X.transpose() * stats;
+                
+                double rank_one = 0;
+                if(p == 1){
+                    rank_one = scores(0);
+                }
+                else{    
+                    rank_one = scores.transpose() * scores;
+                }
+                
+                DVector<double> result(1);
+                int count = 0;
+                //int up = 0;
+                //int down = 0;
+                // initialize new stats to be flipped
+                DVector<double> stats_flip = stats;
+                DVector<double> scores_flip = scores;
+                double rank_flip = rank_one;
+                for(int i = 1; i < n_flip; ++i){
+                    for(int j = 0; j < stats.size(); ++j){
+                        int flip = 2 * distr(eng) - 1;
+                        stats_flip(j) = stats(j) * flip;
+                    }
+                    scores_flip = X.transpose() * stats_flip;
+                    //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
+                    if(p == 1){
+                        rank_flip = scores_flip(0);
+                    }
+                    else{
+                        rank_flip = scores_flip.transpose() * scores_flip;
+                    }
+                    if (rank_flip >= rank_one){
+                        ++count;
+                    }
+                    /*
+                    if(is_Unilaterally_Greater(scores_flip, scores)){ 
+                        up = up + 1;
+                    }
+                    else if(is_Unilaterally_Smaller(scores_flip, scores)){ 
+                        down = down + 1;
+                    }    
+                    */                
+                
+                }
+                double p_value = count/static_cast<double>(n_flip-1);
+                result(0) = p_value;
+                /*
+                double pval_up = static_cast<double>(up) / n_flip;
+                double pval_down = static_cast<double>(down) / n_flip;
+                result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
+                */
+                return result;
+            }
+            else{
+                // ONE AT THE TIME   
+                DMatrix<double> pseudo_res_H0(V_.cols(), p);
+                DMatrix<double> res_H0(V_.cols(), p);
+                DMatrix<double> X = m_.X();
+                for(int i = 0; i < p; ++i){
+                // Extract the current beta in test
+                beta_hat_mod = beta_hat;
+                    for(int j = 0; j < C_.cols(); ++j){
+                        if(C_(i,j) > 0){
+                         beta_hat_mod[j] = beta0_[j];
+                        }
+                    }
+                // compute the partial residuals
+                pseudo_res_H0.col(i) = X * beta_hat_mod + m_.Psi() * V_ * (m_.py() - X * beta_hat_mod);
+                res_H0.col(i) = m_.y();
+                }		
+                DMatrix<double> stats = (res_H0 - m_.distr().inv_link(pseudo_res_H0));
+                DMatrix<double> scores = C_ * X.transpose() * stats;
+                DVector<double> count(p);
+                // initialize new stats to be flipped
+                DMatrix<double> stats_flip = stats;
+                DMatrix<double> scores_flip = scores;
+                for(int i = 1; i < n_flip; ++i){
+                    for(int j = 0; j < stats.size(); ++j){
+                        int flip = 2 * distr(eng) - 1;
+                        stats_flip(j) = stats(j) * flip;
+                    }
+                    scores_flip = X.transpose() * stats_flip;
+                    //std::cout << scores_flip << std::endl;
+                    for(int k = 0; k < p; ++k){
+                        if(scores_flip(k, k) >= scores(k, k)){
+                            ++count(k);
+                        }
+                    }
+                }
+                DVector<double> p_value = count.array() / static_cast<double>(n_flip);
+                std::cout << "Count: " << count << std::endl;
+                return p_value;        		
+
+            }
+        }
+
+        void V() override{
+            int n = m_.n_basis();
+            //DMatrix<double> invE = -m_.invA().solve(DMatrix<double>::Identity(2*n, 2*n));
+            //V_ = m_.Psi() * invE.block(0, 0, n, n) * m_.Psi().transpose();
+            SparseBlockMatrix<double, 2, 2> E = SparseBlockMatrix<double, 2, 2>(
+            m_.PsiTD() * m_.Psi(), -m_.lambda_D() * m_.R1().transpose(),
+	        -m_.lambda_D() * m_.R1(),      -m_.lambda_D() * m_.R0()            );
+            //DMatrix<double> invE2 = inverse(m_.Psi().transpose()*m_.Psi()+m_.P());
+            DMatrix<double> invE2 = inverse(E).block(0, 0, n, n);
+            //std::cout << invE.row(0) << std::endl;
+            //std::cout << invE2.row(0) << std::endl;
+            V_ = invE2 * m_.Psi().transpose();
+        }
+
+        double phi(){
+            DMatrix<double> X = m_.X();
+            DMatrix<double> H = X * inverse(X.transpose() * m_.pW().asDiagonal() * X) * X.transpose() * m_.pW().asDiagonal();
+            DMatrix<double> Q = DMatrix<double>::Identity(H.rows(), H.cols()) - H;
+            DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q;
+            DMatrix<double> M = H + Q * S;
+            return  m_.data_loss() / (m_.n_obs() - M.trace());
+        }
+
+        void setNflip(int n){
+            n_flip = n;
+        }
+
+        void setseed(int k){
+            set_seed = k;
+        }
+
+
+};
+
+
 
 } // namespace models
 } // namespace fdapde

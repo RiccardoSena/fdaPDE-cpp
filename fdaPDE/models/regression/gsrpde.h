@@ -86,8 +86,8 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
     void fpirls_compute_step() {
         DVector<double> theta_ = distr_.link(mu_);   // \theta^k = (g(\mu^k_1), ..., g(\mu^k_n))
         DVector<double> G_ = distr_.der_link(mu_);   // G^k = diag(g'(\mu^k_1), ..., g'(\mu^k_n))
-        DVector<double> V_ = distr_.variance(mu_);   // V^k = diag(v(\mu^k_1), ..., v(\mu^k_n))
-        pW_ = ((G_.array().pow(2) * V_.array()).inverse()).matrix();
+        V_mu_ = distr_.variance(mu_);   // V^k = diag(v(\mu^k_1), ..., v(\mu^k_n))
+        pW_ = ((G_.array().pow(2) * V_mu_.array()).inverse()).matrix();
         py_ = G_.asDiagonal() * (y() - mu_) + theta_;
     }
     // updates mean vector \mu after WLS solution
@@ -101,7 +101,7 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
     }
     const DVector<double>& py() const { return py_; }
     const DVector<double>& pW() const { return pW_; }
-    const Eigen::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
+    const fdapde::core::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
     // GCV support
     double norm(const DMatrix<double>& op1, const DMatrix<double>& op2) const {   // total deviance \sum dev(\hat y - y)
         DMatrix<double> mu = distr_.inv_link(op1);
@@ -112,13 +112,18 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
         return result;
     }
 
+    const Distribution& distr() const { return distr_; }
+    const DVector<double>& V_mu() const { return V_mu_; }
+
+    const DVector<double>& mu() const{ return mu_; }
+
    private:
     Distribution distr_ {};
+    DVector<double> V_mu_;    // V^k = diag(v(\mu^k_1), ..., v(\mu^k_n))
     DVector<double> py_;   // \tilde y^k = G^k(y-u^k) + \theta^k
     DVector<double> pW_;   // diagonal of W^k = ((G^k)^{-2})*((V^k)^{-1})
     DVector<double> mu_;   // \mu^k = [ \mu^k_1, ..., \mu^k_n ] : mean vector at step k
-    Eigen::SparseLU<SpMatrix<double>> invA_;
-    SparseBlockMatrix<double, 2, 2> A_ {};
+    fdapde::core::SparseLU<SpMatrix<double>> invA_;
 
     // FPIRLS parameters (set to default)
     FPIRLS<This> fpirls_;
