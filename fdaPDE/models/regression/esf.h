@@ -1727,11 +1727,13 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
                     std::cout << H0(l) << std::endl;
                 }
                 */
-               /*
+                /*
                 std::cout << "f_est: " << std::endl;
                 for(int l = 0; l < 4; ++l){
                     std::cout << f(l) << std::endl;
-                }*/
+                }
+                */
+                
                 DVector<double> stats = (y - m_.distr().inv_link(H0));
                 DVector<double> scores = C_ * X.transpose() * stats;
                 

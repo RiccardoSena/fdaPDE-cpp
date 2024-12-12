@@ -122,13 +122,18 @@ TEST(glm_inference, poisson) {
     inference.setC(C);
     inference_sf.setC(C);
     inference.setBeta0(beta0);
-    inference_sf.setBeta0(beta0);
+    inference_sf.setBeta0(model.beta());
 
-    inference_sf.setNflip(30000);
+    inference_sf.setNflip(1000);
 
     //std::cout << "Estimate of beta: " << model.beta() << std::endl;
     //std::cout << "Wald: " << inference.p_value(fdapde::models::one_at_the_time) << std::endl;
     DVector<double> res_sf = inference_sf.p_value(fdapde::models::simultaneous);
+    DVector<double> f = model.f();
+    std::cout << "f" << std::endl;
+    for(int l = 0; l < 4; ++l){
+        std::cout << f(l) << std::endl;
+    }
     std::cout << "SF: " << res_sf << std::endl;
     //DVector<int> locat(3);
     //locat << 1, 2, 3;
@@ -286,16 +291,17 @@ TEST(glm_inference, gaussian){
     DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
 
     DVector<double> H1(11);
-    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 10;
+    //H1 << 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11;
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
     //H1 << 0;
     // repetition for the simulations
-    int rep = 30;
+    int rep = 50;
 
     DMatrix<double> res_wald(rep, H1.size());
     DMatrix<double> res_esf(rep, H1.size());
 
     double sd = 0.5;
-    double mean = 3;
+    double mean = 0;
 
     DMatrix<double> observations(X.size(), 1);
     
@@ -336,12 +342,132 @@ TEST(glm_inference, gaussian){
             fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
             inf_esf.setBeta0(beta0);
             inf_esf.setC(C);
-            inf_esf.setNflip(10000);
+            inf_esf.setNflip(10000); 
 
             pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
             pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
 
-            std::cout << "Rep " << k << std::endl;
+            //std::cout << "Rep " << k << std::endl;
+            //std::cout << pval_wald[k-1] << std::endl;
+            //std::cout << pval_esf[k-1] << std::endl;
+
+        }
+        res_wald.col(i) = pval_wald;
+        res_esf.col(i) = pval_esf;
+
+        //std::cout << "H1 " << i << std::endl;
+
+    }
+
+    DVector<double> power_matrix_wald(H1.size());
+    DVector<double> power_matrix_esf(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_wald = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_wald.rows(); ++i){
+            if (res_wald(i, j) < threshold){
+                count_wald++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;    
+    }
+
+    std::cout << "Power Wald:" << std::endl;
+    std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power ESF" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+ 
+}
+
+
+/*
+TEST(glm_inference, gaussian2){
+    
+    MeshLoader<Triangulation<2, 2>> domain("unit_square_medium");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/gsrpde/2D_test1/locs.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    const double pi = M_PI;
+    const double a1 = -1.5;
+    const double a2 = 0.4;
+    auto z = [a1, a2, pi](const DVector<double>& p) -> double {
+        return a1 * std::sin(2 * pi * p[0]) * std::cos(2 * pi * p[1]) +
+               a2 * std::sin(3 * pi * p[0]) + 2;
+    };
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = z(locs.row(i));
+    }
+    DMatrix<double> X(f.rows(), 1);
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda_D = 1e-3;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    //H1 << 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11;
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    // repetition for the simulations
+    int rep = 30;
+
+    DMatrix<double> res_wald(rep, H1.size());
+    DMatrix<double> res_esf(rep, H1.size());
+
+    double sd = 0.5;
+    double mean = 3;
+
+    DMatrix<double> observations(X.size(), 1);
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_wald(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            std::normal_distribution<double> distribution2(mean, sd);
+            for (int j = 0; j < X.rows(); ++j) {
+                X(j, 0) = distribution2(generator);
+                std::normal_distribution<double> dist(X(j, 0) * H1[i] + f(j), 1);
+                observations(j, 0) = dist(generator);
+            }
+        
+            GSRPDE<SpaceOnly> model(problem, Sampling::pointwise, Gaussian());
+            model.set_lambda_D(lambda_D);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+
+        
+            fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
+            inf_wald.setBeta0(beta0);
+            inf_wald.setC(C);
+
+            fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
+            inf_esf.setBeta0(beta0);
+            inf_esf.setC(C);
+            inf_esf.setNflip(10000); 
+
+            pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
+            pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
+
+            //std::cout << "Rep " << k << std::endl;
             std::cout << pval_wald[k-1] << std::endl;
             std::cout << pval_esf[k-1] << std::endl;
 
@@ -379,7 +505,7 @@ TEST(glm_inference, gaussian){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
  
 }
-
+*/
 
 
 /*
@@ -411,17 +537,17 @@ TEST(glm_inference, poisson){
     beta0(0) = 0;
     DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
 
-    DVector<double> H1(1);
-    //H1 << 0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1;
-    H1 << 0;
+    DVector<double> H1(12);
+    H1 << 0, 0.03, 0.07, 0.1, 0.13, 0.17, 0.2, 0.23, 0.27, 0.3, 0.33, 0.36;
+    //H1 << 0;
     // repetition for the simulations
-    int rep = 1;
+    int rep = 100;
 
     DMatrix<double> res_wald(rep, H1.size());
     DMatrix<double> res_esf(rep, H1.size());
 
     double sd = 0.5;
-    double mean = 3;
+    double mean = 0;
 
     DMatrix<double> observations(X.size(), 1);
     
@@ -452,24 +578,24 @@ TEST(glm_inference, poisson){
             model.solve();
             
 
-            DVector<double> f = model.f();
-            std::cout << "f" << std::endl;
-            for(int l = 0; l < 4; ++l){
-                std::cout << f(l) << std::endl;
-            }
+            //DVector<double> f = model.f();
+            //std::cout << "f" << std::endl;
+            //for(int l = 0; l < 4; ++l){
+            //    std::cout << f(l) << std::endl;
+            //}
         
             fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
             inf_wald.setBeta0(beta0);
             inf_wald.setC(C);
 
             fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
-            inf_esf.setBeta0(model.beta());
+            inf_esf.setBeta0(beta0);
             inf_esf.setC(C);
             inf_esf.setNflip(10000);
 
             pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
             pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
-
+            //pval_esf[k-1] = 0;
             std::cout << "Rep " << k << std::endl;
             std::cout << pval_wald[k-1] << std::endl;
             std::cout << pval_esf[k-1] << std::endl;
@@ -477,7 +603,6 @@ TEST(glm_inference, poisson){
         }
         res_wald.col(i) = pval_wald;
         res_esf.col(i) = pval_esf;
-
         //std::cout << "H1 " << i << std::endl;
 
     }
@@ -508,4 +633,5 @@ TEST(glm_inference, poisson){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
  
 }
+
 */
