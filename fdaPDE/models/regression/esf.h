@@ -1623,7 +1623,7 @@ DMatrix<double> X_t = m_.X().transpose();
         V_ = invWtW * (W_t) * Lambda_ * Res2.asDiagonal() * Lambda_ * (W) * invWtW;
      }   
 
-     inline bool is_Unilaterally_Greater (DVector<double> v, DVector<double> u){
+     inline bool is_Unilaterally_Greater (DVector<double>& v, DVector<double>& u){
         int q = v.size();
         for (int i = 0; i < q; ++i){
             if(v(i) <= u(i)){
@@ -1633,7 +1633,7 @@ DMatrix<double> X_t = m_.X().transpose();
         return true;
      };
 
-     inline bool is_Unilaterally_Smaller (DVector<double> v, DVector<double> u){
+     inline bool is_Unilaterally_Smaller (DVector<double>& v, DVector<double>& u){
       int q = v.size();
       for (int i = 0; i < q; ++i){
         if(v(i) >= u(i)){
@@ -1735,8 +1735,9 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
                 */
                 
                 DVector<double> stats = (y - m_.distr().inv_link(H0));
-                DVector<double> scores = C_ * X.transpose() * stats;
-                
+                DMatrix<double> centers = centered(X);
+                //DVector<double> scores = C_ * X.transpose()  * stats;
+                DVector<double> scores = C_ * centers.transpose()  * stats;
                 double rank_one = 0;
                 if(p == 1){
                     rank_one = scores(0);
@@ -1758,7 +1759,8 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
                         int flip = 2 * distr(eng) - 1;
                         stats_flip(j) = stats(j) * flip;
                     }
-                    scores_flip = X.transpose() * stats_flip;
+                    //scores_flip = X.transpose() * stats_flip;
+                    scores_flip = centers.transpose() * stats_flip;
                     //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
                     if(p == 1){
                         rank_flip = scores_flip(0);
@@ -1852,6 +1854,27 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
             DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q;
             DMatrix<double> M = H + Q * S;
             return  m_.data_loss() / (m_.n_obs() - M.trace());
+        }
+
+        DMatrix<double> centered(DMatrix<double>& Xcov){
+            int n = Xcov.rows();
+            int m = Xcov.cols();
+            DVector<double> means(m);
+            means.setZero();
+            for(int j = 0; j < m; ++j){
+                for(int i = 0; i < n; ++i){
+                    means(j) += Xcov(i, j);
+                }
+            }
+            means = means / n;
+            DMatrix<double> center(n, m);
+            center = Xcov;
+            for(int k = 0; k < m; ++k){
+                for(int l = 0; l < n; ++l){
+                    center(l, k) -= means(k);
+                }
+            }
+            return center;
         }
 
         void setNflip(int n){
