@@ -20,8 +20,8 @@
 #include "src/centering_test.cpp"
 */
 
-
-#include "src/inference_test.cpp"
+#include "src/quantile_inference_test.cpp"
+//#include "src/inference_test.cpp"
 //#include "src/inferencetime_test.cpp"
 //#include "src/glm_inference_test.cpp"
 #include <unsupported/Eigen/SparseExtra> 

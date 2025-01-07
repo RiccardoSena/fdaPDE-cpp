@@ -510,6 +510,268 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
 };
 
 
+
+
+
+
+// QUANTILE SR-SPE
+template <typename RegularizationType, typename Strategy>
+class Wald<QSRPDE<RegularizationType>, Strategy> : public InferenceBase<QSRPDE<RegularizationType>> {
+   private:
+      SpMatrix<double> Psi_p_ {};         // Psi reducted only in the locations needed for inference on f
+      DVector<double> fp_ {};           // f in the locations of inference
+      DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
+      int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the locations
+
+   public: 
+      using Base = InferenceBase<QSRPDE<RegularizationType>>;
+      using Base::m_;
+      using Base::V_;
+      using Base::beta_;
+      using Base::f0_;
+      using Base::locations_f_;
+      using Base::alpha_f_;
+      // constructors
+      Wald() = default;                   // deafult constructor
+      Wald(const QSRPDE<RegularizationType>& m): Base(m) {};     // constructor  
+
+      // Variance for betas in Quantile regression is D1^{-1}*D0*D1^{-1} block (q x q)
+      void V() override{
+         DMatrix<double> D0_ = D0();
+         DMatrix<double> D1_ = D1();
+         std::cout<<"determinante di D1 "<<D1_.determinant()<<std::endl;
+         std::cout<<" se il determinante di D1 è 0 allora la matrice è non invertibile"<<std::endl;
+
+         // questo serve per calcolare una pseudo inversa dato che D1 non è invertibile 
+         double lambda = 1e-6;  
+         SpMatrix<double> D1_sparse = D1_.sparseView();
+         D1_sparse += lambda * DMatrix<double>::Identity(D1_.rows(), D1_.cols()).sparseView();
+         DMatrix<double> D1inv_= DMatrix<double>::Identity(D1_.rows(), D1_.cols());
+
+         Eigen::SparseLU<SpMatrix<double>> solver;
+         solver.compute(D1_sparse);
+         //questo serve a contorllare che la decomposizione e inversione avvenga correttamente 
+         if(solver.info() != Eigen::Success) {
+            std::cerr << "La decomposizione LU è fallita!" << std::endl;
+            }
+         else{
+            DMatrix<double> b= DMatrix<double>::Identity(D1_.rows(),D1_.cols());
+            std::cout << "Soluzione del sistema lineare:\n" << std::endl;
+            D1inv_ = solver.solve(b);
+         }
+         //dovrei invertire D1 così se fosse invertibile 
+         //DMatrix<double> D1inv_ = inverse(D1_);
+         DMatrix<double> var = D1inv_ * D0_ * D1inv_;
+
+
+         // extract the block of the variance of betas
+         int q = m_.X().cols();
+         std::cout << "var" <<var.block(0,0,q,q)<< std::endl;
+
+         V_ = var.block(0,0,q,q);
+      }
+
+
+
+      DMatrix<double> C() {
+        // Combina la matrice X e Psi in una nuova matrice C
+        // X è di dimensione (n x q) e Psi è di dimensione (n x N)
+        // La matrice C ha dimensione (n x (q + N))
+        int n = m_.X().rows();
+        int q = m_.X().cols();   // Numero di covariate in X
+        int N = m_.Psi().cols(); 
+
+        // Creiamo una matrice C che combina X e Psi
+        DMatrix<double> C_ = DMatrix<double>(n, q + N);
+         //std::cout<<"C righe  "<< C_.rows()<<std::endl;
+         //std::cout<<" C colonne  "<< C_.cols()<<std::endl;
+
+        // Copiamo i dati di X (le covariate) nella prima parte della matrice C
+        C_.block(0, 0, n, q) = m_.X();
+        
+        // Copiamo i dati di Psi nella seconda parte della matrice C
+        C_.block(0, q, n, N) = m_.Psi();
+        
+        return C_;
+      }
+
+      DMatrix<double> D0()  {
+         // Ottieni la matrice C
+         DMatrix<double> C_ = C();
+         int n = C_.rows();
+
+         // Inizializza D0n come matrice nulla
+         int Nt = C_.cols();
+         DMatrix<double> D0n = DMatrix<double>::Zero(Nt, Nt);
+
+         // Calcola la somma ci *ci^T
+         for (int i = 0; i < n; ++i) {
+            DVector<double> ci = C_.row(i);  // Estrae la riga i-esima come vettore
+            D0n += ci * ci.transpose();  // Somma ci ci^T
+         }
+         
+         // Moltiplica per il fattore alpha(1-aplha) / n questo alpha e' il grado del quantile che viene stimato 
+         D0n *= (m_.alpha() * (1.0 - m_.alpha()) / n);
+
+         return D0n;
+      }
+
+      DMatrix<double> D1() {
+         // Ottieni la matrice C
+         DMatrix<double> C_ = C();
+         int n = C_.rows();
+
+         // Inizializza D1n come matrice nulla
+         int Nt = C_.cols();
+         DMatrix<double> D1n = DMatrix<double>::Zero(Nt, Nt);
+
+         // Calcola la somma pi_i * ci*ci^T (questo pi come si calcola????)
+         for (int i = 0; i < n; ++i) {
+               DVector<double> ci = C_.row(i);  // Estrae la riga i-esima come vettore
+               D1n += (ci * ci.transpose());  // somma pi_i * ci*ci^T
+         }
+
+         // Moltiplica per il fattore 1 / n
+         D1n /= n;
+
+         return D1n;
+      }
+
+
+
+
+      double f_p_value(){ 
+         if (is_empty(fp_)) {
+            fp();
+         }
+         if (is_empty(f0_)) {
+            Base::setf0(DVector<double>::Zero(fp_.size()));
+         }
+
+      // Inizializzazione delle matrici
+      DMatrix<double> D0_ = D0();
+      DMatrix<double> D1_ = D1();
+
+      int N = m_.Psi().cols();
+      //std::cout << "Numero di  (N): " << N << std::endl;
+
+      // Calcolo determinante di D1_
+      std::cout << "Determinante di D1_: " << D1_.determinant() << std::endl;
+      std::cout<<" se il determinante di D1 è 0 allora la matrice è non invertibile"<<std::endl;
+
+         // questo serve per calcolare una pseudo inversa dato che D1 non è invertibile 
+         double lambda = 1e-6;  
+         SpMatrix<double> D1_sparse = D1_.sparseView();
+         D1_sparse += lambda * DMatrix<double>::Identity(D1_.rows(), D1_.cols()).sparseView();
+         DMatrix<double> D1inv_= DMatrix<double>::Identity(D1_.rows(), D1_.cols());
+
+         Eigen::SparseLU<SpMatrix<double>> solver;
+         solver.compute(D1_sparse);
+         //questo serve a contorllare che la decomposizione e inversione avvenga correttamente 
+         if(solver.info() != Eigen::Success) {
+            std::cerr << "La decomposizione LU è fallita!" << std::endl;
+            }
+         else{
+            DMatrix<double> b= DMatrix<double>::Identity(D1_.rows(),D1_.cols());
+            std::cout << "Soluzione del sistema lineare:\n" << std::endl;
+            D1inv_ = solver.solve(b);
+         }
+         //dovrei invertire D1 così se fosse invertibile 
+         //DMatrix<double> D1inv_ = inverse(D1_);
+         DMatrix<double> var = D1inv_ * D0_ * D1inv_;
+         std::cout << "Determinante di var: " << var.determinant() << std::endl;
+
+         // Aggiunta di regolarizzazione a var
+         SpMatrix<double> var_sparse = var.sparseView();
+         var_sparse += lambda * DMatrix<double>::Identity(var.rows(), var.cols()).sparseView();
+
+         // Calcolo dell'inversa di var
+         DMatrix<double> var_inv = DMatrix<double>::Identity(var.rows(), var.cols());
+         Eigen::SparseLU<SpMatrix<double>> solver2;
+         solver2.compute(var_sparse);
+
+         if (solver2.info() != Eigen::Success) {
+            std::cerr << "La decomposizione LU di var è fallita!" << std::endl;
+            
+         } else {
+            DMatrix<double> b = DMatrix<double>::Identity(var.rows(), var.cols());
+            var_inv = solver2.solve(b);
+            std::cout << "Inversa di var calcolata correttamente." <<var_inv.coeff(0,0)<< std::endl;
+         }
+
+
+         int startRow = var_inv.rows() - N;
+         int startCol = var_inv.cols() - N;
+
+         DMatrix<double> var_block = var_inv.block(startRow, startCol, N, N);
+         f0_ = Psi_p_ * f0_;
+         DVector<double> diff = fp_ - f0_;
+
+         double stat = diff.transpose() * Psi_p_ * var_block * Psi_p_.transpose() * diff;
+         double pvalue = 0;
+         // distributed as a chi squared of r degrees of freedom
+         // the rank gets cmoputed when invVf() is called
+         std::cout << "Test statistic: " << stat << std::endl;
+         int rank = f0_.size();
+         std::cout<<"rank "<<rank<<std::endl;
+         double p = chi_squared_cdf(stat, rank);
+
+         if(p < 0){
+            pvalue = 1;
+         }
+         if(p > 1){
+            pvalue = 0;
+         }
+         else{
+            pvalue = 1 - p;
+            //pvalue = p;
+         }
+         return pvalue;
+      }
+
+      void Psi_p(){
+         // case in which the locations are extracted from the observed ones
+         if(is_empty(locations_f_) && is_empty(new_locations)){
+            Psi_p_ = m_.Psi();
+         }
+         else if (loc_subset == 1){
+            int m = locations_f_.size();
+            SpMatrix<double> Psi = m_.Psi().transpose();
+            Psi_p_.resize(m, Psi.rows()); 
+            for(int j = 0; j < m; ++j) {
+               int row = locations_f_[j];
+               for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+                  Psi_p_.insert(j, it.row()) = it.value();               
+               }
+            }
+            Psi_p_.makeCompressed();
+         }
+         else{
+            auto basis_evaluation = m_.pde().eval_basis(core::eval::pointwise, new_locations);
+            Psi_p_ = basis_evaluation->Psi;
+         }
+       //  std::cout<<"righe psi "<<Psi_p_.rows()<<std::endl;
+       //  std::cout<<"colonne psi "<<Psi_p_.cols()<<std::endl;
+
+      }
+ 
+      void fp(){
+         if(is_empty(Psi_p_))
+            Psi_p();
+         fp_ = Psi_p_ * m_.f(); 
+                //  std::cout<<"lunghezza f inference p"<<fp_.size()<<std::endl;
+                                 //   std::cout<<"lunghezza f "<<m_.f().size()<<std::endl;
+
+    
+      }
+
+      void beta() override{
+         beta_ = m_.beta();
+      }
+
+};
+
+
 } // namespace models
 } // namespace fdapde
 
