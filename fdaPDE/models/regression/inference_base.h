@@ -186,7 +186,7 @@ template <typename Model> class InferenceBase{
             return DVector<double>::Zero(1);
          }
       }
-
+ 
       // return the sparse approx of E^{-1}
       static SpMatrix<double> invE_approx(const Model& m){
          int alpha = 10;  

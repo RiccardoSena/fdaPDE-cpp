@@ -63,9 +63,15 @@ namespace models {
         }
     }
 
-    double integrand(double t, double a) {
-        return pow(t, a - 1) * exp(-t);
+// funzione della versione precednete che non funziona per grandi valori di stat in inpt in chi_squared_cdf
+ //   double integrand(double t, double a) {
+   //     return pow(t, a - 1) * exp(-t);
+    //}
+// questa funziona con valori grandi di stat 
+      double integrand(double t, double a) {
+        return exp((a - 1) * log(t) - t);
     }
+
 
     double gamma_incompleta(double a, double x, int numIntervals = 1000) {
         double sum = 0.0;
@@ -84,7 +90,9 @@ namespace models {
     double chi_squared_cdf(double chiSquaredStat, int degreesOfFreedom) {
         //std::cout<<"gamma restituisce "<<gamma(degreesOfFreedom / 2.0)<<std::endl;
         double pValue = gamma_incompleta(degreesOfFreedom/2.0,chiSquaredStat/2.0)/gamma(degreesOfFreedom / 2.0);
-        // std::cout<<"pvalue è "<<pValue<<std::endl;
+       // std::cout<<"gamma incompleta  è "<<gamma_incompleta(degreesOfFreedom/2.0,chiSquaredStat/2.0)<<std::endl;
+                //std::cout<<"gamma   è "<<gamma(degreesOfFreedom / 2.0)<<std::endl;
+
 
         return pValue;
     }

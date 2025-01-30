@@ -391,10 +391,29 @@ template <typename Model, typename Strategy> class Wald: public InferenceBase<Mo
 template <typename RegularizationType, typename Strategy>
 class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<RegularizationType>> {
    private:
+      struct ExactInverse {
+         DMatrix<double> compute(GSRPDE<RegularizationType> m){
+            return inverse(m.Psi().transpose() * m.Qglm() * m.Psi() + m.P());
+         }
+      };
+      struct NonExactInverse {
+         DMatrix<double> compute(GSRPDE<RegularizationType> m){            
+            SpMatrix<double> invE_ = Base::invE_approx(m);
+            DMatrix<double> Ut_ = m.Psi().transpose() * m.X();
+            DMatrix<double> Vt_ = m.X().transpose() * m.pW().asDiagonal() * m.Psi();
+            DMatrix<double> Ct_ = - inverse(m.X().transpose() * m.pW().asDiagonal() * m.X());  
+            DMatrix<double> invMt_ = invE_ - invE_ * Ut_ * inverse(Ct_ + Vt_ * invE_ * Ut_) * Vt_ * invE_;
+            return invMt_;            
+         }       
+      };
+
+
       DMatrix<double> Q_{};
-      DMatrix<double> H_{};
+      //DMatrix<double> H_{};
+      DMatrix<double> Vf_{}; // f variance
       SpMatrix<double> Psi_p_ {};         // Psi reductued only in the locations needed for inference
       DVector<double> fp_ {};           // f in the locations of inference
+      int rank;       
       DMatrix<double> new_locations {};   // vector of new locations for inference in f (only Wald)
       int loc_subset = 1;        // =1 if the locations needed for inference are a subset of the locations
 
@@ -406,6 +425,9 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
       using Base::f0_;
       using Base::locations_f_;
       using Base::alpha_f_;
+      using Solver = typename std::conditional<std::is_same<Strategy, exact>::value, ExactInverse, NonExactInverse>::type;
+      Solver s_; 
+
       // constructors
       Wald() = default;                   // deafult constructor
       Wald(const GSRPDE<RegularizationType>& m): Base(m) {};     // constructor  
@@ -413,12 +435,13 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
       // Variance for betas in GLM is phi*E^{-1}
       void V() override{
          if(is_empty(Q_)){
-            Q();
+            Q_ = m_.Qglm();
          }
          DMatrix<double> X = m_.X();
          DMatrix<double> Sigma = inverse(X.transpose() * m_.pW().asDiagonal() * X);
          DMatrix<double> block = X.transpose() * m_.pW().asDiagonal();
-         DMatrix<double> Psi_block =  inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
+         //DMatrix<double> Psi_block =  inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
+         DMatrix<double> Psi_block =  s_.compute(m_);
          DMatrix<double> var_f = m_.Psi() * Psi_block * m_.Psi().transpose() * Q_ * m_.Psi() * Psi_block * m_.Psi().transpose();
          V_ = phi() * (Sigma + Sigma * block * var_f * block.transpose() * Sigma);
       }
@@ -428,18 +451,13 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
             fp();
          if(is_empty(f0_))
             Base::setf0(DVector<double>::Zero(fp_.size()));
-         if(is_empty(Q_)){
-            Q();
-         }
-         DMatrix<double> E = inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
-         DMatrix<double> var = phi() * Psi_p_ * E * m_.Psi().transpose() * Q_ * m_.Psi() * E * Psi_p_.transpose();
-         double stat = (fp_ - f0_).transpose() * inverse(var) * (fp_ - f0_);
+         if(is_empty(Vf_))
+            Vf();
+         double stat = (fp_ - f0_).transpose() * invVf() * (fp_ - f0_);
          double pvalue = 0;
          // distributed as a chi squared of r degrees of freedom
-         // the rank gets cmoputed when invVf() is called
-         std::cout << "Test statistic: " << stat << std::endl;
-         int rank = f0_.size();
-         std::cout << "Rank: " << rank << std::endl;
+         //std::cout << "Test statistic: " << stat << std::endl;
+         //std::cout << "Rank: " << rank << std::endl;
          double p = chi_squared_cdf(stat, rank);
          if(p < 0){
             pvalue = 1;
@@ -452,6 +470,29 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
             //pvalue = p;
          }
          return pvalue;
+      }
+
+      DMatrix<double> f_CI(){
+         if(is_empty(Vf_))
+            Vf();        
+         if(alpha_f_ == 0.)
+            Base::setAlpha_f(0.05);
+         if(is_empty(fp_))
+            fp();
+         // Psi_p_ should be p x n, where n is the number of basis and 
+         // p the locations in which you want inference
+         int p = Vf_.rows();
+         DVector<double> diagon = Vf_.diagonal();
+         DVector<double> lowerBound(p);
+         DVector<double> upperBound(p);
+         double quantile = normal_standard_quantile(1 - alpha_f_ / 2);            
+         lowerBound = fp_.array() - quantile * (diagon.array()).sqrt();
+         upperBound = fp_.array() + quantile * (diagon.array()).sqrt();
+
+         DMatrix<double> CIMatrix(p, 2);      //matrix of confidence intervals
+         CIMatrix.col(0) = lowerBound;
+         CIMatrix.col(1) = upperBound;
+         return CIMatrix;
       }
 
       void Psi_p(){
@@ -476,12 +517,6 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
             Psi_p_ = basis_evaluation->Psi;
          }
       }
- 
-      void Q(){
-         DMatrix<double> X = m_.X();
-         H_ = X * inverse(X.transpose() * m_.pW().asDiagonal() * X) * X.transpose() * m_.pW().asDiagonal();
-         Q_ = DMatrix<double>::Identity(H_.rows(), H_.cols()) - H_;
-      }
 
       void fp(){
          if(is_empty(Psi_p_))
@@ -499,11 +534,55 @@ class Wald<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<R
       // M = H + QS
       double phi(){
          if(is_empty(Q_)){
-            Q();
+            Q_ = m_.Qglm();
          }
-         DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q_;
-         DMatrix<double> M = H_ + Q_ * S;
+         //DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q_;
+         DMatrix<double> S = m_.Psi() * s_.compute(m_) * m_.Psi().transpose() * Q_;
+         //DMatrix<double> M = H_ + Q_ * S;
+         DMatrix<double> M = (DMatrix<double>::Identity(m_.X().rows(), m_.X().rows()) - Q_) + Q_ * S;
          return  m_.data_loss() / (m_.n_obs() - M.trace());
+      }
+
+      void Vf(){
+         if(is_empty(Q_)){
+            Q_ = m_.Qglm();
+         }
+         DMatrix<double> E = inverse(m_.Psi().transpose() * Q_ * m_.Psi() + m_.P());
+         Vf_ = phi() * Psi_p_ * E * m_.Psi().transpose() * Q_ * m_.Psi() * E * Psi_p_.transpose();
+      }
+
+
+      DMatrix<double> invVf(){
+         if(is_empty(Vf_))
+            Vf();
+         Eigen::SelfAdjointEigenSolver<DMatrix<double>> Vw_eigen(Vf_);
+         DVector<double> eigenvalues = Vw_eigen.eigenvalues();
+         double thresh = 0.0001;
+         
+         int flag = 0;
+         int it = 0;
+         while(flag == 0 && it < eigenvalues.size()){
+            if(eigenvalues(it) > thresh)
+               flag = 1;
+            ++it;
+         }
+         
+         // rank
+         rank = eigenvalues.size() - it + 1;
+         DVector<double> imp_eigval = eigenvalues.tail(rank);
+         DMatrix<double> imp_eigvec = Vw_eigen.eigenvectors().rightCols(rank);
+
+         // now we can compute the r-rank pseudoinverse
+         DVector<double> temp = imp_eigval.array().inverse();
+         DiagMatrix<double> inv_imp_eigval = temp.asDiagonal();
+         DMatrix<double> invVf = imp_eigvec * inv_imp_eigval * imp_eigvec.transpose();
+
+         return invVf;      
+      }
+
+      void setNewLocations_f(DMatrix<double> loc){
+         loc_subset = 0;
+         new_locations = loc;
       }
       
 

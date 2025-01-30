@@ -117,6 +117,12 @@ class GSRPDE : public RegressionBase<GSRPDE<RegularizationType_>, Regularization
 
     const DVector<double>& mu() const{ return mu_; }
 
+    DMatrix<double> const Qglm(){
+        DMatrix<double> v = X().transpose() * W_;   // X^\top*W
+        DMatrix<double> z = invXtWX_.solve(v);          // (X^\top*W*X)^{-1}*X^\top*W dovrebbe funzionare 
+        return DMatrix<double>::Identity(X().rows(), X().rows()) - X() * z;
+    }
+
    private:
     Distribution distr_ {};
     DVector<double> V_mu_;    // V^k = diag(v(\mu^k_1), ..., v(\mu^k_n))

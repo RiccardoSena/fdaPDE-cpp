@@ -58,8 +58,8 @@ done
 
 ## set CMake compiler
 if [ "$COMPILER" = "gcc" ]; then
-    export CC=/usr/local/Cellar/gcc/14.1.0_1/bin/gcc-14
-    export CXX=/usr/local/Cellar/gcc/14.1.0_1/bin/g++-14
+    export CC=/usr/local/Cellar/gcc/14.2.0_1/bin/gcc-14
+    export CXX=/usr/local/Cellar/gcc/14.2.0_1/bin/g++-14
 elif [ "$COMPILER" = "clang" ]; then
     export CC=/usr/bin/clang
     export CXX=/usr/bin/clang++

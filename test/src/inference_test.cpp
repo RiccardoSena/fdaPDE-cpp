@@ -1064,7 +1064,73 @@ TEST(inference_test, chrono27) {
 }
 */
 
+TEST(inference_test, c_shaped) {
+    // define domain
+    MeshLoader<Triangulation<2,2>> domain("c_shaped");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/srpde/2D_test2/locs.csv");
+    DMatrix<double> y    = read_csv<double>("../data/models/srpde/2D_test2/y.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/srpde/2D_test2/X.csv");
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define statistical model
+    double lambda = 0.2201047;
 
+    // chrono start
+    using namespace std::chrono;
+
+    int n_it = 100;
+    DVector<double> times(n_it);
+
+    for(int i = 0; i < n_it; ++i){
+
+    SRPDE model(problem, Sampling::pointwise);
+    model.set_lambda_D(lambda);
+    model.set_spatial_locations(locs);
+    // set model's data
+    BlockFrame<double, int> df;
+    df.insert(OBSERVATIONS_BLK, y);
+    df.insert(DESIGN_MATRIX_BLK, X);
+    model.set_data(df);
+    // solve smoothing problem
+    model.init();
+    model.solve();
+
+    int cols = model.beta().size();
+    DMatrix<double> C=DMatrix<double>::Identity(cols, cols);
+    DVector<double> beta0(2);
+    beta0(0)=2;
+    beta0(1)=-1;
+
+    fdapde::models::Wald<SRPDE, fdapde::models::exact> inferenceWald(model);
+    //fdapde::models::Speckman<SRPDE, fdapde::models::exact> inferenceSpeck(model);
+    //fdapde::models::ESF<SRPDE, fdapde::models::exact> inferenceESF(model);
+    
+    inferenceWald.setC(C);
+    //inferenceSpeck.setC(C);
+    //inferenceESF.setC(C);
+
+    inferenceWald.setBeta0(beta0);
+    //inferenceSpeck.setBeta0(beta0);
+    //inferenceESF.setBeta0(beta0);
+
+    auto start = high_resolution_clock::now();
+
+    inferenceWald.p_value(fdapde::models::one_at_the_time);
+    //inferenceSpeck.p_value(fdapde::models::simultaneous);
+    //inferenceESF.p_value(fdapde::models::simultaneous);
+
+    auto end = high_resolution_clock::now();
+
+    std::chrono::duration<double> duration = end - start;
+
+    times(i) = duration.count();
+
+    }
+    std::cout << times << std::endl;
+}
 
 /*
 TEST(inference_test, chronoWald) {
@@ -2316,7 +2382,7 @@ TEST(inference_test, lump){
 */
 
 
-
+/*
 TEST(inference_test, lumping_time){
         
     std::vector<std::string> Nodes = {
@@ -2407,7 +2473,7 @@ TEST(inference_test, lumping_time){
     }
 
 }
-
+*/
 
 
 /*

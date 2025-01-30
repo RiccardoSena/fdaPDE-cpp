@@ -1673,6 +1673,8 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
     private:
         int n_flip = 1000;
         int set_seed = 0;
+
+        SpMatrix<double> Psi_p_ {};   // Psi only in the locations for inference
     
     public:
         using Base = InferenceBase<GSRPDE<RegularizationType>>;
@@ -1681,6 +1683,8 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
         using Base::beta0_;
         using Base::C_;
         using Base::V_;
+        using Base::f0_;
+        using Base::locations_f_;
 
         // constructors
         ESF() = default;
@@ -1706,131 +1710,166 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
                 std::random_device rd; 
                 eng.seed(rd()); // random seed 
             }
+
+            if (type == simultaneous){
             DVector<double> beta_hat = m_.beta();
             DVector<double> beta_hat_mod = beta_hat;
-            if(type == simultaneous){
-                for(int i = 0; i < p; ++i){
-                    for(int j = 0; j < C_.cols(); j++){
-                        if(C_(i,j) > 0){
-                            beta_hat_mod[j] = beta0_[j];
-                        }
+
+            for(int i = 0; i < p; ++i){
+                for(int j = 0; j < C_.cols(); j++){
+                    if(C_(i,j) > 0){
+                        beta_hat_mod[j] = beta0_[j];
                     }
                 }
-                // we probably could avoid computing phi since it is the same for every element
-                //DVector<double> scores = m_.X().transpose() * (m_.y() - m_.X() * beta_hat_mod) / phi();
-                DVector<double> f = V_ * (m_.py() - X * beta_hat_mod);
-                DVector<double> bet = X * beta_hat_mod;
-                DVector<double> H0 = bet + m_.Psi() * f;
-                /*
-                std::cout << "HO: " << std::endl;
-                for(int l = 0; l < 5; ++l){
-                    std::cout << H0(l) << std::endl;
+            }
+            // we probably could avoid computing phi since it is the same for every element
+            //DVector<double> scores = m_.X().transpose() * (m_.y() - m_.X() * beta_hat_mod) / phi();
+            //DMatrix<double> D = m_.V_mu().asDiagonal();
+            //DMatrix<double> Jpp = m_.Psi().transpose() * D * m_.Psi();
+            //DMatrix<double> Jpp_inv = inverse(Jpp);
+            //DMatrix<double> Jbp = X.transpose() * D * m_.Psi();
+
+            DVector<double> f = V_ * (m_.py() - X * beta_hat_mod);
+            DVector<double> bet = X * beta_hat_mod;
+            DVector<double> H0 = bet + m_.Psi() * f;
+            /*
+            std::cout << "HO: " << std::endl;
+            for(int l = 0; l < 5; ++l){
+                std::cout << H0(l) << std::endl;
+            }
+            */
+            /*
+            std::cout << "f_est: " << std::endl;
+            for(int l = 0; l < 4; ++l){
+                std::cout << f(l) << std::endl;
+            }
+            */
+            
+            DVector<double> stats = (y - m_.distr().inv_link(H0));
+            DMatrix<double> centers = centered(X);
+            //DVector<double> scores_beta = C_ * X.transpose()  * stats;
+            //DVector<double> scores_f = m_.Psi().transpose() * stats;
+            //DVector<double> scores = scores_beta - Jbp * Jpp_inv * scores_f;
+            DVector<double> scores = C_ * centers.transpose()  * stats;
+            double rank_one = 0;
+            if(p == 1){
+                rank_one = scores(0);
+            }
+            else{    
+                rank_one = scores.transpose() * scores;
+            }
+            
+            DVector<double> result(1);
+            int count = 0;
+            //int up = 0;
+            //int down = 0;
+            // initialize new stats to be flipped
+            DVector<double> stats_flip = stats;
+            DVector<double> scores_flip = scores;
+            double rank_flip = rank_one;
+            for(int i = 1; i < n_flip; ++i){
+                for(int j = 0; j < stats.size(); ++j){
+                    int flip = 2 * distr(eng) - 1;
+                    stats_flip(j) = stats(j) * flip;
                 }
-                */
-                /*
-                std::cout << "f_est: " << std::endl;
-                for(int l = 0; l < 4; ++l){
-                    std::cout << f(l) << std::endl;
-                }
-                */
-                
-                DVector<double> stats = (y - m_.distr().inv_link(H0));
-                DMatrix<double> centers = centered(X);
-                //DVector<double> scores = C_ * X.transpose()  * stats;
-                DVector<double> scores = C_ * centers.transpose()  * stats;
-                double rank_one = 0;
+                //scores_flip = (X.transpose() - Jbp * Jpp_inv * m_.Psi().transpose()) * stats_flip;
+                scores_flip = centers.transpose() * stats_flip;
+                //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
                 if(p == 1){
-                    rank_one = scores(0);
+                    rank_flip = scores_flip(0);
                 }
-                else{    
-                    rank_one = scores.transpose() * scores;
+                else{
+                    rank_flip = scores_flip.transpose() * scores_flip;
                 }
-                
-                DVector<double> result(1);
-                int count = 0;
-                //int up = 0;
-                //int down = 0;
-                // initialize new stats to be flipped
-                DVector<double> stats_flip = stats;
-                DVector<double> scores_flip = scores;
-                double rank_flip = rank_one;
-                for(int i = 1; i < n_flip; ++i){
-                    for(int j = 0; j < stats.size(); ++j){
-                        int flip = 2 * distr(eng) - 1;
-                        stats_flip(j) = stats(j) * flip;
-                    }
-                    //scores_flip = X.transpose() * stats_flip;
-                    scores_flip = centers.transpose() * stats_flip;
-                    //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
-                    if(p == 1){
-                        rank_flip = scores_flip(0);
-                    }
-                    else{
-                        rank_flip = scores_flip.transpose() * scores_flip;
-                    }
-                    if (rank_flip >= rank_one){
-                        ++count;
-                    }
-                    /*
-                    if(is_Unilaterally_Greater(scores_flip, scores)){ 
-                        up = up + 1;
-                    }
-                    else if(is_Unilaterally_Smaller(scores_flip, scores)){ 
-                        down = down + 1;
-                    }    
-                    */                
-                
+                if (rank_flip >= rank_one){
+                    ++count;
                 }
-                double p_value = count/static_cast<double>(n_flip-1);
-                result(0) = p_value;
                 /*
-                double pval_up = static_cast<double>(up) / n_flip;
-                double pval_down = static_cast<double>(down) / n_flip;
-                result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
-                */
-                return result;
+                if(is_Unilaterally_Greater(scores_flip, scores)){ 
+                    up = up + 1;
+                }
+                else if(is_Unilaterally_Smaller(scores_flip, scores)){ 
+                    down = down + 1;
+                }    
+                */                
+            
+            }
+            double p_value = count/static_cast<double>(n_flip-1);
+            result(0) = p_value;
+            /*
+            double pval_up = static_cast<double>(up) / n_flip;
+            double pval_down = static_cast<double>(down) / n_flip;
+            result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
+            */
+            return result;
             }
             else{
-                // ONE AT THE TIME   
-                DMatrix<double> pseudo_res_H0(V_.cols(), p);
-                DMatrix<double> res_H0(V_.cols(), p);
-                DMatrix<double> X = m_.X();
-                for(int i = 0; i < p; ++i){
-                // Extract the current beta in test
-                beta_hat_mod = beta_hat;
-                    for(int j = 0; j < C_.cols(); ++j){
-                        if(C_(i,j) > 0){
-                         beta_hat_mod[j] = beta0_[j];
-                        }
-                    }
-                // compute the partial residuals
-                pseudo_res_H0.col(i) = X * beta_hat_mod + m_.Psi() * V_ * (m_.py() - X * beta_hat_mod);
-                res_H0.col(i) = m_.y();
-                }		
-                DMatrix<double> stats = (res_H0 - m_.distr().inv_link(pseudo_res_H0));
-                DMatrix<double> scores = C_ * X.transpose() * stats;
-                DVector<double> count(p);
-                // initialize new stats to be flipped
-                DMatrix<double> stats_flip = stats;
-                DMatrix<double> scores_flip = scores;
-                for(int i = 1; i < n_flip; ++i){
-                    for(int j = 0; j < stats.size(); ++j){
-                        int flip = 2 * distr(eng) - 1;
-                        stats_flip(j) = stats(j) * flip;
-                    }
-                    scores_flip = X.transpose() * stats_flip;
-                    //std::cout << scores_flip << std::endl;
-                    for(int k = 0; k < p; ++k){
-                        if(scores_flip(k, k) >= scores(k, k)){
-                            ++count(k);
-                        }
-                    }
-                }
-                DVector<double> p_value = count.array() / static_cast<double>(n_flip);
-                std::cout << "Count: " << count << std::endl;
-                return p_value;        		
-
+                DVector<double> result(1);
+                result << 0;
+                return result;
             }
+        
+        }
+
+        double f_p_value(){
+            if(is_empty(Psi_p_))
+                Psi_p();
+            if(is_empty(f0_)){
+                Base::setf0(DVector<double>::Zero(Psi_p_.rows()));
+            }
+            DMatrix<double> W_p = Wp().asDiagonal();
+            DMatrix<double> X_p = Xp();
+            DVector<double> beta_f0 = X_p * inverse(X_p.transpose() * W_p * X_p) * X_p.transpose() * W_p * (zp() - f0_);
+            
+            DVector<double> stats = (yp() - m_.distr().inv_link(beta_f0 + f0_));
+            DVector<double> scores = Psi_p_.transpose() * stats;
+
+            // BERNOULLI -1; 1
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+
+            double rank_one = 0;
+            int p = yp().size();
+            if(p == 1){
+                rank_one = scores(0);
+            }
+            else{    
+                rank_one = scores.transpose() * scores;
+            }
+            
+            DVector<double> result(1);
+            int count = 0;
+
+            DVector<double> stats_flip = stats;
+            DVector<double> scores_flip = scores;
+            double rank_flip = rank_one;
+            for(int i = 1; i < n_flip; ++i){
+                for(int j = 0; j < stats.size(); ++j){
+                    int flip = 2 * distr(eng) - 1;
+                    stats_flip(j) = stats(j) * flip;
+                }
+                //scores_flip = X.transpose() * stats_flip;
+                scores_flip = Psi_p_.transpose() * stats_flip;
+                //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
+                if(p == 1){
+                    rank_flip = scores_flip(0);
+                }
+                else{
+                    rank_flip = scores_flip.transpose() * scores_flip;
+                }
+                if (rank_flip >= rank_one){
+                    ++count;
+                }            
+            }
+
+            return count/static_cast<double>(n_flip-1);
+            
         }
 
         void V() override{
@@ -1854,6 +1893,94 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
             DMatrix<double> S = m_.Psi() * inverse(m_.Psi().transpose() * Q * m_.Psi() + m_.P()) * m_.Psi().transpose() * Q;
             DMatrix<double> M = H + Q * S;
             return  m_.data_loss() / (m_.n_obs() - M.trace());
+        }
+
+        void Psi_p(){
+            // case in which the locations are extracted from the observed ones
+            if(is_empty(locations_f_)){
+                Psi_p_ = m_.Psi();
+            }
+            else{
+                int m = locations_f_.size();
+                SpMatrix<double> Psi = m_.Psi().transpose();
+                Psi_p_.resize(m, Psi.rows());
+                for(int j = 0; j < m; ++j) {
+                    int row = locations_f_[j];
+                    for(SpMatrix<double>::InnerIterator it(Psi, row); it; ++it) {
+                        Psi_p_.insert(j, it.row()) = it.value();
+                    }                
+                }
+                Psi_p_.makeCompressed();
+            }
+        }
+
+        DVector<double> yp(){
+            if(is_empty(locations_f_))
+                return m_.y();
+            else{        
+                int m = locations_f_.size();
+                DVector<double> y = m_.y();
+                DVector<double> yp;
+                yp.resize(m);
+                for(int j = 0; j < m; ++j) {
+                    int row = locations_f_[j];
+                    yp.row(j) = y.row(row);
+                }
+                return yp;
+            }
+        }
+
+        // return the pseudo data in the right points
+        DVector<double> zp(){
+            if(is_empty(locations_f_))
+                return m_.py();
+            else{        
+                int m = locations_f_.size();
+                DVector<double> z = m_.py();
+                DVector<double> zp;
+                zp.resize(m);
+                for(int j = 0; j < m; ++j) {
+                    int row = locations_f_[j];
+                    zp.row(j) = z.row(row);
+                }
+                return zp;
+            }
+        }
+
+        DVector<double> Wp(){
+            if(is_empty(locations_f_))
+                return m_.pW();
+            else{        
+                int m = locations_f_.size();
+                DVector<double> w = m_.pW();
+                DVector<double> wp;
+                wp.resize(m);
+                for(int j = 0; j < m; ++j) {
+                    int row = locations_f_[j];
+                    wp.row(j) = w.row(row);
+                }
+                return wp;
+            }
+        }
+
+        DMatrix<double> Xp(){
+            // case in which the locations are extracted from the observed ones
+            if(is_empty(locations_f_)){
+                return m_.X();
+            }
+            if(!m_.has_covariates())
+                return m_.X();
+            else{
+                int m = locations_f_.size();
+                DMatrix<double> X = m_.X();
+                DMatrix<double> Xp;
+                Xp.resize(m, X.cols());
+                for(int j = 0; j < m; ++j) {
+                    int row = locations_f_[j];
+                    Xp.row(j) = X.row(row);
+                }
+                return Xp;
+            }   
         }
 
         DMatrix<double> centered(DMatrix<double>& Xcov){
