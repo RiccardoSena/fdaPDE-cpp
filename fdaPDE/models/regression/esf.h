@@ -1773,7 +1773,7 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
                     stats_flip(j) = stats(j) * flip;
                 }
                 //scores_flip = (X.transpose() - Jbp * Jpp_inv * m_.Psi().transpose()) * stats_flip;
-                scores_flip = centers.transpose() * stats_flip;
+                scores_flip = C_ * centers.transpose() * stats_flip;
                 //scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
                 if(p == 1){
                     rank_flip = scores_flip(0);
