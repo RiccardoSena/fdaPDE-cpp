@@ -166,7 +166,7 @@ TEST(glm_inference, power_poisson){
     H1 << 0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5;
     //H1 << 0;
     // repetition for the simulations
-    int rep = 5;
+    int rep = 100;
 
     DMatrix<double> res_wald(rep, H1.size());
     DMatrix<double> res_esf(rep, H1.size());
@@ -177,6 +177,7 @@ TEST(glm_inference, power_poisson){
     DMatrix<double> observations(X.size(), 1);
     
     for(int i = 0; i < H1.size(); ++i){
+        std::cout << "Step: " << H1[i] << std::endl;
         DVector<double> pval_wald(rep);
         DVector<double> pval_esf(rep);
 
@@ -259,8 +260,8 @@ TEST(glm_inference, power_poisson){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
 
 }
-*/
 
+*/
 
 /*
 TEST(glm_inference, power_gaussian){
@@ -518,7 +519,7 @@ TEST(glm_inference, gaussian2){
 
 */
 
-/*
+
 TEST(glm_inference, power_poisson2){
     
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -547,12 +548,13 @@ TEST(glm_inference, power_poisson2){
     beta0(0) = 0;
     DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
 
-    DVector<double> H1(1);
+    DVector<double> H1(11);
     //H1 << 0, 0.03, 0.07, 0.1, 0.13, 0.17, 0.2, 0.23, 0.27, 0.3, 0.33, 0.36, 0.4;
-    //H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
-    H1 << 0;
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    //H1 << -0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5;
+    //H1 << 0;
     // repetition for the simulations
-    int rep = 1;
+    int rep = 30;
 
     DMatrix<double> res_wald(rep, H1.size());
     DMatrix<double> res_esf(rep, H1.size());
@@ -588,12 +590,6 @@ TEST(glm_inference, power_poisson2){
             model.init();
             model.solve();
             
-
-            //DVector<double> f = model.f();
-            //std::cout << "f" << std::endl;
-            //for(int l = 0; l < 4; ++l){
-            //    std::cout << f(l) << std::endl;
-            //}
         
             fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
             inf_wald.setBeta0(beta0);
@@ -644,7 +640,7 @@ TEST(glm_inference, power_poisson2){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
  
 }
-*/
+
 
 /*
 TEST(glm_inference, power_poisson2_fspai){
@@ -1538,7 +1534,7 @@ TEST(glm_inference, f_gaussian){
 */
 
 
-
+/*
 TEST(glm_inference, power_poisson_rmgauss){
 
     MeshLoader<Triangulation<2, 2>> domain("square_simulation");
@@ -1567,7 +1563,7 @@ TEST(glm_inference, power_poisson_rmgauss){
     DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
 
     DVector<double> H1(11);
-    H1 << 0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5;
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
     //H1 << 0;
     // repetition for the simulations
     int rep = 100;
@@ -1586,7 +1582,7 @@ TEST(glm_inference, power_poisson_rmgauss){
             std::default_random_engine generator(k);
             std::poisson_distribution<> poisson_dist;
             for (int j = 0; j < X.rows(); ++j) {
-                double lambda = std::exp(X(j, 0) * (beta0(0) + H1[i]) + f(j)) ;
+                double lambda = std::exp(((X(j, 0)) * (beta0(0) + H1[i]) + f(j))) ;
                 poisson_dist.param(std::poisson_distribution<>::param_type(lambda));
                 observations(j, 0) = poisson_dist(generator);
             }
@@ -1659,9 +1655,9 @@ TEST(glm_inference, power_poisson_rmgauss){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
 
 }
+*/
 
-
-
+/*
 TEST(glm_inference, power_poisson_rmatern){
 
     MeshLoader<Triangulation<2, 2>> domain("square_simulation");
@@ -1690,7 +1686,7 @@ TEST(glm_inference, power_poisson_rmatern){
     DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
 
     DVector<double> H1(11);
-    H1 << 0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5;
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
     //H1 << 0;
     // repetition for the simulations
     int rep = 100;
@@ -1709,7 +1705,7 @@ TEST(glm_inference, power_poisson_rmatern){
             std::default_random_engine generator(k);
             std::poisson_distribution<> poisson_dist;
             for (int j = 0; j < X.rows(); ++j) {
-                double lambda = std::exp(X(j, 0) * (beta0(0) + H1[i]) + f(j)) ;
+                double lambda = std::exp(((X(j, 0)) * (beta0(0) + H1[i]) + f(j))) ;
                 poisson_dist.param(std::poisson_distribution<>::param_type(lambda));
                 observations(j, 0) = poisson_dist(generator);
             }
@@ -1782,7 +1778,7 @@ TEST(glm_inference, power_poisson_rmatern){
     std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
 
 }
-
+*/
 
 
 /*
@@ -2280,4 +2276,493 @@ TEST(glm_inference, power_poisson_rmatern_fspai){
 
 }
 
+*/
+
+
+/*
+TEST(glm_inference, power_binomial_rmatern){
+    
+    MeshLoader<Triangulation<2, 2>> domain("square_simulation");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/locs.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/X_matern.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    auto z = [](double x, double y) {
+    double pi = M_PI; 
+    double term1 = 1.2 * exp(-pow(x - 0.2, 2) / pow(0.3, 2) - pow(y - 0.3, 2) / pow(0.4, 2));
+    double term2 = 0.8 * exp(-pow(x - 0.7, 2) / pow(0.3, 2) - pow(y - 0.8, 2) / pow(0.4, 2));
+    return (0.4 * pow(pi, 0.3)) * (term1 + term2);
+    };
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = z(locs(i, 0), locs(i, 1));
+    }
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda_D = 1e-3;
+
+    DVector<double> beta0(1);
+    beta0(0) = 1;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    //H1 << 0;
+    // repetition for the simulations
+    int rep = 100;
+
+    DMatrix<double> res_wald(rep, H1.size());
+    DMatrix<double> res_esf(rep, H1.size());
+
+
+    DMatrix<double> observations(X.size(), 1);
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_wald(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            for (int j = 0; j < X.rows(); ++j) { 
+                double p = 1.0 / (1.0 + std::exp(-X(j, 0) * (H1[i] + beta0(0)) - f(j))) ;
+                std::bernoulli_distribution bernoulli_dist(p);
+                observations(j, 0) = bernoulli_dist(generator);
+            }
+
+            GSRPDE<SpaceOnly> model(problem, Sampling::pointwise, Bernulli());
+            model.set_lambda_D(lambda_D);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+            
+            fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
+            inf_wald.setBeta0(beta0);
+            inf_wald.setC(C);
+
+            fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
+            inf_esf.setBeta0(beta0);
+            inf_esf.setC(C);
+            inf_esf.setNflip(10000);
+
+            pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
+            pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
+            //pval_esf[k-1] = 0;
+            //std::cout << "Rep " << k << std::endl;
+            //std::cout << pval_wald[k-1] << std::endl;
+            //std::cout << pval_esf[k-1] << std::endl;
+
+        }
+        res_wald.col(i) = pval_wald;
+        res_esf.col(i) = pval_esf;
+        //std::cout << "H1 " << i << std::endl;
+
+    }
+
+    DVector<double> power_matrix_wald(H1.size());
+    DVector<double> power_matrix_esf(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_wald = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_wald.rows(); ++i){
+            if (res_wald(i, j) < threshold){
+                count_wald++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;    
+    }
+
+    std::cout << "Power Wald:" << std::endl;
+    std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power ESF" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+ 
+}
+*/
+
+/*
+
+TEST(glm_inference, power_gamma_rmatern){
+    
+    MeshLoader<Triangulation<2, 2>> domain("square_simulation");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/locs.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/X_matern.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    auto z = [](double x, double y) {
+    double pi = M_PI; 
+    double term1 = 1.2 * exp(-pow(x - 0.2, 2) / pow(0.3, 2) - pow(y - 0.3, 2) / pow(0.4, 2));
+    double term2 = 0.8 * exp(-pow(x - 0.7, 2) / pow(0.3, 2) - pow(y - 0.8, 2) / pow(0.4, 2));
+    return (0.4 * pow(pi, 0.3)) * (term1 + term2);
+    };
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = z(locs(i, 0), locs(i, 1));
+    }
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda_D = 1e-3;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    //H1 << 0;
+    // repetition for the simulations
+    int rep = 100;
+
+    DMatrix<double> res_wald(rep, H1.size());
+    DMatrix<double> res_esf(rep, H1.size());
+
+    DMatrix<double> observations(X.size(), 1);
+
+    // scale parameter of choice
+    double scale = 2.0;
+    // for affine transformation to ensure positivity of mu
+    double a = 1;
+    double b = -2;
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_wald(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            for (int j = 0; j < X.rows(); ++j) { 
+                // affine transformation for f
+                double den = (a) * (X(j, 0) * (H1[i] + beta0(0)) + f(j) + b);
+                if(den > 0){
+                    den = -den;
+                }
+                
+                double mu = -1.0 / den;
+                std::gamma_distribution<> gamma_dist(mu/scale, scale);
+                observations(j, 0) = gamma_dist(generator);
+            }
+
+            GSRPDE<SpaceOnly> model(problem, Sampling::pointwise, Gamma());
+            model.set_lambda_D(lambda_D);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+            
+            fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
+            inf_wald.setBeta0(beta0);
+            inf_wald.setC(C);
+
+            fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
+            inf_esf.setBeta0(beta0);
+            inf_esf.setC(C);
+            inf_esf.setNflip(10000);
+
+            pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
+            pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
+            //pval_esf[k-1] = 0;
+            //std::cout << "Rep " << k << std::endl;
+            //std::cout << pval_wald[k-1] << std::endl;
+            //std::cout << pval_esf[k-1] << std::endl;
+
+        }
+        res_wald.col(i) = pval_wald;
+        res_esf.col(i) = pval_esf;
+        //std::cout << "H1 " << i << std::endl;
+
+    }
+
+    DVector<double> power_matrix_wald(H1.size());
+    DVector<double> power_matrix_esf(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_wald = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_wald.rows(); ++i){
+            if (res_wald(i, j) < threshold){
+                count_wald++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;    
+    }
+
+    std::cout << "Power Wald:" << std::endl;
+    std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power ESF" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+ 
+}
+
+*/
+
+/*
+TEST(glm_inference, power_binomial_rmgauss){
+    
+    MeshLoader<Triangulation<2, 2>> domain("square_simulation");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/locs.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/X_gauss.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    auto z = [](double x, double y) {
+    double pi = M_PI; 
+    double term1 = 1.2 * exp(-pow(x - 0.2, 2) / pow(0.3, 2) - pow(y - 0.3, 2) / pow(0.4, 2));
+    double term2 = 0.8 * exp(-pow(x - 0.7, 2) / pow(0.3, 2) - pow(y - 0.8, 2) / pow(0.4, 2));
+    return (0.4 * pow(pi, 0.3)) * (term1 + term2);
+    };
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = z(locs(i, 0), locs(i, 1));
+    }
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda_D = 1e-3;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    //H1 << 0;
+    // repetition for the simulations
+    int rep = 100;
+
+    DMatrix<double> res_wald(rep, H1.size());
+    DMatrix<double> res_esf(rep, H1.size());
+
+    DMatrix<double> observations(X.size(), 1);
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_wald(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            for (int j = 0; j < X.rows(); ++j) { 
+                double p = 1.0 / (1.0 + std::exp(-X(j, 0) * H1[i] - f(j) + 1)) ;
+                std::bernoulli_distribution bernoulli_dist(p);
+                observations(j, 0) = bernoulli_dist(generator);
+            }
+
+            GSRPDE<SpaceOnly> model(problem, Sampling::pointwise, Bernulli());
+            model.set_lambda_D(lambda_D);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+            
+
+            //DVector<double> f = model.f();
+            //std::cout << "f" << std::endl;
+            //for(int l = 0; l < 4; ++l){
+            //    std::cout << f(l) << std::endl;
+            //}
+        
+            fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
+            inf_wald.setBeta0(beta0);
+            inf_wald.setC(C);
+
+            fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
+            inf_esf.setBeta0(beta0);
+            inf_esf.setC(C);
+            inf_esf.setNflip(10000);
+
+            pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
+            pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
+            //pval_esf[k-1] = 0;
+            //std::cout << "Rep " << k << std::endl;
+            //std::cout << pval_wald[k-1] << std::endl;
+            //std::cout << pval_esf[k-1] << std::endl;
+
+        }
+        res_wald.col(i) = pval_wald;
+        res_esf.col(i) = pval_esf;
+        //std::cout << "H1 " << i << std::endl;
+
+    }
+
+    DVector<double> power_matrix_wald(H1.size());
+    DVector<double> power_matrix_esf(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_wald = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_wald.rows(); ++i){
+            if (res_wald(i, j) < threshold){
+                count_wald++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;    
+    }
+
+    std::cout << "Power Wald:" << std::endl;
+    std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power ESF" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+ 
+}
+
+*/
+
+/*
+TEST(glm_inference, power_gamma_rmgauss){
+    
+    MeshLoader<Triangulation<2, 2>> domain("square_simulation");
+    // import data from files
+    DMatrix<double> locs = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/locs.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/gsrpde/2D_simulation_glm/X_gauss.csv");
+    DMatrix<double> f(locs.rows(), 1);
+    auto z = [](double x, double y) {
+    double pi = M_PI; 
+    double term1 = 1.2 * exp(-pow(x - 0.2, 2) / pow(0.3, 2) - pow(y - 0.3, 2) / pow(0.4, 2));
+    double term2 = 0.8 * exp(-pow(x - 0.7, 2) / pow(0.3, 2) - pow(y - 0.8, 2) / pow(0.4, 2));
+    return (0.4 * pow(pi, 0.3)) * (term1 + term2);
+    };
+    for (int i = 0; i < locs.rows(); ++i){
+        f(i, 0) = z(locs(i, 0), locs(i, 1));
+    }
+    // define regularizing PDE
+    auto L = -laplacian<FEM>();
+    DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
+    PDE<decltype(domain.mesh), decltype(L), DMatrix<double>, FEM, fem_order<1>> problem(domain.mesh, L, u);
+    // define model
+    double lambda_D = 1e-3;
+
+    DVector<double> beta0(1);
+    beta0(0) = 0;
+    DMatrix<double> C = DMatrix<double>::Identity(1, 1);    
+
+    DVector<double> H1(11);
+    H1 << 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1;
+    //H1 << 0;
+    // repetition for the simulations
+    int rep = 100;
+
+    DMatrix<double> res_wald(rep, H1.size());
+    DMatrix<double> res_esf(rep, H1.size());
+
+    DMatrix<double> observations(X.size(), 1);
+
+    // scale parameter of choice
+    double scale = 2.0;
+    // for affine transformation to ensure positivity of mu
+    double a = 1;
+    double b = -2;
+    
+    for(int i = 0; i < H1.size(); ++i){
+        DVector<double> pval_wald(rep);
+        DVector<double> pval_esf(rep);
+
+        for(int k = 1; k < rep + 1; ++k){
+            std::default_random_engine generator(k);
+            for (int j = 0; j < X.rows(); ++j) { 
+                // need to make sure that the mu parameter is strictly gtreater than 0
+                // affine transformation for f
+                double den = (a) * (X(j, 0) * (H1[i] + beta0(0)) + f(j) + b);
+                if(den > 0){
+                    den = -den;
+                }
+                
+                double mu = -1.0 / den;
+                std::gamma_distribution<> gamma_dist(mu/scale, scale);
+                observations(j, 0) = gamma_dist(generator);
+            }
+
+            GSRPDE<SpaceOnly> model(problem, Sampling::pointwise, Gamma());
+            model.set_lambda_D(lambda_D);
+            model.set_spatial_locations(locs);
+            // set model's data
+            BlockFrame<double, int> df;
+            df.insert(OBSERVATIONS_BLK, observations);
+            df.insert(DESIGN_MATRIX_BLK, X);
+            model.set_data(df);
+            model.init();
+            model.solve();
+        
+            fdapde::models::Wald<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_wald(model);
+            inf_wald.setBeta0(beta0);
+            inf_wald.setC(C);
+
+            fdapde::models::ESF<GSRPDE<SpaceOnly>, fdapde::models::exact> inf_esf(model);
+            inf_esf.setBeta0(beta0);
+            inf_esf.setC(C);
+            inf_esf.setNflip(10000);
+
+            pval_wald[k-1] = inf_wald.p_value(fdapde::models::one_at_the_time)(0);
+            pval_esf[k-1] = inf_esf.p_value(fdapde::models::simultaneous)(0);
+            //pval_esf[k-1] = 0;
+            //std::cout << "Rep " << k << std::endl;
+            //std::cout << pval_wald[k-1] << std::endl;
+            //std::cout << pval_esf[k-1] << std::endl;
+
+        }
+        res_wald.col(i) = pval_wald;
+        res_esf.col(i) = pval_esf;
+        //std::cout << "H1 " << i << std::endl;
+
+    }
+
+    DVector<double> power_matrix_wald(H1.size());
+    DVector<double> power_matrix_esf(H1.size());
+
+    // compute the power
+    double threshold = 0.05;
+    for (int j = 0; j < H1.size(); ++j) {  
+        int count_wald = 0;
+        int count_esf = 0;
+        for (int i = 0; i < res_wald.rows(); ++i){
+            if (res_wald(i, j) < threshold){
+                count_wald++;
+            }
+            if (res_esf(i, j) < threshold){
+                count_esf++;
+            }
+        }   
+        power_matrix_wald[j] = static_cast<double> (count_wald) / rep; 
+        power_matrix_esf[j] = static_cast<double> (count_esf) / rep;    
+    }
+
+    std::cout << "Power Wald:" << std::endl;
+    std::cout << power_matrix_wald << std::setprecision(7) << std::endl;
+    std::cout << "Power ESF" << std::endl;
+    std::cout << power_matrix_esf << std::setprecision(7) << std::endl;
+ 
+}
 */
