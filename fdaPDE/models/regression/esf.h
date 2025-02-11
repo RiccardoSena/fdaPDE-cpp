@@ -1609,7 +1609,7 @@ DMatrix<double> X_t = m_.X().transpose();
         //DMatrix<double> inverseA_ {};
         //inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
         //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+        Lambda_ = m_.W() * DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) -  m_.W() * m_.Psi() * s_.compute(m_) * m_.PsiTD()* m_.W();
 
         //aggiunto per CI 
         DMatrix<double> W = m_.X();
@@ -2016,6 +2016,322 @@ class ESF<GSRPDE<RegularizationType>, Strategy> : public InferenceBase<GSRPDE<Re
 };
 
 
+
+
+
+/*
+template <typename RegularizationType, typename Strategy>
+class ESF<QSRPDE<RegularizationType>, Strategy> : public InferenceBase<QSRPDE<RegularizationType>> {
+    private:
+        int n_flip = 1000;
+        int set_seed = 0;
+    
+    public:
+        using Base = InferenceBase<QSRPDE<RegularizationType>>;
+        using Base::m_;
+        using Base::beta_;
+        using Base::beta0_;
+        using Base::f0_;
+        using Base::C_;
+        using Base::V_;
+
+        // constructors
+        ESF() = default;
+        ESF(const QSRPDE<RegularizationType>& m): Base(m) {};
+bool hasNaN(const Eigen::MatrixXd& matrix) {
+    for (int i = 0; i < matrix.rows(); ++i) {
+        for (int j = 0; j < matrix.cols(); ++j) {
+            if (std::isnan(matrix(i, j))) {
+                return true;  // Se c'è un NaN, ritorna true
+            }
+        }
+    }
+    return false;  // Se non ci sono NaN, ritorna false
+}
+
+
+// questa è una funzione di prova 
+DVector<double> signFlipTest() {
+    int n = m_.X().rows();
+    int p = m_.X().cols();
+    
+    // Calcolo dei coefficienti originali
+    DVector<double> beta_hat = m_.beta();
+    DMatrix<double> block = m_.PsiTD() * m_.pW().asDiagonal() * m_.Psi();
+    DVector<double> bet = m_.X() * beta_hat;
+    DMatrix<double> block_inv = block.completeOrthogonalDecomposition().pseudoInverse();
+    DVector<double> f_H0 = m_.Psi() * block_inv * m_.PsiTD() * m_.pW().asDiagonal() * (m_.y() - bet);
+    DVector<double> residuals = m_.y() - m_.X() * beta_hat- m_.Psi() * f_H0;
+    DVector<double> observed_statistics=beta_hat;
+    // Per generare segni casuali
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 1);
+    
+    // Distribuzione empirica dei coefficienti permutati
+    int numPermutations=1000;
+  DMatrix<double> statistics_permuted(numPermutations, p);
+    
+    for (int b = 0; b < numPermutations; ++b) {
+        DVector<double> flipped_residuals = residuals;
+        for (int i = 0; i < n; ++i) {
+            if (dist(gen) == 1) {
+                flipped_residuals(i) *= -1; // Inverti il segno
+            }
+        }
+        
+        // Genera la nuova risposta simulata
+        DVector<double> y_permuted = m_.X() * beta_hat + m_.Psi() * f_H0 + flipped_residuals;
+        
+       // Calcola una nuova statistica per ogni variabile
+        for (int j = 0; j < p; ++j) {
+            // Statistica come somma pesata delle variabili X
+            statistics_permuted(b, j) = (m_.X().col(j).transpose() * y_permuted).mean();
+        }
+    }
+    
+    // Calcolo dei p-value empirici
+    DVector<double> p_values(p);
+    for (int j = 0; j < p; ++j) {
+        int count = 0;
+        for (int b = 0; b < numPermutations; ++b) {
+            if (std::abs(statistics_permuted(b, j)) >= std::abs(observed_statistics[j])) {
+                count++;
+            }
+        }
+        p_values(j) = static_cast<double>(count) / numPermutations;
+    }
+    
+    return p_values;
+}
+
+
+
+
+         DVector<double> p_value(CIType type) override{
+            fdapde_assert(!is_empty(C_));
+            if(is_empty(beta0_)){
+                Base::setBeta0(DVector<double>::Zero(m_.beta().size()));
+            }
+            int p = C_.rows();
+            DMatrix<double> X = m_.X();
+            DVector<double> y = m_.y();
+            if(is_empty(V_)){
+                V();
+            }
+            // BERNOULLI -1; 1
+            std::default_random_engine eng;
+            std::uniform_int_distribution<int> distr(0, 1); 
+            if(set_seed != 0) {
+                eng.seed(set_seed);
+            } else {
+                std::random_device rd; 
+                eng.seed(rd()); // random seed 
+            }
+            DVector<double> beta_hat = m_.beta();
+            DVector<double> beta_hat_mod = beta_hat;
+            if(type == simultaneous){
+                for(int i = 0; i < p; ++i){
+                    for(int j = 0; j < C_.cols(); j++){
+                        if(C_(i,j) > 0){
+                            beta_hat_mod[j] = beta0_[j];
+                        }
+                    }
+                }
+
+                DMatrix<double> block = m_.PsiTD() * m_.pW().asDiagonal() * m_.Psi();
+                std::cout << "dim block X : " <<block.rows()<<"x"<<block.cols()<< std::endl;
+                std::cout << "Determinante di block_inv: " << block.determinant() << std::endl;
+
+
+                DVector<double> bet = X * beta_hat_mod;
+                std::cout << "lunghezza bet : " <<bet.size()<< std::endl;
+
+        DMatrix<double> block_inv = block.completeOrthogonalDecomposition().pseudoInverse();
+                std::cout << "block inveros  : " <<block.coeff(0,0)<< std::endl;
+                if (hasNaN(block_inv)) {
+        std::cout << "block_inv contiene NaN!" << std::endl;
+    } else {
+        std::cout << "block_inv non contiene NaN." << std::endl;
+    }
+
+
+                DVector<double> f_H0 = m_.Psi() * block_inv * m_.PsiTD() * m_.pW().asDiagonal() * (y - bet);
+                                std::cout << "psi  X : " <<m_.Psi().rows()<<"x"<<m_.Psi().cols()<< std::endl;
+                std::cout << "dim block X : " <<block_inv.rows()<<"x"<<block_inv.cols()<< std::endl;
+                                                std::cout << "psi td  X : " <<m_.PsiTD().rows()<<"x"<<m_.PsiTD().cols()<< std::endl;
+
+                std::cout << "dim W X : " << m_.pW().asDiagonal().rows()<<"x"<< m_.pW().asDiagonal().cols()<< std::endl;
+                std::cout << "dim y-bet X : " <<(y - bet).size()<< std::endl;
+
+            
+                std::cout << "lunghezza f0 : " <<f_H0.size()<< std::endl;
+                                std::cout << "elemets f0 : " <<f_H0(0)<< std::endl;
+                                std::cout << "elemets f0 : " <<f_H0(1)<< std::endl;
+
+              
+                DVector<double> stats(m_.n_obs());  // Vettore dei risultati finali
+                //DVector<double> product = X * beta_hat_mod;  // Prodotto matrice-vettore
+                //DVector<double> f_hat0 = m_.Psi() * H0;  // Prodotto matrice-vettore
+                
+                for (int i = 0; i < m_.n_obs(); ++i) {
+                    // Calcola l'espressione per ogni i
+                    // Modifica la parte in cui fai il prodotto matrice-vettore
+                    double value = -0.5 * sign(y(i) - bet(i) - f_H0(i)) - (m_.alpha() - 0.5);
+                    stats(i) = value * (y(i)-(0.5-m_.alpha())*std::abs(y(i) - bet(i) - f_H0(i))-bet(i)-f_H0(i));  // Assegna il valore calcolato all'elemento i
+
+                }
+                std::cout << "stats: " << stats << std::endl;                
+                DVector<double> scores = C_ * X.transpose() * m_.pW().asDiagonal() *stats;
+                std::cout<<"scores: "<<scores<<std::endl;
+
+                double rank_one = 0;
+                if(p == 1){
+                    rank_one = scores(0);
+                }
+                else{    
+                    rank_one = scores.transpose() * scores;
+                }
+                
+                DVector<double> result(1);
+                int count = 0;
+                //int up = 0;
+                //int down = 0;
+                // initialize new stats to be flipped
+                DVector<double> stats_flip = stats;
+                DVector<double> scores_flip = scores;
+                double rank_flip = rank_one;
+                std::cout<<"rank_one: "<<rank_one<<std::endl;
+                for(int i = 1; i < n_flip; ++i){
+                    for(int j = 0; j < stats.size(); ++j){
+                        int flip = 2 * distr(eng) - 1;
+                        stats_flip(j) = stats(j) * flip;
+                    }
+                    //scores_flip = X.transpose() * stats_flip;
+                    scores_flip = X.transpose() * m_.pW().asDiagonal() * stats_flip;
+                    if(p == 1){
+                        rank_flip = scores_flip(0);
+                    }
+                    else{
+                        rank_flip = scores_flip.transpose() * scores_flip;
+                    }
+                    std::cout<<"rank_flip: "<<rank_flip<<std::endl;
+                    if (rank_flip >= rank_one){
+                        ++count;
+                    }
+                    
+                    //if(is_Unilaterally_Greater(scores_flip, scores)){ 
+                    //    up = up + 1;
+                    //}
+                   // else if(is_Unilaterally_Smaller(scores_flip, scores)){ 
+                     //   down = down + 1;}    
+                                    
+                
+                }
+                double p_value = count/static_cast<double>(n_flip-1);
+                result(0) = p_value;
+                
+                //double pval_up = static_cast<double>(up) / n_flip;
+                //double pval_down = static_cast<double>(down) / n_flip;
+                //result(0) = 2 * std::min(pval_up, pval_down); // Obtain the bilateral p_value starting from the unilateral
+                
+                return result;
+            }
+            else{
+                // ONE AT THE TIME   
+                DMatrix<double> pseudo_res_H0(V_.cols(), p);
+                DMatrix<double> res_H0(V_.cols(), p);
+                DMatrix<double> X = m_.X();
+                for(int i = 0; i < p; ++i){
+                    // Extract the current beta in test
+                    beta_hat_mod = beta_hat;
+                        for(int j = 0; j < C_.cols(); ++j){
+                            if(C_(i,j) > 0){
+                            beta_hat_mod[j] = beta0_[j];
+                            }
+                        }
+                // compute the partial residuals
+                DMatrix<double> block = m_.PsiTD() * m_.pW().asDiagonal() * m_.Psi();
+                //std::cout << "dim block X : " <<block.rows()<<"x"<<block.cols()<< std::endl;
+                //std::cout << "Determinante di block_inv: " << block.determinant() << std::endl;
+                DVector<double> bet = X * beta_hat_mod;
+                //std::cout << "lunghezza bet : " <<bet.size()<< std::endl;
+                DMatrix<double> block_inv = block.completeOrthogonalDecomposition().pseudoInverse();
+                //std::cout << "block inveros  : " <<block.coeff(0,0)<< std::endl;
+                DVector<double> f_H0 = m_.Psi() * block_inv * m_.PsiTD() * m_.pW().asDiagonal() * (y - bet);
+                //                std::cout << "psi  X : " <<m_.Psi().rows()<<"x"<<m_.Psi().cols()<< std::endl;
+                //std::cout << "dim block X : " <<block_inv.rows()<<"x"<<block_inv.cols()<< std::endl;
+                  //                              std::cout << "psi td  X : " <<m_.PsiTD().rows()<<"x"<<m_.PsiTD().cols()<< std::endl;
+
+                //std::cout << "dim W X : " << m_.pW().asDiagonal().rows()<<"x"<< m_.pW().asDiagonal().cols()<< std::endl;
+                DVector<double> stats(m_.n_obs());  // Vettore dei risultati finali
+                //DVector<double> product = X * beta_hat_mod;  // Prodotto matrice-vettore
+                //DVector<double> f_hat0 = m_.Psi() * H0;  // Prodotto matrice-vettore
+                for (int k = 0; k < m_.n_obs(); ++k) {
+                    double value = -0.5 * sign(y(k) - bet(k) - f_H0(k)) - (m_.alpha() - 0.5);
+                                    //std::cout << "value: " << value << std::endl;                
+                    stats(k) = value * (y(k) - bet(k) - f_H0(k));  // Assegna il valore calcolato all'elemento i
+                                    //std::cout << "stat: " << stats(i) << std::endl;                
+
+                }
+                 pseudo_res_H0.col(i) = X * beta_hat_mod + m_.Psi() * V_ * (m_.py() - X * beta_hat_mod);
+                res_H0.col(i) = m_.y();
+
+                }		
+                DMatrix<double> stats = C_ * X.transpose() * m_.pW().asDiagonal() *stats;
+                DMatrix<double> scores = C_ * X.transpose() * stats;
+                DVector<double> count(p);
+                // initialize new stats to be flipped
+                DMatrix<double> stats_flip = stats;
+                DMatrix<double> scores_flip = scores;
+                for(int i = 1; i < n_flip; ++i){
+                    for(int j = 0; j < stats.size(); ++j){
+                        int flip = 2 * distr(eng) - 1;
+                        stats_flip(j) = stats(j) * flip;
+                    }
+                    scores_flip = X.transpose() * stats_flip;
+                    //std::cout << scores_flip << std::endl;
+                    for(int k = 0; k < p; ++k){
+                        if(scores_flip(k, k) >= scores(k, k)){
+                            ++count(k);
+                        }
+                    }
+                }
+                DVector<double> p_value = count.array() / static_cast<double>(n_flip);
+                std::cout << "Count: " << count << std::endl;
+                return p_value;        		
+
+            }
+           return DVector<double>(1);
+        }
+
+        int sign(double x) {
+            if (x > 0) {
+                return 1;  // Se x è positivo
+            } else if (x < 0) {
+                return -1; // Se x è negativo
+            } else {
+                return 0;  // Se x è zero
+            }
+        }
+
+
+        void V() override{
+            int n = m_.n_basis();
+            //DMatrix<double> invE = -m_.invA().solve(DMatrix<double>::Identity(2*n, 2*n));
+            //V_ = m_.Psi() * invE.block(0, 0, n, n) * m_.Psi().transpose();
+            SparseBlockMatrix<double, 2, 2> E = SparseBlockMatrix<double, 2, 2>(
+                -m_.PsiTD() * m_.Psi() / m_.n_obs(), 2 * m_.lambda_D() * m_.R1().transpose(),   // NB: observe the 2 * here
+                m_.lambda_D() * m_.R1(),          m_.lambda_D() * m_.R0()                );
+            //DMatrix<double> invE2 = inverse(m_.Psi().transpose()*m_.Psi()+m_.P());
+            DMatrix<double> invE2 = inverse(E).block(0, 0, n, n);
+            //std::cout << invE.row(0) << std::endl;
+            //std::cout << invE2.row(0) << std::endl;
+            V_ = invE2 * m_.Psi().transpose();
+        }
+
+};
+*/
 
 } // namespace models
 } // namespace fdapde

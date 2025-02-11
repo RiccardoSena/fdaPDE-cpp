@@ -94,7 +94,7 @@ class QSRPDE : public RegressionBase<QSRPDE<RegularizationType_>, Regularization
         if constexpr (is_space_time_separable<This>::value) {
             A.block(0, 0) -= Base::lambda_T() * Kronecker(Base::P1(), Base::pde().mass());
         }
-        fdapde::SparseLU<SpMatrix<double>> invA;
+        fdapde::core::SparseLU<SpMatrix<double>> invA;
         invA.compute(A);
         // assemble rhs of srpde problem
         DVector<double> b(A.rows());
@@ -120,7 +120,7 @@ class QSRPDE : public RegressionBase<QSRPDE<RegularizationType_>, Regularization
     double data_loss() const { return (pW_.cwiseSqrt().matrix().asDiagonal() * (py_ - mu_)).squaredNorm(); }
     const DVector<double>& py() const { return py_; }
     const DVector<double>& pW() const { return pW_; }
-    const fdapde::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
+    const fdapde::core::SparseLU<SpMatrix<double>>& invA() const { return invA_; }
     // GCV support
     double norm(const DMatrix<double>& op1, const DMatrix<double>& op2) const {
         double result = 0;
@@ -129,12 +129,18 @@ class QSRPDE : public RegressionBase<QSRPDE<RegularizationType_>, Regularization
         }
         return std::pow(result, 2) / n_obs();
     }
+
+    // for inference 
+     double alpha(){ return alpha_; }
+    
+
+
    private:
     double alpha_ = 0.5;      // quantile order (default to median)
     DVector<double> py_ {};   // y - (1-2*alpha)|y - X*beta - f|
     DVector<double> pW_ {};   // diagonal of W^k = 1/(2*n*|y - X*beta - f|)
     DVector<double> mu_;      // \mu^k = [ \mu^k_1, ..., \mu^k_n ] : quantile vector at step k
-    fdapde::SparseLU<SpMatrix<double>> invA_;
+    fdapde::core::SparseLU<SpMatrix<double>> invA_;
 
     FPIRLS<This> fpirls_;   // fpirls algorithm
     int max_iter_ = 200;    // maximum number of iterations in fpirls before forced stop
@@ -143,7 +149,7 @@ class QSRPDE : public RegressionBase<QSRPDE<RegularizationType_>, Regularization
 
     double eps_ = -1e-1;   // pinball loss smoothing factor
     double pinball_loss(double x, double eps) const {   // quantile check function
-        return (alpha_ - 1) * x + eps * fdapde::log1pexp(x / eps);
+        return (alpha_ - 1) * x + eps * fdapde::core::log1pexp(x / eps);
     };
     double pinball_loss(double x) const { return 0.5 * std::abs(x) + (alpha_ - 0.5) * x; }   // non-smoothed pinball
 };

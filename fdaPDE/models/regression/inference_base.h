@@ -134,16 +134,21 @@ template <typename Model> class InferenceBase{
          if(is_empty(V_)){
             V();
          }
+               
          int p = C_.rows();
          DVector<double> statistics(p);         
+         
          if(type == simultaneous){
             // SIMULTANEOUS
             DVector<double> diff = C_ * beta_ - beta0_;
+
             DMatrix<double> Sigma = C_ * V_ * C_.transpose();
+
             DMatrix<double> Sigmadec_ = inverse(Sigma);
             double stat = diff.adjoint() * Sigmadec_ * diff;           
             statistics.resize(p);
             double pvalue = chi_squared_cdf(stat, p);
+
             if(pvalue < 0){ 
                statistics(0) = 1;
             }
@@ -156,6 +161,7 @@ template <typename Model> class InferenceBase{
             for(int i = 1; i < C_.rows(); i++){
                statistics(i) = 10e20;
             }
+
             return statistics; 
          }
 

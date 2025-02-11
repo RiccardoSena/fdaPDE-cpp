@@ -831,7 +831,7 @@ DMatrix<double> X_t = m_.X().transpose();
         //DMatrix<double> inverseA_ {};
         //inverseA_ =  - m_.invA().solve(DMatrix<double>::Identity(2 * m_.n_basis(),2 * m_.n_basis()));
         //Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * inverseA_.block(0, 0, m_.n_basis(), m_.n_basis()) * m_.PsiTD();
-        Lambda_ = DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) - m_.Psi() * s_.compute(m_) * m_.PsiTD();
+        Lambda_ = m_.W() * DMatrix<double>::Identity(m_.n_obs(), m_.n_obs()) -  m_.W() * m_.Psi() * s_.compute(m_) * m_.PsiTD()* m_.W();
 
         //aggiunto per CI 
         DMatrix<double> W = m_.X();

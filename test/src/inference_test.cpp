@@ -42,8 +42,13 @@ using fdapde::core::DiscretizedVectorField;
 using fdapde::core::Triangulation;
 
 #include "../../fdaPDE/models/regression/srpde.h"
+#include "../../fdaPDE/models/regression/qsrpde.h"
+
 #include "../../fdaPDE/models/sampling_design.h"
 using fdapde::models::SRPDE;
+using fdapde::models::QSRPDE;
+using fdapde::models::GCV;
+
 using fdapde::models::Sampling;
 
 #include "utils/constants.h"
@@ -57,7 +62,7 @@ using fdapde::testing::read_mtx;
 
 #include "../../fdaPDE/models/regression/wald.h"
 #include "../../fdaPDE/models/regression/speckman.h"
-#include "../../fdaPDE/models/regression/esf.h"
+//#include "../../fdaPDE/models/regression/esf.h"
 #include "../../fdaPDE/models/regression/pesf.h"
 
 #include <../../../fdaPDE-core/fdaPDE/core.h>
@@ -527,7 +532,7 @@ TEST(inference_test, SpeckmanNonExact27oat){
 
 // RIASSUNTO TESTS 2.7 EXACT E NON EXACT 
 
-
+/*
 TEST(inference_test, exact27) {
     // define domain
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
@@ -618,7 +623,7 @@ TEST(inference_test, exact27) {
     EXPECT_TRUE(almost_equal(pvaluespesf(1), 0.964, 1e-7));
 
 }
-
+*/
 
 
 /*
@@ -1284,11 +1289,12 @@ TEST(inference_test, chrono) {
 
 }
 
-*/
 
 
 
-/*
+
+
+// questo usato nella simulazione ufficiale 
 TEST(inference_test, chrono_investigation) {
     
     std::vector<std::string> Nodes = {
@@ -1350,14 +1356,17 @@ TEST(inference_test, chrono_investigation) {
 
     for(int i = 0; i < n_it; ++i){
 
-    fdapde::models::Speckman<SRPDE, fdapde::models::exact> inference(model);
+    fdapde::models::PESF<SRPDE, fdapde::models::nonexact> inference(model);
     
     inference.setC(C);
     inference.setBeta0(beta0);
+    inference.setNflip(1000);
+    inference.setseed(46);
+
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    inference.p_value(fdapde::models::one_at_the_time);
+    inference.p_value_serial(fdapde::models::one_at_the_time);
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -1369,17 +1378,16 @@ TEST(inference_test, chrono_investigation) {
     
     auto average_duration = total_duration / n_it;
 
-std::cout << "Mean time of " << Nodes[i] << " is: " 
-                  << average_duration.count() << " microseconds" << std::endl;
-    }
+std::cout << average_duration.count()  << " , "  << std::endl;
+    
 
 }
 
-*/
+}
 
 
 
-/*
+
 
 TEST(inference_test, chronoESF) {
     // define domain

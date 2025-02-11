@@ -87,8 +87,11 @@ TEST(qsrpde_test, laplacian_semiparametric_samplingatlocations) {
     MeshLoader<Triangulation<2, 2>> domain("c_shaped");
     // import data from files
     DMatrix<double> locs = read_csv<double>("../data/models/qsrpde/2D_test2/locs.csv");
-    DMatrix<double> y    = read_csv<double>("../data/models/qsrpde/2D_test2/y.csv");
-    DMatrix<double> X    = read_csv<double>("../data/models/qsrpde/2D_test2/X.csv");
+    //DMatrix<double> y    = read_csv<double>("../data/models/qsrpde/2D_test2/y.csv");
+    //DMatrix<double> X    = read_csv<double>("../data/models/qsrpde/2D_test2/X.csv");
+    DMatrix<double> y = read_csv<double>("../data/models/qsrpde/2D_beta_power/2quantileobservations_1_rep_1.csv");
+    DMatrix<double> X    = read_csv<double>("../data/models/qsrpde/2D_beta_power/2quantilecovariates_1_rep_1.csv");
+            
     // define regularizing PDE
     auto L = -laplacian<FEM>();
     DMatrix<double> u = DMatrix<double>::Zero(domain.mesh.n_cells() * 3, 1);
@@ -107,6 +110,7 @@ TEST(qsrpde_test, laplacian_semiparametric_samplingatlocations) {
     // solve smoothing problem
     model.init();
     model.solve();
+    std::cout << "Model solved" <<model.beta()<< std::endl;
     // test correctness
     EXPECT_TRUE(almost_equal(model.f()   , "../data/models/qsrpde/2D_test2/sol.mtx" ));
     EXPECT_TRUE(almost_equal(model.beta(), "../data/models/qsrpde/2D_test2/beta.mtx"));
